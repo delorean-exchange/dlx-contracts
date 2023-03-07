@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../interfaces/ILiquidityPool.sol";
 import "../interfaces/uniswap/ISwapRouter.sol";
-import "../interfaces/uniswap/IQuoter.sol";
+import "../interfaces/uniswap/IQuoterV2.sol";
 import "../interfaces/uniswap/IUniswapV3Factory.sol";
 import "../interfaces/uniswap/IUniswapV3Pool.sol";
 
@@ -20,14 +20,14 @@ contract UniswapV3LiquidityPool is ILiquidityPool {
 
     IUniswapV3Pool public immutable pool;
     ISwapRouter public immutable router;
-    IQuoter public immutable quoter;
+    IQuoterV2 public immutable quoter;
 
     constructor(address pool_,
                 address router_,
                 address quoter_) {
         pool = IUniswapV3Pool(pool_);
         router = ISwapRouter(router_);
-        quoter = IQuoter(quoter_);
+        quoter = IQuoterV2(quoter_);
 
         token0 = pool.token0();
         token1 = pool.token1();
@@ -41,11 +41,14 @@ contract UniswapV3LiquidityPool is ILiquidityPool {
 
         // TODO: Use amountOutMinimum to compute sqrtPriceLimitX96
 
-        return quoter.quoteExactInputSingle(tokenIn,
-                                            tokenIn == token0 ? token1 : token0,
-                                            fee,
-                                            amountIn,
-                                            0);
+        IQuoterV2.QuoteExactInputSingleParams memory params = IQuoterV2.QuoteExactInputSingleParams({
+            tokenIn: tokenIn,
+            tokenOut: tokenIn == token0 ? token1 : token0,
+            amountIn: amountIn,
+            fee: fee,
+            sqrtPriceLimitX96: 0 });
+        (uint256 amountOut, , ,) = quoter.quoteExactInputSingle(params);
+        return amountOut;
     }
 
     function swap(address recipient,

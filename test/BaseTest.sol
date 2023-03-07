@@ -19,7 +19,8 @@ contract BaseTest is Test {
     address public arbitrumUniswapV3Factory = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
     address public arbitrumNonfungiblePositionManager = 0xC36442b4a4522E871399CD717aBDD847Ab11FE88;
     address public arbitrumSwapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
-    address public arbitrumQuoter = 0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6;
+    /* address public arbitrumQuoter = 0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6; */
+    address public arbitrumQuoter = 0x61fFE014bA17989E743c5F6cB21bF9697530B21e;
 
     FakeYieldSource public source;
 
