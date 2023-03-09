@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "forge-std/console.sol";
+
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -13,9 +15,6 @@ import "../interfaces/uniswap/IUniswapV3Pool.sol";
 contract UniswapV3LiquidityPool is ILiquidityPool {
     using SafeERC20 for IERC20;
 
-    /* IUniswapV3Factory public immutable factory; */
-    /* address public override immutable token0; */
-    /* address public override immutable token1; */
     uint24 public immutable fee;
 
     IUniswapV3Pool public immutable pool;
@@ -34,35 +33,47 @@ contract UniswapV3LiquidityPool is ILiquidityPool {
         fee = pool.fee();
     }
 
-    function previewSwap(address tokenIn, uint128 amountIn, uint128 amountOutMinimum)
-        external override returns (uint256) {
+    function previewSwap(address tokenIn, uint128 amountIn, uint128 sqrtPriceLimitX96)
+        external override returns (uint256, uint256) {
 
         require(address(pool) != address(0), "ULP: no pool");
-
-        // TODO: Use amountOutMinimum to compute sqrtPriceLimitX96
 
         IQuoterV2.QuoteExactInputSingleParams memory params = IQuoterV2.QuoteExactInputSingleParams({
             tokenIn: tokenIn,
             tokenOut: tokenIn == token0 ? token1 : token0,
             amountIn: amountIn,
             fee: fee,
-            sqrtPriceLimitX96: 0 });
-        (uint256 amountOut, , ,) = quoter.quoteExactInputSingle(params);
-        return amountOut;
+            sqrtPriceLimitX96: sqrtPriceLimitX96 });
+
+        (uint256 amountOut, uint160 sqrtPriceX96After, ,) = quoter.quoteExactInputSingle(params);
+        return (amountOut, uint256(sqrtPriceX96After));
+    }
+
+    function previewSwapOut(address tokenIn, uint128 amountOut, uint128 sqrtPriceLimitX96)
+        external override returns (uint256, uint256) {
+        IQuoterV2.QuoteExactOutputSingleParams memory params = IQuoterV2.QuoteExactOutputSingleParams({
+            tokenIn: tokenIn,
+            tokenOut: tokenIn == token0 ? token1 : token0,
+            amount: amountOut,
+            fee: fee,
+            sqrtPriceLimitX96: sqrtPriceLimitX96 });
+
+        (uint256 amountIn, uint160 sqrtPriceX96After, ,) = quoter.quoteExactOutputSingle(params);
+        return (amountIn, uint256(sqrtPriceX96After));
     }
 
     function swap(address recipient,
                   address tokenIn,
                   uint128 amountIn,
-                  uint128 amountOutMinimum)
+                  uint128 amountOutMinimum,
+                  uint128 sqrtPriceLimitX96)
         external override returns (uint256) {
 
         require(address(pool) != address(0), "ULP: no pool");
 
         IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
+        assert(IERC20(tokenIn).balanceOf(address(this)) >= amountIn);
         IERC20(tokenIn).safeApprove(address(router), amountIn);
-
-        // TODO: Use amountOutMinimum to compute sqrtPriceLimitX96
 
         ISwapRouter.ExactInputSingleParams memory params =
             ISwapRouter.ExactInputSingleParams({
@@ -70,12 +81,14 @@ contract UniswapV3LiquidityPool is ILiquidityPool {
                 tokenOut: tokenIn == token0 ? token1 : token0,
                 fee: fee,
                 recipient: recipient,
-                deadline: block.timestamp,
+                deadline: block.timestamp + 1,
                 amountIn: amountIn,
                 amountOutMinimum: amountOutMinimum,
-                sqrtPriceLimitX96: 0 });
+                sqrtPriceLimitX96: sqrtPriceLimitX96 });
 
         uint256 amountOut = router.exactInputSingle(params);
         return amountOut;
     }
+
+    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {}
 }

@@ -26,7 +26,7 @@ contract YieldSliceTest is BaseTest {
 
         uint256 before = generatorToken.balanceOf(alice);
         generatorToken.approve(address(npvSwap), 200e18);
-        npvSwap.swapForNPV(alice, 200e18, 1e18);
+        npvSwap.lockForNPV(alice, 200e18, 1e18);
         uint256 afterVal = generatorToken.balanceOf(alice);
         assertEq(before - afterVal, 200e18);
 
@@ -65,7 +65,7 @@ contract YieldSliceTest is BaseTest {
 
         uint256 before = generatorToken.balanceOf(alice);
         generatorToken.approve(address(npvSwap), 200e18);
-        npvSwap.swapForNPV(alice, 200e18, 1e18);
+        npvSwap.lockForNPV(alice, 200e18, 1e18);
         uint256 afterVal = generatorToken.balanceOf(alice);
         assertEq(before - afterVal, 200e18);
 
@@ -91,7 +91,7 @@ contract YieldSliceTest is BaseTest {
         vm.startPrank(alice);
         uint256 before1 = generatorToken.balanceOf(alice);
         generatorToken.approve(address(npvSwap), 200e18);
-        npvSwap.swapForNPV(alice, 200e18, 1e18);
+        npvSwap.lockForNPV(alice, 200e18, 1e18);
         uint256 afterVal1 = generatorToken.balanceOf(alice);
         assertEq(before1 - afterVal1, 200e18);
         vm.roll(block.number + 0x2000);

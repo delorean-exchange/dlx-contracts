@@ -16,11 +16,18 @@ import "../src/data/Discounter.sol";
 import "../src/data/YieldData.sol";
 
 contract BaseTest is Test {
+    // Arbitrum Mainnet
     address public arbitrumUniswapV3Factory = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
     address public arbitrumNonfungiblePositionManager = 0xC36442b4a4522E871399CD717aBDD847Ab11FE88;
     address public arbitrumSwapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
-    /* address public arbitrumQuoter = 0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6; */
-    address public arbitrumQuoter = 0x61fFE014bA17989E743c5F6cB21bF9697530B21e;
+    address public arbitrumQuoterV2 = 0x61fFE014bA17989E743c5F6cB21bF9697530B21e;
+    address public arbitrumQuoterV1 = 0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6;
+
+    // Arbitrum Goerli
+    /* address public arbitrumUniswapV3Factory = 0x4893376342d5D7b3e31d4184c08b265e5aB2A3f6; */
+    /* address public arbitrumNonfungiblePositionManager = 0x622e4726a167799826d1E1D150b076A7725f5D81; */
+    /* address public arbitrumSwapRouter = 0xab7664500b19a7a2362Ab26081e6DfB971B6F1B0; */
+    /* address public arbitrumQuoterV2 = 0x1dd92b83591781D0C6d98d07391eea4b9a6008FA; */
 
     FakeYieldSource public source;
 
@@ -81,7 +88,7 @@ contract BaseTest is Test {
             uniswapV3Pool = IUniswapV3Pool(IUniswapV3Factory(arbitrumUniswapV3Factory).createPool(token0, token1, 3000));
             IUniswapV3Pool(uniswapV3Pool).initialize(79228162514264337593543950336);
         }
-        pool = new UniswapV3LiquidityPool(address(uniswapV3Pool), arbitrumSwapRouter, arbitrumQuoter);
+        pool = new UniswapV3LiquidityPool(address(uniswapV3Pool), arbitrumSwapRouter, arbitrumQuoterV2);
 
         npvSwap = new NPVSwap(address(npvToken), address(slice), address(pool));
     }
