@@ -60,7 +60,7 @@ contract NPVSwap {
 
 
     // ---- High level: Transacting in generator and yield tokens ---- //
-    // Give a preview of `swapForYield`. Not a view, and should not be used
+    // Give a preview of `lockForYield`. Not a view, and should not be used
     // on-chain,due to underlying Uniswap v3 behavior.
     function previewLockForYield(uint256 tokens, uint256 yield, uint128 sqrtPriceLimitX96)
         public returns (uint256, uint256) {
