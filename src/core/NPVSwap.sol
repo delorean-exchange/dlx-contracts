@@ -32,8 +32,36 @@ contract NPVSwap {
         return slice.discounter().discounted(tokens, yield);
     }
 
-    function previewSwapNPVForYield(uint256 npv, uint128 sqrtPriceLimitX96) public returns (uint256, uint256) {
-        return pool.previewSwap(address(npvToken), uint128(npv), sqrtPriceLimitX96);
+    function previewSwapYieldForNPV(uint256 yieldIn, uint128 sqrtPriceLimitX96)
+        public returns (uint256, uint256) {
+
+        return pool.previewSwap(address(slice.yieldToken()),
+                                uint128(yieldIn),
+                                sqrtPriceLimitX96);
+    }
+
+    function previewSwapYieldForNPVOut(uint256 npvOut, uint128 sqrtPriceLimitX96)
+        public returns (uint256, uint256) {
+
+        return pool.previewSwapOut(address(slice.yieldToken()),
+                                   uint128(npvOut),
+                                   sqrtPriceLimitX96);
+    }
+
+    function previewSwapNPVForYield(uint256 npvIn, uint128 sqrtPriceLimitX96)
+        public returns (uint256, uint256) {
+
+        return pool.previewSwap(address(npvToken),
+                                uint128(npvIn),
+                                sqrtPriceLimitX96);
+    }
+
+    function previewSwapNPVForYieldOut(uint256 yieldOut, uint128 sqrtPriceLimitX96)
+        public returns (uint256, uint256) {
+
+        return pool.previewSwapOut(address(npvToken),
+                                   uint128(yieldOut),
+                                   sqrtPriceLimitX96);
     }
 
     // Lock yield generating tokens for NPV tokens
@@ -61,7 +89,7 @@ contract NPVSwap {
 
     // ---- High level: Transacting in generator and yield tokens ---- //
     // Give a preview of `lockForYield`. Not a view, and should not be used
-    // on-chain,due to underlying Uniswap v3 behavior.
+    // on-chain, due to underlying Uniswap v3 behavior.
     function previewLockForYield(uint256 tokens, uint256 yield, uint128 sqrtPriceLimitX96)
         public returns (uint256, uint256) {
 
@@ -69,11 +97,8 @@ contract NPVSwap {
         return pool.previewSwap(address(npvToken), uint128(previewNPV), sqrtPriceLimitX96);
     }
 
-    // Returns the amount of NPV required to get an output of `yield` .
-    function previewNPVForYield(uint256 yield, uint128 sqrtPriceLimitX96)
-        public returns (uint256, uint256) {
-
-        return pool.previewSwapOut(address(npvToken), uint128(yield), sqrtPriceLimitX96);
+    function previewSwapForSlice(uint256 yieldIn, uint128 sqrtPriceLimitX96) public returns (uint256, uint256) {
+        return pool.previewSwap(address(slice.yieldToken()), uint128(yieldIn), sqrtPriceLimitX96);
     }
 
     // Lock and swap yield generating tokens for yield tokens
@@ -91,10 +116,6 @@ contract NPVSwap {
                          uint128(npv),
                          uint128(amountOutMin),
                          sqrtPriceLimitX96);
-    }
-
-    function previewSwapForSlice(uint256 yield, uint128 sqrtPriceLimitX96) public returns (uint256, uint256) {
-        return pool.previewSwap(address(slice.yieldToken()), uint128(yield), sqrtPriceLimitX96);
     }
 
     // Swap yield for future yield slice

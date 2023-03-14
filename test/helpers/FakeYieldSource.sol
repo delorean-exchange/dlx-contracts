@@ -41,8 +41,8 @@ contract FakeYieldSource is IYieldSource {
         yieldPerBlock = yieldPerBlock_;
         owner = msg.sender;
 
-        _yieldToken = IFakeToken(new FakeToken("TestYS: Yield Token", "YS:Y", 0));
-        _generatorToken = IFakeToken(new CallbackFakeToken("TestYS: Generator Token", "YS:G", 0, address(this)));
+        _yieldToken = IFakeToken(new FakeToken("TestYS: fake ETH", "fakeETH", 0));
+        _generatorToken = IFakeToken(new CallbackFakeToken("TestYS: fake GLP", "fakeGLP", 0, address(this)));
     }
 
     function yieldToken() external override view returns (IERC20) {
@@ -81,6 +81,11 @@ contract FakeYieldSource is IYieldSource {
     function setYieldPerBlock(uint256 yieldPerBlock_) public {
         checkpointPending();
         yieldPerBlock = yieldPerBlock_;
+    }
+
+    function mintBoth(address who, uint256 amount) public {
+        _generatorToken.publicMint(who, amount);
+        _yieldToken.publicMint(who, amount);
     }
 
     function mintGenerator(address who, uint256 amount) public {

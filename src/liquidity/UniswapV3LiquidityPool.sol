@@ -45,7 +45,12 @@ contract UniswapV3LiquidityPool is ILiquidityPool {
             fee: fee,
             sqrtPriceLimitX96: sqrtPriceLimitX96 });
 
+        console.log("Call preview swap with", tokenIn, amountIn);
+
         (uint256 amountOut, uint160 sqrtPriceX96After, ,) = quoter.quoteExactInputSingle(params);
+
+        console.log("Call preview swap got", amountOut);
+
         return (amountOut, uint256(sqrtPriceX96After));
     }
 
