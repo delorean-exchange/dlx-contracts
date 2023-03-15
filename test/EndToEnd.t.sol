@@ -22,7 +22,7 @@ contract EndToEndTest is BaseTest {
         // Alice: Get some NPV tokens so we can add liquidity
         vm.startPrank(alice);
         generatorToken.approve(address(npvSwap), 2000e18);
-        npvSwap.lockForNPV(alice, 2000e18, 10e18);
+        npvSwap.lockForNPV(alice, alice, 2000e18, 10e18);
 
         uint256 token0Amount = 1e18;
         uint256 token1Amount = 1e18;
@@ -59,7 +59,7 @@ contract EndToEndTest is BaseTest {
         source.mintGenerator(bob, 1000000e18);
         generatorToken.approve(address(npvSwap), 200e18);
         assertEq(npvSwap.previewLockForNPV(200e18, 1e18), 657008058000000000);
-        npvSwap.lockForNPV(bob, 200e18, 1e18);
+        npvSwap.lockForNPV(bob, bob, 200e18, 1e18);
         assertEq(IERC20(npvToken).balanceOf(bob), 657008058000000000);
 
         IERC20(npvToken).approve(address(pool), 5e17);
@@ -125,7 +125,10 @@ contract EndToEndTest is BaseTest {
         assertEq(quote, 657008058000000000);
         assertEq(quote, npvSwap.previewLockForNPV(200e18, 1e18));
 
+        uint256 id1 = npvSwap.slice().nextId();
         uint256 amount = npvSwap.lockForYield(bob, 200e18, 1e18, preview, 0);
+        (address owner , , , , , , ) = npvSwap.slice().debtSlices(id1);
+        assertEq(owner, bob);
         assertEq(amount, 612862441028507418);
         assertEq(yieldToken.balanceOf(bob), 612862441028507418);
         assertClose(amount, 6e17, 1e17);

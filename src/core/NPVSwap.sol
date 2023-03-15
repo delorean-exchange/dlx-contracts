@@ -65,12 +65,16 @@ contract NPVSwap {
     }
 
     // Lock yield generating tokens for NPV tokens
-    function lockForNPV(address recipient, uint256 tokens, uint256 yield) public returns (uint256) {
+    function lockForNPV(address owner,
+                        address recipient,
+                        uint256 tokens,
+                        uint256 yield) public returns (uint256) {
+
         IERC20(slice.generatorToken()).safeTransferFrom(msg.sender, address(this), tokens);
         slice.generatorToken().approve(address(slice), 0);
         slice.generatorToken().approve(address(slice), tokens);
 
-        uint256 id = slice.debtSlice(recipient, tokens, yield);
+        uint256 id = slice.debtSlice(owner, recipient, tokens, yield);
 
         return id;
     }
@@ -102,16 +106,16 @@ contract NPVSwap {
     }
 
     // Lock and swap yield generating tokens for yield tokens
-    function lockForYield(address recipient,
+    function lockForYield(address owner,
                           uint256 tokens,
                           uint256 yield,
                           uint256 amountOutMin,
                           uint128 sqrtPriceLimitX96) public returns (uint256) {
 
         uint256 npv = previewLockForNPV(tokens, yield);
-        lockForNPV(address(this), tokens, yield);
+        lockForNPV(owner, address(this), tokens, yield);
         IERC20(npvToken).approve(address(pool), npv);
-        return pool.swap(recipient,
+        return pool.swap(owner,
                          address(npvToken),
                          uint128(npv),
                          uint128(amountOutMin),

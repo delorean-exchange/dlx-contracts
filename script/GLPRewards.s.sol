@@ -14,10 +14,12 @@ contract GLPRewardsScript is Script {
 
     function run() public {
         uint256 pk = vm.envUint("LOCALHOST_PRIVATE_KEY");
+        /* uint256 pk = vm.envUint("ARBITRUM_PRIVATE_KEY"); */
         vm.startBroadcast(pk);
 
         string memory historical = vm.readFile("json/historical.json");
         string memory config = vm.readFile("json/config.localhost.json");
+        /* string memory config = vm.readFile("json/config.arbitrum.json"); */
 
         uint256 daily = vm.parseJsonUint(historical, ".glp.avgDailyRewardPerToken");
         address discounter = vm.parseJsonAddress(config, ".fakeglp_discounter.address");

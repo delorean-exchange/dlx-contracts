@@ -112,7 +112,11 @@ contract YieldSlice is ReentrancyGuard {
         return totalTokens() * debtSlices[id].shares / totalShares;
     }
 
-    function debtSlice(address owner, uint256 tokens_, uint256 yield) external returns (uint256) {
+    function debtSlice(address owner,
+                       address recipient,
+                       uint256 tokens_,
+                       uint256 yield) external returns (uint256) {
+
         uint256 newTotalShares;
         uint256 delta;
         uint256 oldTotalTokens = totalTokens();
@@ -144,7 +148,7 @@ contract YieldSlice is ReentrancyGuard {
         debtSlices[id] = slice;
 
         totalShares = newTotalShares;
-        npvToken.mint(owner, npv);
+        npvToken.mint(recipient, npv);
         _recordData();
 
         emit NewDebtSlice(owner, id, tokens_, yield, npv);
