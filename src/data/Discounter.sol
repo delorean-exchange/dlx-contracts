@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
+
 import "../interfaces/IDiscounter.sol";
 
-contract Discounter is IDiscounter {
+contract Discounter is IDiscounter, Ownable {
     uint256 public daily;
     uint256 public rate;
     uint256 public maxDays;
@@ -19,15 +21,15 @@ contract Discounter is IDiscounter {
         rate = rate_;
     }
 
-    function setRate(uint256 rate_) external {
+    function setRate(uint256 rate_) external onlyOwner {
         rate = rate_;
     }
 
-    function setDaily(uint256 daily_) external {
+    function setDaily(uint256 daily_) external onlyOwner {
         daily = daily_;
     }
 
-    function setMaxDays(uint256 maxDays_) external {
+    function setMaxDays(uint256 maxDays_) external onlyOwner {
         maxDays = maxDays_;
     }
 
