@@ -25,6 +25,7 @@ contract YieldSlice is ReentrancyGuard {
     uint256 public totalShares;
     uint256 public harvestedYield;
     uint256 public immutable dustLimit;
+    uint256 public cumulativePaidYield;
 
     NPVToken public npvToken;
     IERC20 public immutable generatorToken;
@@ -87,6 +88,10 @@ contract YieldSlice is ReentrancyGuard {
         return harvestedYield + yieldSource.amountPending();
     }
 
+    function cumulativeYieldCredit() public view returns (uint256) {
+        return harvestedYield + cumulativePaidYield + yieldSource.amountPending();
+    }
+
     function harvest() external nonReentrant {
         _harvest();
     }
@@ -104,7 +109,7 @@ contract YieldSlice is ReentrancyGuard {
 
     function _recordData() private {
         debtData.record(totalTokens(), cumulativeYield());
-        creditData.record(npvToken.totalSupply(), cumulativeYield());
+        creditData.record(npvToken.totalSupply(), cumulativeYieldCredit());
     }
 
     function tokens(uint256 id) public view returns (uint256) {
@@ -156,16 +161,33 @@ contract YieldSlice is ReentrancyGuard {
         return id;
     }
 
+    function mintFromYield(address recipient, uint256 amount) external {
+        IERC20(yieldToken).safeTransferFrom(msg.sender, address(this), amount);
+        npvToken.mint(recipient, amount);
+        cumulativePaidYield += amount;
+        _recordData();
+    }
+
+    function payDebt(uint256 id, uint256 amount) external {
+        DebtSlice storage slice = debtSlices[id];
+        require(slice.unlockedBlockNumber == 0, "YS: already unlocked");
+
+        (, uint256 npv, uint256 refund) = generated(id);
+        uint256 remaining = npv > slice.npv ? 0 : slice.npv - npv;
+        uint256 m = _min(remaining, amount);
+        IERC20(npvToken).safeTransferFrom(msg.sender, address(this), m);
+        npvToken.burn(address(this), m);
+        slice.npv -= m;
+    }
+
     function unlockDebtSlice(uint256 id) external {
         DebtSlice storage slice = debtSlices[id];
         require(slice.unlockedBlockNumber == 0, "YS: already unlocked");
 
         (, uint256 npv, uint256 refund) = generated(id);
         uint256 remaining = npv > slice.npv ? 0 : slice.npv - npv;
-        if (remaining > 0) {
-            IERC20(npvToken).safeTransferFrom(msg.sender, address(this), remaining);
-            npvToken.burn(address(this), remaining);
-        }
+        require(remaining == 0, "YS: npv debt");
+
         if (refund > 0) {
             // TODO: if we implement transfer ownership, make sure refund is separate
             _harvest();
@@ -256,11 +278,11 @@ contract YieldSlice is ReentrancyGuard {
         uint256 claimable = 0;
 
         for (uint256 i = slice.blockNumber; npv < slice.npv && i < block.number; i += GENERATION_PERIOD) {
-            uint256 end = _min(block.number - 1, i + GENERATION_PERIOD);
+            uint256 end = _min(block.number - 1, i + GENERATION_PERIOD );
             uint256 ytb = creditData.yieldPerTokenPerBlock(i,
                                                            end,
                                                            npvToken.totalSupply(),
-                                                           cumulativeYield());
+                                                           cumulativeYieldCredit());
 
             uint256 yield = (ytb * (end - i) * slice.npv) / creditData.PRECISION_FACTOR();
             uint256 estimatedDays = (12 * (end - slice.blockNumber)) / (24 * 3600);

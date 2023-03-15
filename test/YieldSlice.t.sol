@@ -33,8 +33,8 @@ contract YieldSliceTest is BaseTest {
         assertEq(discounter.discounted(200e18, 1e18), 657008058000000000);
         assertEq(npvToken.balanceOf(alice), 657008058000000000);
 
-        // Not enough yield generated, and safe transfer fails due to lacking approval
-        vm.expectRevert("ERC20: insufficient allowance");
+        // Not enough yield generated
+        vm.expectRevert("YS: npv debt");
         slice.unlockDebtSlice(id1);
 
         // Advance a few weeks */
@@ -79,10 +79,132 @@ contract YieldSliceTest is BaseTest {
         slice.recordData();
 
         npvToken.approve(address(slice), npvSliced);
+        slice.payDebt(id1, npvSliced);
         slice.unlockDebtSlice(id1);
         assertEq(generatorToken.balanceOf(alice), before);
 
         vm.stopPrank();
+    }
+
+    function testUnlockWithNPVTokensPayExtra() public {
+        vm.startPrank(alice);
+
+        uint256 id1 = slice.nextId();
+
+        uint256 before = generatorToken.balanceOf(alice);
+        generatorToken.approve(address(npvSwap), 200e18);
+        npvSwap.lockForNPV(alice, alice, 200e18, 1e18);
+        uint256 afterVal = generatorToken.balanceOf(alice);
+        assertEq(before - afterVal, 200e18);
+
+        uint256 npvSliced = 657008058000000000;
+        assertEq(discounter.discounted(200e18, 1e18), npvSliced);
+        assertEq(npvToken.balanceOf(alice), npvSliced);
+
+        (uint256 nominal, uint256 npv, ) = slice.generated(id1);
+        assertEq(npv, 0);
+
+        slice.recordData();
+
+        uint256 extra = 1e18;
+        yieldToken.approve(address(slice), extra);
+        slice.mintFromYield(alice, extra);
+        assertEq(IERC20(npvToken).balanceOf(alice), npvSliced + extra);
+
+        npvToken.approve(address(slice), npvSliced + extra);
+        uint256 npvBefore = npvToken.balanceOf(alice);
+        slice.payDebt(id1, npvSliced + extra);
+        slice.unlockDebtSlice(id1);
+        uint256 npvAfter = npvToken.balanceOf(alice);
+        assertEq(generatorToken.balanceOf(alice), before);
+        assertEq(npvBefore - npvAfter, npvSliced);
+
+        vm.stopPrank();
+    }
+
+    function testUnlockWithNPVTokensCreditSlice() public {
+
+        uint256 id1 = slice.nextId();
+        uint256 id2 = slice.nextId() + 1;
+
+        // Alice sells yield
+        vm.startPrank(alice);
+        uint256 before = generatorToken.balanceOf(alice);
+        generatorToken.approve(address(npvSwap), 200e18);
+        npvSwap.lockForNPV(alice, alice, 200e18, 1e18);
+        uint256 afterVal = generatorToken.balanceOf(alice);
+        assertEq(before - afterVal, 200e18);
+        uint256 npvSliced = 657008058000000000;
+        assertEq(npvToken.balanceOf(alice), npvSliced);
+        npvToken.transfer(bob, npvSliced);
+        vm.stopPrank();
+
+        // Bob buys yield
+        vm.startPrank(bob);
+        npvToken.approve(address(npvSwap), npvSliced);
+        npvSwap.swapNPVForSlice(npvSliced);
+        (, , , uint256 npvEntitled, ) = slice.creditSlices(id2);
+        vm.stopPrank();
+
+        assertEq(discounter.discounted(200e18, 1e18), npvSliced);
+        (uint256 nominal1, uint256 npv1, ) = slice.generated(id1);
+        assertEq(npv1, 0);
+
+        slice.recordData();
+        vm.roll(block.number + 100);
+
+        {
+            (uint256 nominal2, uint256 npv2, ) = slice.generated(id1);
+            assertEq(npv2, 990000000000000);
+            (uint256 creditNominal2, uint256 creditNpv2, ) = slice.generatedCredit(id2);
+            assertEq(creditNpv2, 989999999999952);
+
+            uint256 remaining = npvSliced - npv2;
+            assertEq(remaining, 656018058000000000);
+
+            vm.startPrank(alice);
+            yieldToken.approve(address(slice), remaining);
+            slice.mintFromYield(alice, remaining);
+            assertEq(npvToken.balanceOf(alice), remaining);
+            npvToken.approve(address(slice), remaining);
+            slice.payDebt(id1, remaining);
+            slice.unlockDebtSlice(id1);
+            vm.stopPrank();
+        }
+
+        {
+            (uint256 nominal, uint256 npv, uint256 refund) = slice.generated(id1);
+            assertEq(nominal, 990000000000000);
+            assertEq(npv, 990000000000000);
+            assertEq(refund, 0);
+            (uint256 creditNominal, uint256 creditNpv, uint256 claimable) = slice.generatedCredit(id2);
+            assertEq(creditNominal, 650447877419999972);
+            assertEq(creditNpv,     650447877419999972);
+            assertEq(claimable,     650447877419999972);
+        }
+
+
+        {
+            slice.recordData();
+            vm.roll(block.number + slice.GENERATION_PERIOD());
+
+            (uint256 creditNominal1, uint256 creditNpv1, uint256 claimable1) = slice.generatedCredit(id2);
+
+            slice.recordData();
+            vm.roll(block.number + slice.GENERATION_PERIOD());
+
+            (uint256 creditNominal2, uint256 creditNpv2, uint256 claimable2) = slice.generatedCredit(id2);
+
+            assertEq(creditNominal1, creditNominal2);
+            assertEq(creditNpv1, creditNpv2);
+            assertEq(claimable1, claimable2);
+
+            assertEq(creditNpv1, npvSliced);
+            assertTrue(creditNominal1 > npvSliced);
+            assertClose(creditNominal1, npvSliced, npvSliced / 100);
+            assertEq(creditNominal1, claimable1);
+            assertEq(creditNominal1, 659312192166623331);
+        }
     }
 
     function testRefund() public {

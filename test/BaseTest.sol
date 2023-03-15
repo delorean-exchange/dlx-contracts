@@ -77,7 +77,7 @@ contract BaseTest is Test {
         dataDebt.setWriter(address(slice));
         dataCredit.setWriter(address(slice));
 
-        source.mintGenerator(alice, 1000000e18);
+        source.mintBoth(alice, 1000000e18);
 
         manager = INonfungiblePositionManager(arbitrumNonfungiblePositionManager);
         (address token0, address token1) = address(npvToken) < address(yieldToken)
