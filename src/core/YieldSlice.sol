@@ -218,7 +218,7 @@ contract YieldSlice is ReentrancyGuard {
         return id;
     }
 
-    function claimCreditSlice(uint256 id) external returns (uint256) {
+    function claim(uint256 id) external returns (uint256) {
         CreditSlice storage slice = creditSlices[id];
         (, , uint256 claimable) = generatedCredit(id);
 
@@ -228,10 +228,11 @@ contract YieldSlice is ReentrancyGuard {
 
         uint256 delta = claimable - slice.claimed;
         _harvest();
-        yieldToken.safeTransfer(slice.owner, delta);
+        uint256 amount = _min(delta, yieldToken.balanceOf(address(this)));
+        yieldToken.safeTransfer(slice.owner, amount);
         slice.claimed = claimable;
 
-        return delta;
+        return amount;
     }
 
     function remaining(uint256 id) public view returns (uint256) {
