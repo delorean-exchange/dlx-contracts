@@ -168,16 +168,17 @@ contract YieldSlice is ReentrancyGuard {
         _recordData();
     }
 
-    function payDebt(uint256 id, uint256 amount) external {
+    function payDebt(uint256 id, uint256 amount) external returns (uint256) {
         DebtSlice storage slice = debtSlices[id];
         require(slice.unlockedBlockNumber == 0, "YS: already unlocked");
 
         (, uint256 npv, uint256 refund) = generated(id);
         uint256 remaining = npv > slice.npv ? 0 : slice.npv - npv;
-        uint256 m = _min(remaining, amount);
-        IERC20(npvToken).safeTransferFrom(msg.sender, address(this), m);
-        npvToken.burn(address(this), m);
-        slice.npv -= m;
+        uint256 actual = _min(remaining, amount);
+        IERC20(npvToken).safeTransferFrom(msg.sender, address(this), actual);
+        npvToken.burn(address(this), actual);
+        slice.npv -= actual;
+        return actual;
     }
 
     function unlockDebtSlice(uint256 id) external {
@@ -223,14 +224,11 @@ contract YieldSlice is ReentrancyGuard {
         (, , uint256 claimable) = generatedCredit(id);
 
         if (claimable == 0) return 0;
-        if (claimable == slice.claimed) return 0;
-        assert(slice.claimed <= claimable);
 
-        uint256 delta = claimable - slice.claimed;
         _harvest();
-        uint256 amount = _min(delta, yieldToken.balanceOf(address(this)));
+        uint256 amount = _min(claimable, yieldToken.balanceOf(address(this)));
         yieldToken.safeTransfer(slice.owner, amount);
-        slice.claimed = claimable;
+        slice.claimed += amount;
 
         return amount;
     }
@@ -302,6 +300,6 @@ contract YieldSlice is ReentrancyGuard {
             npv += pv;
         }
 
-        return (nominal, npv, claimable);
+        return (nominal, npv, claimable - slice.claimed);
     }
 }

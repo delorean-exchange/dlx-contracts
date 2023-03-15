@@ -159,6 +159,9 @@ contract NPVSwap {
         slice.yieldToken().approve(address(slice), amount);
         slice.mintFromYield(address(this), amount);
         slice.npvToken().approve(address(slice), amount);
-        slice.payDebt(id, amount);
+        uint256 paid = slice.payDebt(id, amount);
+        if (paid != amount) {
+            IERC20(slice.npvToken()).safeTransfer(msg.sender, amount - paid);
+        }
     }
 }

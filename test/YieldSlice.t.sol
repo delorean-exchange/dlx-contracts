@@ -330,6 +330,7 @@ contract YieldSliceTest is BaseTest {
         slice.claim(id2);
         uint256 afterVal2 = yieldToken.balanceOf(bob);
         assertEq(afterVal2 - before2, 249365282518334223);
+
         vm.roll(block.number + 0xf000);
 
         uint256 before3 = yieldToken.balanceOf(bob);
@@ -338,8 +339,10 @@ contract YieldSliceTest is BaseTest {
 
         assertEq(afterVal3 - before3, 252743433795569647);
         assertEq(afterVal3 - before2, 502108716313903870);
+
         (uint256 nominal3, uint256 npv3, uint256 claimable3) = slice.generatedCredit(id2);
         assertEq(npv3, 5e17);
+        assertEq(claimable3, 0);
 
         vm.stopPrank();
     }
