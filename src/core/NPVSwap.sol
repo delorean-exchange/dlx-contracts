@@ -27,7 +27,9 @@ contract NPVSwap {
     }
 
 
+    // --------------------------------------------------------- //
     // ---- Low level: Transacting in NPV tokens and slices ---- //
+    // --------------------------------------------------------- //
     function previewLockForNPV(uint256 tokens, uint256 yield) public returns (uint256) {
         return slice.discounter().discounted(tokens, yield);
     }
@@ -91,7 +93,11 @@ contract NPVSwap {
     }
 
 
+
+    // --------------------------------------------------------------- //
     // ---- High level: Transacting in generator and yield tokens ---- //
+    // --------------------------------------------------------------- //
+
     // Give a preview of `lockForYield`. Not a view, and should not be used
     // on-chain, due to underlying Uniswap v3 behavior.
     function previewLockForYield(uint256 tokens, uint256 yield, uint128 sqrtPriceLimitX96)
@@ -141,5 +147,18 @@ contract NPVSwap {
         uint256 id = slice.creditSlice(out, recipient);
 
         return id;
+    }
+
+    // ----------------------------------------------------------------- //
+    // ---- Repay with yield: Mint NPV with yield, and pay off debt ---- //
+    // ----------------------------------------------------------------- //
+
+    function mintAndPayWithYield(uint256 id, uint256 amount) public {
+
+        slice.yieldToken().safeTransferFrom(msg.sender, address(this), amount);
+        slice.yieldToken().approve(address(slice), amount);
+        slice.mintFromYield(address(this), amount);
+        slice.npvToken().approve(address(slice), amount);
+        slice.payDebt(id, amount);
     }
 }

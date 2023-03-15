@@ -231,11 +231,14 @@ contract YieldSlice is ReentrancyGuard {
         yieldToken.safeTransfer(slice.owner, delta);
         slice.claimed = claimable;
 
-        // TODO: record data?
-
         return delta;
     }
-        
+
+    function remaining(uint256 id) public view returns (uint256) {
+        ( , uint256 npv , ) = generated(id);
+        return debtSlices[id].npv - npv;
+    }
+
     function generated(uint256 id) public view returns (uint256, uint256, uint256) {
         DebtSlice storage slice = debtSlices[id];
         uint256 nominal = 0;

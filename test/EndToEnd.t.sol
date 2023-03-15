@@ -174,5 +174,39 @@ contract EndToEndTest is BaseTest {
 
         vm.stopPrank();
     }
-}
 
+
+    function testPayOffWithYield() public {
+        testAliceAddLiquidity();
+
+        // Bob locks and swaps generator tokens for upfront payment
+        vm.startPrank(bob);
+
+        source.mintGenerator(bob, 200e18);
+        generatorToken.approve(address(npvSwap), 200e18);
+        uint256 id1 = npvSwap.slice().nextId();
+        npvSwap.lockForYield(bob, 200e18, 1e18, 0, 0);
+
+        uint256 remainingNPV = npvSwap.slice().remaining(id1);
+
+        uint256 part = remainingNPV / 10;
+
+        // Pay part of it
+        yieldToken.approve(address(npvSwap), part);
+        npvSwap.mintAndPayWithYield(id1, part);
+
+        vm.expectRevert("YS: npv debt");
+        slice.unlockDebtSlice(id1);
+
+        source.mintYield(bob, 1000000e18);
+        uint256 rest = remainingNPV - part;
+        yieldToken.approve(address(npvSwap), rest);
+
+        npvSwap.mintAndPayWithYield(id1, rest);
+        slice.unlockDebtSlice(id1);
+
+        assertEq(generatorToken.balanceOf(bob), 200e18);
+
+        vm.stopPrank();
+    }
+}
