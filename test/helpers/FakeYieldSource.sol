@@ -2,11 +2,11 @@
 pragma solidity ^0.8.4;
 
 import "forge-std/console.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "./FakeToken.sol";
-import "../../src/interfaces/IYieldSource.sol";
+import { IFakeToken, FakeToken } from "./FakeToken.sol";
+import { IYieldSource } from "../../src/interfaces/IYieldSource.sol";
 
 
 contract CallbackFakeToken is FakeToken {
@@ -31,8 +31,8 @@ contract FakeYieldSource is IYieldSource {
     mapping(address => uint256) public lastHarvestBlockNumber;
     mapping(address => uint256) public pending;
 
-    IFakeToken private _yieldToken;
-    IFakeToken private _generatorToken;
+    IFakeToken public _yieldToken;
+    IFakeToken public _generatorToken;
     address[] public holders;
     address public owner;
 
@@ -124,9 +124,6 @@ contract FakeYieldSource is IYieldSource {
             ? startBlockNumber
             : lastHarvestBlockNumber[address(this)];
         uint256 deltaBlocks = block.number - start;
-        /* console.log("Compute total from", _generatorToken.balanceOf(address(this)), deltaBlocks, yieldPerBlock); */
-        /* uint256 total = _generatorToken.balanceOf(address(this)) * deltaBlocks * yieldPerBlock; */
-
         uint256 total = deltaBlocks * yieldPerBlock;
         return total + pending[address(this)];
     }
