@@ -6,6 +6,13 @@ For more information, consult the [documentation](https://delorean.gitbook.io/de
 
 ## Running tests
 
+First, set up the env:
+
+```
+cp .env.example .env
+# Fill in variables as needed
+```
+
 Run tests using forge:
 
 ```
