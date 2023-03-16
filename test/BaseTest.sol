@@ -17,17 +17,23 @@ import "../src/data/YieldData.sol";
 
 contract BaseTest is Test {
     // Arbitrum Mainnet
-    address public arbitrumUniswapV3Factory = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
-    address public arbitrumNonfungiblePositionManager = 0xC36442b4a4522E871399CD717aBDD847Ab11FE88;
-    address public arbitrumSwapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
-    address public arbitrumQuoterV2 = 0x61fFE014bA17989E743c5F6cB21bF9697530B21e;
-    address public arbitrumQuoterV1 = 0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6;
+    // From https://docs.uniswap.org/contracts/v3/reference/deployments
+    address public mainnet_arbitrumUniswapV3Factory = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
+    address public mainnet_arbitrumNonfungiblePositionManager = 0xC36442b4a4522E871399CD717aBDD847Ab11FE88;
+    address public mainnet_arbitrumSwapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
+    address public mainnet_arbitrumQuoterV2 = 0x61fFE014bA17989E743c5F6cB21bF9697530B21e;
 
     // Arbitrum Goerli
-    /* address public arbitrumUniswapV3Factory = 0x4893376342d5D7b3e31d4184c08b265e5aB2A3f6; */
-    /* address public arbitrumNonfungiblePositionManager = 0x622e4726a167799826d1E1D150b076A7725f5D81; */
-    /* address public arbitrumSwapRouter = 0xab7664500b19a7a2362Ab26081e6DfB971B6F1B0; */
-    /* address public arbitrumQuoterV2 = 0x1dd92b83591781D0C6d98d07391eea4b9a6008FA; */
+    // From https://github.com/Uniswap/smart-order-router/pull/188
+    address public goerli_arbitrumUniswapV3Factory = 0x4893376342d5D7b3e31d4184c08b265e5aB2A3f6;
+    address public goerli_arbitrumNonfungiblePositionManager = 0x622e4726a167799826d1E1D150b076A7725f5D81;
+    address public goerli_arbitrumSwapRouter = 0xab7664500b19a7a2362Ab26081e6DfB971B6F1B0;
+    address public goerli_arbitrumQuoterV2 = 0x1dd92b83591781D0C6d98d07391eea4b9a6008FA;
+
+    address public arbitrumUniswapV3Factory;
+    address public arbitrumNonfungiblePositionManager;
+    address public arbitrumSwapRouter;
+    address public arbitrumQuoterV2;
 
     FakeYieldSource public source;
 
@@ -51,8 +57,27 @@ contract BaseTest is Test {
 
     uint256 arbitrumFork;
 
+    function eq(string memory str1, string memory str2) public pure returns (bool) {
+        return keccak256(abi.encodePacked(str1)) == keccak256(abi.encodePacked(str2));
+    }
+
     function init() public {
-        arbitrumFork = vm.createFork(vm.envString("ARBITRUM_RPC_URL"));
+        if (eq(vm.envString("NETWORK"), "arbitrum_goerli")) {
+            arbitrumFork = vm.createFork(vm.envString("ARBITRUM_GOERLI_RPC_URL"));
+
+            arbitrumUniswapV3Factory = goerli_arbitrumUniswapV3Factory;
+            arbitrumNonfungiblePositionManager = goerli_arbitrumNonfungiblePositionManager;
+            arbitrumSwapRouter = goerli_arbitrumSwapRouter;
+            arbitrumQuoterV2 = goerli_arbitrumQuoterV2;
+
+        } else {
+            arbitrumFork = vm.createFork(vm.envString("ARBITRUM_MAINNET_RPC_URL"));
+
+            arbitrumUniswapV3Factory = mainnet_arbitrumUniswapV3Factory;
+            arbitrumNonfungiblePositionManager = mainnet_arbitrumNonfungiblePositionManager;
+            arbitrumSwapRouter = mainnet_arbitrumSwapRouter;
+            arbitrumQuoterV2 = mainnet_arbitrumQuoterV2;
+        }
         vm.selectFork(arbitrumFork);
 
         source = new FakeYieldSource(10000000000000);

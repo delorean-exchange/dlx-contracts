@@ -21,7 +21,7 @@ contract StakedGLPYieldSourceTest is BaseTest {
     IERC20 stakedGLP = IERC20(0x5402B5F40310bDED796c7D0F3FF6683f5C0cFfdf);
 
     function setUp() public {
-        arbitrumForkFrom61289647 = vm.createFork(vm.envString("ARBITRUM_RPC_URL"), 61289647);
+        arbitrumForkFrom61289647 = vm.createFork(vm.envString("ARBITRUM_MAINNET_RPC_URL"), 61289647);
     }
 
     function testForkArbitrum() public {
