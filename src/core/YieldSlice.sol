@@ -38,6 +38,7 @@ contract YieldSlice is ReentrancyGuard {
 
     struct DebtSlice {
         address owner;
+        address receiver;
         uint256 createdBlockNumber;
         uint256 unlockedBlockNumber;
         uint256 timestamp;
@@ -46,6 +47,7 @@ contract YieldSlice is ReentrancyGuard {
         uint256 npv;
     }
     mapping(uint256 => DebtSlice) public debtSlices;
+    mapping(uint256 => address) public refundReceiver;
 
     struct CreditSlice {
         address owner;
@@ -144,6 +146,7 @@ contract YieldSlice is ReentrancyGuard {
         uint256 id = nextId++;
         DebtSlice memory slice = DebtSlice({
             owner: owner,
+            receiver: owner,
             createdBlockNumber: block.number,
             unlockedBlockNumber: 0,
             timestamp: block.timestamp,
@@ -181,6 +184,12 @@ contract YieldSlice is ReentrancyGuard {
         return actual;
     }
 
+    function transferOwnership(uint256 id, address who) external {
+        DebtSlice storage slice = debtSlices[id];
+        require(slice.owner == msg.sender, "YS: only slice owner");
+        slice.owner = who;
+    }
+
     function unlockDebtSlice(uint256 id) external {
         DebtSlice storage slice = debtSlices[id];
         require(slice.unlockedBlockNumber == 0, "YS: already unlocked");
@@ -190,10 +199,9 @@ contract YieldSlice is ReentrancyGuard {
         require(remaining == 0, "YS: npv debt");
 
         if (refund > 0) {
-            // TODO: if we implement transfer ownership, make sure refund is separate
             _harvest();
             uint256 balance = IERC20(yieldToken).balanceOf(address(this));
-            IERC20(yieldToken).safeTransfer(slice.owner, _min(balance, refund));
+            IERC20(yieldToken).safeTransfer(slice.receiver, _min(balance, refund));
         }
         uint256 amount = tokens(id);
         yieldSource.withdraw(amount, false, slice.owner);
