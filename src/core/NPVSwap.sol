@@ -31,7 +31,8 @@ contract NPVSwap {
     // ---- Low level: Transacting in NPV tokens and slices ---- //
     // --------------------------------------------------------- //
     function previewLockForNPV(uint256 tokens, uint256 yield) public returns (uint256) {
-        return slice.discounter().discounted(tokens, yield);
+        (uint256 npv, uint256 fees) = slice.previewDebtSlice(tokens, yield);
+        return npv - fees;
     }
 
     function previewSwapYieldForNPV(uint256 yieldIn, uint128 sqrtPriceLimitX96)
@@ -73,8 +74,7 @@ contract NPVSwap {
                         uint256 yield) public returns (uint256) {
 
         IERC20(slice.generatorToken()).safeTransferFrom(msg.sender, address(this), tokens);
-        slice.generatorToken().approve(address(slice), 0);
-        slice.generatorToken().approve(address(slice), tokens);
+        slice.generatorToken().safeApprove(address(slice), tokens);
 
         uint256 id = slice.debtSlice(owner, recipient, tokens, yield);
 
@@ -84,8 +84,7 @@ contract NPVSwap {
     // Swap NPV tokens for a future yield slice
     function swapNPVForSlice(uint256 npv) public returns (uint256) {
         IERC20(slice.npvToken()).safeTransferFrom(msg.sender, address(this), npv);
-        slice.npvToken().approve(address(slice), 0);
-        slice.npvToken().approve(address(slice), npv);
+        IERC20(slice.npvToken()).safeApprove(address(slice), npv);
 
         uint256 id = slice.creditSlice(npv, msg.sender);
 
@@ -108,7 +107,11 @@ contract NPVSwap {
     }
 
     function previewSwapForSlice(uint256 yieldIn, uint128 sqrtPriceLimitX96) public returns (uint256, uint256) {
-        return pool.previewSwap(address(slice.yieldToken()), uint128(yieldIn), sqrtPriceLimitX96);
+        (uint256 npv, uint256 priceX96) = pool.previewSwap(address(slice.yieldToken()),
+                                                           uint128(yieldIn),
+                                                           sqrtPriceLimitX96);
+        uint256 fees = slice.creditFeesForNPV(npv);
+        return (npv - fees, priceX96);
     }
 
     // Lock and swap yield generating tokens for yield tokens
@@ -120,7 +123,7 @@ contract NPVSwap {
 
         uint256 npv = previewLockForNPV(tokens, yield);
         lockForNPV(owner, address(this), tokens, yield);
-        IERC20(npvToken).approve(address(pool), npv);
+        IERC20(npvToken).safeApprove(address(pool), npv);
         return pool.swap(owner,
                          address(npvToken),
                          uint128(npv),
@@ -134,8 +137,7 @@ contract NPVSwap {
                           uint256 npvMin,
                           uint128 sqrtPriceLimitX96) public returns (uint256) {
         slice.yieldToken().safeTransferFrom(msg.sender, address(this), yield);
-        slice.yieldToken().approve(address(pool), 0);
-        slice.yieldToken().approve(address(pool), yield);
+        slice.yieldToken().safeApprove(address(pool), yield);
 
         uint256 out = pool.swap(address(this),
                                 address(slice.yieldToken()),
@@ -143,7 +145,7 @@ contract NPVSwap {
                                 uint128(npvMin),
                                 sqrtPriceLimitX96);
 
-        slice.npvToken().approve(address(slice), out);
+        IERC20(slice.npvToken()).safeApprove(address(slice), out);
         uint256 id = slice.creditSlice(out, recipient);
 
         return id;
@@ -156,9 +158,9 @@ contract NPVSwap {
     function mintAndPayWithYield(uint256 id, uint256 amount) public {
 
         slice.yieldToken().safeTransferFrom(msg.sender, address(this), amount);
-        slice.yieldToken().approve(address(slice), amount);
+        slice.yieldToken().safeApprove(address(slice), amount);
         slice.mintFromYield(address(this), amount);
-        slice.npvToken().approve(address(slice), amount);
+        IERC20(slice.npvToken()).safeApprove(address(slice), amount);
         uint256 paid = slice.payDebt(id, amount);
         if (paid != amount) {
             IERC20(slice.npvToken()).safeTransfer(msg.sender, amount - paid);

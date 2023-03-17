@@ -215,7 +215,7 @@ contract YieldSliceTest is BaseTest {
         vm.startPrank(alice);
         generatorToken.approve(address(npvSwap), 200e18);
         npvSwap.lockForNPV(alice, alice, 200e18, 10e18);
-        (, , , , , , , uint256 npvOwed) = slice.debtSlices(id1);
+        (, , , , , , uint256 npvOwed) = slice.debtSlices(id1);
         npvToken.transfer(bob, npvOwed);
         vm.stopPrank();
 
@@ -354,5 +354,59 @@ contract YieldSliceTest is BaseTest {
         uint256 nominal = discounter.nominal(500, pv);
         assertEq(nominal, 99999999999999445);
         assertClose(nominal, 1e17, 1e6);
+    }
+
+    function testFees() public {
+        slice.setTreasury(treasury);
+        slice.setDebtFee(5_0);
+        slice.setCreditFee(10_0);
+
+        uint256 id1 = slice.nextId();
+
+        vm.startPrank(alice);
+        uint256 before = generatorToken.balanceOf(alice);
+        generatorToken.approve(address(npvSwap), 200e18);
+        npvSwap.lockForNPV(alice, alice, 200e18, 1e18);
+        uint256 afterVal = generatorToken.balanceOf(alice);
+        assertEq(before - afterVal, 200e18);
+        uint256 npv = discounter.discounted(200e18, 1e18);
+        assertEq(npv, 657008058000000000);
+        assertEq(npvToken.balanceOf(alice), npv - (npv * 5_0) / 100_0);
+        assertEq(npvToken.balanceOf(treasury), (npv * 5_0) / 100_0);
+        npvToken.transfer(bob, 5e17);
+        vm.stopPrank();
+
+        uint256 id2 = slice.nextId();
+
+        vm.startPrank(bob);
+        npvToken.approve(address(npvSwap), 5e17);
+        npvSwap.swapNPVForSlice(5e17);
+
+        vm.roll(block.number + 0x8000);
+
+        uint256 before2 = yieldToken.balanceOf(bob);
+        slice.claim(id2);
+        uint256 afterVal2 = yieldToken.balanceOf(bob);
+        uint256 total2 = 249365282518334223;
+        assertEq(afterVal2 - before2, total2 - (total2 * 10_0) / (100_0));
+
+        vm.roll(block.number + 0xf000);
+
+        uint256 before3 = yieldToken.balanceOf(bob);
+        slice.claim(id2);
+        uint256 afterVal3 = yieldToken.balanceOf(bob);
+
+        uint256 total3 = 252743433795569647;
+        uint256 total4 = 502108716313903870;
+        assertEq(afterVal3 - before3, total3 - (total3 * 10_0) / (100_0) - 1);  // -1 for rounding
+        assertEq(afterVal3 - before2, total4 - (total4 * 10_0) / (100_0));
+
+        (uint256 nominal3, uint256 npv3, uint256 claimable3) = slice.generatedCredit(id2);
+        assertEq(npv3, 45e16);
+        assertEq(claimable3, 0);
+
+        vm.stopPrank();
+
+        assertEq(npvToken.balanceOf(treasury), (npv * 5_0) / 100_0 + 5e16);
     }
 }

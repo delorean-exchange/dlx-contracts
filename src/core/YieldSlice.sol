@@ -15,17 +15,29 @@ import "../tokens/NPVToken.sol";
 contract YieldSlice is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    event NewDebtSlice(address indexed owner, uint256 indexed id, uint256 tokens, uint256 yield, uint256 npv);
-    event NewCreditSlice(address indexed owner, uint256 indexed id, uint256 npv);
+    event NewDebtSlice(address indexed owner, uint256 indexed id, uint256 tokens, uint256 yield, uint256 npv, uint256 fees);
+    event NewCreditSlice(address indexed owner, uint256 indexed id, uint256 npv, uint256 fees);
     event UnlockDebtSlice(address indexed owner, uint256 indexed id);
 
-    uint256 public constant GENERATION_PERIOD = 7 * 7200;  // 7 days at rate of 12 seconds per block
+    // 7 days at rate of 12 seconds per block
+    uint256 public constant GENERATION_PERIOD = 7 * 7200;
+
+    // Max fees that can be set by governance. Actual fee may be lower.
+    uint256 public constant FEE_DENOM = 100_0;
+    uint256 public constant MAX_DEBT_FEE = 20_0;
+    uint256 public constant MAX_CREDIT_FEE = 20_0;
+
+    address public gov;
+    address public treasury;
 
     uint256 public nextId = 1;
     uint256 public totalShares;
     uint256 public harvestedYield;
-    uint256 public immutable dustLimit;
+    uint256 public dustLimit;
     uint256 public cumulativePaidYield;
+
+    uint256 public debtFee;
+    uint256 public creditFee;
 
     NPVToken public npvToken;
     IERC20 public immutable generatorToken;
@@ -38,7 +50,6 @@ contract YieldSlice is ReentrancyGuard {
 
     struct DebtSlice {
         address owner;
-        address receiver;
         uint256 createdBlockNumber;
         uint256 unlockedBlockNumber;
         uint256 timestamp;
@@ -47,7 +58,6 @@ contract YieldSlice is ReentrancyGuard {
         uint256 npv;
     }
     mapping(uint256 => DebtSlice) public debtSlices;
-    mapping(uint256 => address) public refundReceiver;
 
     struct CreditSlice {
         address owner;
@@ -58,12 +68,20 @@ contract YieldSlice is ReentrancyGuard {
     }
     mapping(uint256 => CreditSlice) public creditSlices;
 
+    modifier onlyGov() {
+        require(msg.sender == gov, "YS: gov only");
+        _;
+    }
+
     constructor(address npvToken_,
                 address yieldSource_,
                 address debtData_,
                 address creditData_,
                 address discounter_,
                 uint256 dustLimit_) {
+        gov = msg.sender;
+        treasury = msg.sender;
+
         npvToken = NPVToken(npvToken_);
         yieldSource = IYieldSource(yieldSource_);
         generatorToken = IYieldSource(yieldSource_).generatorToken();
@@ -80,6 +98,28 @@ contract YieldSlice is ReentrancyGuard {
 
     function _max(uint256 x1, uint256 x2) private pure returns (uint256) {
         return x1 > x2 ? x1 : x2;
+    }
+
+    function setGov(address gov_) external onlyGov {
+        gov = gov_;
+    }
+
+    function setTreasury(address treasury_) external onlyGov {
+        treasury = treasury_;
+    }
+
+    function setDustLimit(uint256 dustLimit_) external onlyGov {
+        dustLimit = dustLimit_;
+    }
+
+    function setDebtFee(uint256 debtFee_) external onlyGov {
+        require(debtFee_ <= MAX_DEBT_FEE, "YS: max debt fee");
+        debtFee = debtFee_;
+    }
+
+    function setCreditFee(uint256 creditFee_) external onlyGov {
+        require(creditFee_ <= MAX_CREDIT_FEE, "YS: max credit fee");
+        creditFee = creditFee_;
     }
 
     function totalTokens() public view returns (uint256) {
@@ -119,10 +159,22 @@ contract YieldSlice is ReentrancyGuard {
         return totalTokens() * debtSlices[id].shares / totalShares;
     }
 
+    function _previewDebtSlice(uint256 tokens, uint256 yield) internal returns (uint256, uint256) {
+        uint256 npv = discounter.discounted(tokens, yield);
+        uint256 fees = (npv * debtFee) / FEE_DENOM;
+        return (npv, fees);
+    }
+
+    function previewDebtSlice(uint256 tokens, uint256 yield) public returns (uint256, uint256) {
+        return _previewDebtSlice(tokens, yield);
+    }
+
     function debtSlice(address owner,
                        address recipient,
                        uint256 tokens_,
                        uint256 yield) external returns (uint256) {
+
+        require(tokens_ > dustLimit, "YS: dust");
 
         uint256 newTotalShares;
         uint256 delta;
@@ -141,12 +193,11 @@ contract YieldSlice is ReentrancyGuard {
 
         yieldSource.deposit(tokens_, false);
 
-        uint256 npv = discounter.discounted(tokens_, yield);
+        (uint256 npv, uint256 fees) = _previewDebtSlice(tokens_, yield);
 
         uint256 id = nextId++;
         DebtSlice memory slice = DebtSlice({
             owner: owner,
-            receiver: owner,
             createdBlockNumber: block.number,
             unlockedBlockNumber: 0,
             timestamp: block.timestamp,
@@ -156,10 +207,11 @@ contract YieldSlice is ReentrancyGuard {
         debtSlices[id] = slice;
 
         totalShares = newTotalShares;
-        npvToken.mint(recipient, npv);
+        npvToken.mint(recipient, npv - fees);
+        npvToken.mint(treasury, fees);
         _recordData();
 
-        emit NewDebtSlice(owner, id, tokens_, yield, npv);
+        emit NewDebtSlice(owner, id, tokens_, yield, npv, fees);
         
         return id;
     }
@@ -201,7 +253,7 @@ contract YieldSlice is ReentrancyGuard {
         if (refund > 0) {
             _harvest();
             uint256 balance = IERC20(yieldToken).balanceOf(address(this));
-            IERC20(yieldToken).safeTransfer(slice.receiver, _min(balance, refund));
+            IERC20(yieldToken).safeTransfer(slice.owner, _min(balance, refund));
         }
         uint256 amount = tokens(id);
         yieldSource.withdraw(amount, false, slice.owner);
@@ -210,19 +262,30 @@ contract YieldSlice is ReentrancyGuard {
         emit UnlockDebtSlice(slice.owner, id);
     }
 
+    function _creditFeesForNPV(uint256 npv) internal returns (uint256) {
+        return (npv * creditFee) / FEE_DENOM;
+    }
+
+    function creditFeesForNPV(uint256 npv) external returns (uint256) {
+        return _creditFeesForNPV(npv);
+    }
+
     function creditSlice(uint256 npv, address who) external returns (uint256) {
         IERC20(npvToken).safeTransferFrom(msg.sender, address(this), npv);
+
+        uint256 fees = _creditFeesForNPV(npv);
+        IERC20(npvToken).safeTransfer(treasury, fees);
 
         uint256 id = nextId++;
         CreditSlice memory slice = CreditSlice({
             owner: who,
             blockNumber: block.number,
             timestamp: block.timestamp,
-            npv: npv,
+            npv: npv - fees,
             claimed: 0 });
         creditSlices[id] = slice;
 
-        emit NewCreditSlice(who, id, npv);
+        emit NewCreditSlice(who, id, npv, fees);
 
         return id;
     }

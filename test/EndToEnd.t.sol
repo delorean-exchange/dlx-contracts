@@ -127,7 +127,7 @@ contract EndToEndTest is BaseTest {
 
         uint256 id1 = npvSwap.slice().nextId();
         uint256 amount = npvSwap.lockForYield(bob, 200e18, 1e18, preview, 0);
-        (address owner , , , , , , , ) = npvSwap.slice().debtSlices(id1);
+        (address owner , , , , , , ) = npvSwap.slice().debtSlices(id1);
         assertEq(owner, bob);
         assertEq(amount, 612862441028507418);
         assertEq(yieldToken.balanceOf(bob), 612862441028507418);
