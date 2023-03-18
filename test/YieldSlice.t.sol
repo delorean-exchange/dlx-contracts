@@ -186,12 +186,12 @@ contract YieldSliceTest is BaseTest {
 
         {
             slice.recordData();
-            vm.warp(block.timestamp + slice.GENERATION_PERIOD());
+            vm.warp(block.timestamp + slice.DISCOUNT_PERIOD());
 
             (uint256 creditNominal1, uint256 creditNpv1, uint256 claimable1) = slice.generatedCredit(id2);
 
             slice.recordData();
-            vm.warp(block.timestamp + slice.GENERATION_PERIOD());
+            vm.warp(block.timestamp + slice.DISCOUNT_PERIOD());
 
             (uint256 creditNominal2, uint256 creditNpv2, uint256 claimable2) = slice.generatedCredit(id2);
 

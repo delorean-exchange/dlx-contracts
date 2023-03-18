@@ -19,7 +19,7 @@ contract YieldSlice is ReentrancyGuard {
     event NewCreditSlice(address indexed owner, uint256 indexed id, uint256 npv, uint256 fees);
     event UnlockDebtSlice(address indexed owner, uint256 indexed id);
 
-    uint256 public constant GENERATION_PERIOD = 7 days;
+    uint256 public constant DISCOUNT_PERIOD = 7 days;
 
     // Max fees that can be set by governance. Actual fee may be lower.
     uint256 public constant FEE_DENOM = 100_0;
@@ -311,8 +311,8 @@ contract YieldSlice is ReentrancyGuard {
         uint256 refund = 0;
         uint256 last = slice.unlockedBlockTimestamp == 0 ? block.timestamp : slice.unlockedBlockTimestamp;
 
-        for (uint256 i = slice.createdBlockTimestamp; i < last; i += GENERATION_PERIOD) {
-            uint256 end = _min(last - 1, i + GENERATION_PERIOD);
+        for (uint256 i = slice.createdBlockTimestamp; i < last; i += DISCOUNT_PERIOD) {
+            uint256 end = _min(last - 1, i + DISCOUNT_PERIOD);
             uint256 yts = debtData.yieldPerTokenPerSecond(i,
                                                           end,
                                                           totalTokens(),
@@ -345,8 +345,8 @@ contract YieldSlice is ReentrancyGuard {
         uint256 npv = 0;
         uint256 claimable = 0;
 
-        for (uint256 i = slice.blockTimestamp; npv < slice.npv && i < block.timestamp; i += GENERATION_PERIOD) {
-            uint256 end = _min(block.timestamp - 1, i + GENERATION_PERIOD);
+        for (uint256 i = slice.blockTimestamp; npv < slice.npv && i < block.timestamp; i += DISCOUNT_PERIOD) {
+            uint256 end = _min(block.timestamp - 1, i + DISCOUNT_PERIOD);
             uint256 yts = creditData.yieldPerTokenPerSecond(i,
                                                             end,
                                                             npvToken.totalSupply(),
