@@ -6,7 +6,7 @@ import { IFakeToken, FakeToken } from "./FakeToken.sol";
 
 contract FakeYieldSourceVariableAmount is FakeYieldSource {
 
-    constructor(uint256 yieldPerBlock_) FakeYieldSource(yieldPerBlock_) {
+    constructor(uint256 yieldPerSecond_) FakeYieldSource(yieldPerSecond_) {
     }
 
     function amountPending() external override virtual view returns (uint256) {
@@ -14,7 +14,7 @@ contract FakeYieldSourceVariableAmount is FakeYieldSource {
             ? startBlockNumber
             : lastHarvestBlockNumber[address(this)];
         uint256 deltaBlocks = block.number - start;
-        uint256 total = _generatorToken.balanceOf(address(this)) * deltaBlocks * yieldPerBlock;
+        uint256 total = _generatorToken.balanceOf(address(this)) * deltaBlocks * yieldPerSecond;
         return total + pending[address(this)];
     }
 }

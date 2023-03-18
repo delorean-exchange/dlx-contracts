@@ -88,23 +88,23 @@ contract EndToEndTest is BaseTest {
         (, , uint256 claimable1) = slice.generatedCredit(id);
         assertEq(claimable1, 0);
 
-        vm.roll(block.number + 0x1000);
+        vm.warp(block.timestamp + 0x1000);
         (uint256 nominal2, uint256 npv2, uint256 claimable2) = slice.generatedCredit(id);
         assertEq(nominal2, 5609520241224149);
         assertEq(npv2, 5609520241224149);
         assertEq(claimable2, 5609520241224149);
 
-        vm.roll(block.number + 0x80000);
+        vm.warp(block.timestamp + 0x80000);
         (uint256 nominal3, uint256 npv3, uint256 claimable3) = slice.generatedCredit(id);
         assertEq(nominal3, 723803451433147656);
-        assertEq(npv3, 709473836125037900);
+        assertEq(npv3, 721634753532960886);
         assertEq(claimable3, 723803451433147656);
 
-        vm.roll(block.number + 0xf0000);
+        vm.warp(block.timestamp + 0xf0000);
         (uint256 nominal4, uint256 npv4, uint256 claimable4) = slice.generatedCredit(id);
-        assertEq(nominal4, 1017563670304100229);
+        assertEq(nominal4, 994050558393488607);
         assertEq(npv4, 99e16);
-        assertEq(claimable4, 1017563670304100229);
+        assertEq(claimable4, 994050558393488607);
 
         vm.stopPrank();
     }
@@ -127,7 +127,7 @@ contract EndToEndTest is BaseTest {
 
         uint256 id1 = npvSwap.slice().nextId();
         uint256 amount = npvSwap.lockForYield(bob, 200e18, 1e18, preview, 0);
-        (address owner , , , , , , ) = npvSwap.slice().debtSlices(id1);
+        (address owner , , , , , ) = npvSwap.slice().debtSlices(id1);
         assertEq(owner, bob);
         assertEq(amount, 612862441028507418);
         assertEq(yieldToken.balanceOf(bob), 612862441028507418);
@@ -150,27 +150,27 @@ contract EndToEndTest is BaseTest {
         IERC20(yieldToken).approve(address(npvSwap), 1e18);
         uint256 id = npvSwap.swapForSlice(chad, 1e18, previewNpv, 0);
 
-        vm.roll(block.number + 0x1000);
+        vm.warp(block.timestamp + 0x1000);
         (uint256 nominal2, uint256 npv2, uint256 claimable2) = slice.generatedCredit(id);
         assertEq(nominal2, 5803721014917702);
         assertEq(npv2, 5803721014917702);
         assertEq(claimable2, 5803721014917702);
 
-        vm.roll(block.number + 0x80000);
+        vm.warp(block.timestamp + 0x80000);
         (uint256 nominal3, uint256 npv3, uint256 claimable3) = slice.generatedCredit(id);
-        assertEq(nominal3, 748861421495790064);
-        assertEq(npv3, 734035716992901208);
-        assertEq(claimable3, 748861421495790064);
+        assertEq(nominal3, 748861421495790066);
+        assertEq(npv3, 746617643590181665);
+        assertEq(claimable3, 748861421495790066);
 
-        vm.roll(block.number + 0xf0000);
+        vm.warp(block.timestamp + 0xf0000);
         (uint256 nominal4, uint256 npv4, uint256 claimable4) = slice.generatedCredit(id);
-        assertEq(nominal4, 1052791576356255516);
+        assertEq(nominal4, 1028464443936113238);
 
         // NPV paid out should equal the preview
         assertEq(npv4, 1024273655801028271);
         assertEq(npv4, previewNpv);
 
-        assertEq(claimable4, 1052791576356255516);
+        assertEq(claimable4, 1028464443936113238);
 
         vm.stopPrank();
     }

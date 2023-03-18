@@ -20,7 +20,8 @@ contract YieldSlice is ReentrancyGuard {
     event UnlockDebtSlice(address indexed owner, uint256 indexed id);
 
     // 7 days at rate of 12 seconds per block
-    uint256 public constant GENERATION_PERIOD = 7 * 7200;
+    /* uint256 public constant GENERATION_PERIOD = 7 * 7200; */
+    uint256 public constant GENERATION_PERIOD = 7 days;
 
     // Max fees that can be set by governance. Actual fee may be lower.
     uint256 public constant FEE_DENOM = 100_0;
@@ -50,9 +51,8 @@ contract YieldSlice is ReentrancyGuard {
 
     struct DebtSlice {
         address owner;
-        uint256 createdBlockNumber;
-        uint256 unlockedBlockNumber;
-        uint256 timestamp;
+        uint256 createdBlockTimestamp;
+        uint256 unlockedBlockTimestamp;
         uint256 shares;
         uint256 tokens;  // TODO: redundant with shares?
         uint256 npv;
@@ -61,8 +61,7 @@ contract YieldSlice is ReentrancyGuard {
 
     struct CreditSlice {
         address owner;
-        uint256 blockNumber;
-        uint256 timestamp;
+        uint256 blockTimestamp;
         uint256 npv;
         uint256 claimed;
     }
@@ -198,9 +197,8 @@ contract YieldSlice is ReentrancyGuard {
         uint256 id = nextId++;
         DebtSlice memory slice = DebtSlice({
             owner: owner,
-            createdBlockNumber: block.number,
-            unlockedBlockNumber: 0,
-            timestamp: block.timestamp,
+            createdBlockTimestamp: block.timestamp,
+            unlockedBlockTimestamp: 0,
             shares: delta,
             tokens: tokens_,
             npv: npv });
@@ -225,7 +223,7 @@ contract YieldSlice is ReentrancyGuard {
 
     function payDebt(uint256 id, uint256 amount) external returns (uint256) {
         DebtSlice storage slice = debtSlices[id];
-        require(slice.unlockedBlockNumber == 0, "YS: already unlocked");
+        require(slice.unlockedBlockTimestamp == 0, "YS: already unlocked");
 
         (, uint256 npv, uint256 refund) = generated(id);
         uint256 remaining = npv > slice.npv ? 0 : slice.npv - npv;
@@ -244,7 +242,7 @@ contract YieldSlice is ReentrancyGuard {
 
     function unlockDebtSlice(uint256 id) external {
         DebtSlice storage slice = debtSlices[id];
-        require(slice.unlockedBlockNumber == 0, "YS: already unlocked");
+        require(slice.unlockedBlockTimestamp == 0, "YS: already unlocked");
 
         (, uint256 npv, uint256 refund) = generated(id);
         uint256 remaining = npv > slice.npv ? 0 : slice.npv - npv;
@@ -257,7 +255,7 @@ contract YieldSlice is ReentrancyGuard {
         }
         uint256 amount = tokens(id);
         yieldSource.withdraw(amount, false, slice.owner);
-        slice.unlockedBlockNumber = block.number;
+        slice.unlockedBlockTimestamp = block.timestamp;
 
         emit UnlockDebtSlice(slice.owner, id);
     }
@@ -279,8 +277,7 @@ contract YieldSlice is ReentrancyGuard {
         uint256 id = nextId++;
         CreditSlice memory slice = CreditSlice({
             owner: who,
-            blockNumber: block.number,
-            timestamp: block.timestamp,
+            blockTimestamp: block.timestamp,
             npv: npv - fees,
             claimed: 0 });
         creditSlices[id] = slice;
@@ -314,17 +311,17 @@ contract YieldSlice is ReentrancyGuard {
         uint256 nominal = 0;
         uint256 npv = 0;
         uint256 refund = 0;
-        uint256 last = slice.unlockedBlockNumber == 0 ? block.number : slice.unlockedBlockNumber;
+        uint256 last = slice.unlockedBlockTimestamp == 0 ? block.timestamp : slice.unlockedBlockTimestamp;
 
-        for (uint256 i = slice.createdBlockNumber; i < last; i += GENERATION_PERIOD) {
+        for (uint256 i = slice.createdBlockTimestamp; i < last; i += GENERATION_PERIOD) {
             uint256 end = _min(last - 1, i + GENERATION_PERIOD);
-            uint256 ytb = debtData.yieldPerTokenPerBlock(i,
-                                                         end,
-                                                         totalTokens(),
-                                                         cumulativeYield());
+            uint256 yts = debtData.yieldPerTokenPerSecond(i,
+                                                          end,
+                                                          totalTokens(),
+                                                          cumulativeYield());
 
-            uint256 yield = (ytb * (end - i) * slice.tokens) / debtData.PRECISION_FACTOR();
-            uint256 estimatedDays = (12 * (end - slice.createdBlockNumber)) / (24 * 3600);
+            uint256 yield = (yts * (end - i) * slice.tokens) / debtData.PRECISION_FACTOR();
+            uint256 estimatedDays = (12 * (end - slice.createdBlockTimestamp)) / (24 * 3600);
             uint256 pv = discounter.pv(estimatedDays, yield);
 
             if (npv == slice.npv) {
@@ -350,15 +347,15 @@ contract YieldSlice is ReentrancyGuard {
         uint256 npv = 0;
         uint256 claimable = 0;
 
-        for (uint256 i = slice.blockNumber; npv < slice.npv && i < block.number; i += GENERATION_PERIOD) {
-            uint256 end = _min(block.number - 1, i + GENERATION_PERIOD );
-            uint256 ytb = creditData.yieldPerTokenPerBlock(i,
-                                                           end,
-                                                           npvToken.totalSupply(),
-                                                           cumulativeYieldCredit());
+        for (uint256 i = slice.blockTimestamp; npv < slice.npv && i < block.timestamp; i += GENERATION_PERIOD) {
+            uint256 end = _min(block.timestamp - 1, i + GENERATION_PERIOD);
+            uint256 yts = creditData.yieldPerTokenPerSecond(i,
+                                                            end,
+                                                            npvToken.totalSupply(),
+                                                            cumulativeYieldCredit());
 
-            uint256 yield = (ytb * (end - i) * slice.npv) / creditData.PRECISION_FACTOR();
-            uint256 estimatedDays = (12 * (end - slice.blockNumber)) / (24 * 3600);
+            uint256 yield = (yts * (end - i) * slice.npv) / creditData.PRECISION_FACTOR();
+            uint256 estimatedDays = (end - slice.blockTimestamp) / (24 * 3600);
             uint256 pv = discounter.pv(estimatedDays, yield);
 
             if (npv + pv > slice.npv) {

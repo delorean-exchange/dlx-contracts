@@ -26,7 +26,7 @@ contract CallbackFakeToken is FakeToken {
 contract FakeYieldSource is IYieldSource {
     using SafeERC20 for IERC20;
 
-    uint256 public yieldPerBlock;
+    uint256 public yieldPerSecond;
     uint256 public immutable startBlockNumber;
     mapping(address => uint256) public lastHarvestBlockNumber;
     mapping(address => uint256) public pending;
@@ -36,9 +36,9 @@ contract FakeYieldSource is IYieldSource {
     address[] public holders;
     address public owner;
 
-    constructor(uint256 yieldPerBlock_) {
-        startBlockNumber = block.number;
-        yieldPerBlock = yieldPerBlock_;
+    constructor(uint256 yieldPerSecond_) {
+        startBlockNumber = block.timestamp;
+        yieldPerSecond = yieldPerSecond_;
         owner = msg.sender;
 
         _yieldToken = IFakeToken(new FakeToken("TestYS: fake ETH", "fakeETH", 0));
@@ -74,13 +74,13 @@ contract FakeYieldSource is IYieldSource {
         for (uint256 i = 0; i < holders.length; i++) {
             address holder = holders[i];
             pending[holder] += this.amountPending();
-            lastHarvestBlockNumber[holder] = block.number;
+            lastHarvestBlockNumber[holder] = block.timestamp;
         }
     }
 
-    function setYieldPerBlock(uint256 yieldPerBlock_) public {
+    function setYieldPerBlock(uint256 yieldPerSecond_) public {
         checkpointPending();
-        yieldPerBlock = yieldPerBlock_;
+        yieldPerSecond = yieldPerSecond_;
     }
 
     function mintBoth(address who, uint256 amount) public {
@@ -101,7 +101,7 @@ contract FakeYieldSource is IYieldSource {
         uint256 amount = this.amountPending();
         _yieldToken.publicMint(address(this), amount);
         IERC20(_yieldToken).safeTransfer(owner, amount);
-        lastHarvestBlockNumber[address(this)] = block.number;
+        lastHarvestBlockNumber[address(this)] = block.timestamp;
         pending[address(this)] = 0;
     }
 
@@ -123,8 +123,8 @@ contract FakeYieldSource is IYieldSource {
         uint256 start = lastHarvestBlockNumber[address(this)] == 0
             ? startBlockNumber
             : lastHarvestBlockNumber[address(this)];
-        uint256 deltaBlocks = block.number - start;
-        uint256 total = deltaBlocks * yieldPerBlock;
+        uint256 deltaSeconds = block.timestamp - start;
+        uint256 total = deltaSeconds * yieldPerSecond;
         return total + pending[address(this)];
     }
 
