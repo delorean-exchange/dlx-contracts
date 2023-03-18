@@ -3,12 +3,12 @@ pragma solidity ^0.8.13;
 
 import "forge-std/console.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "./YieldSlice.sol";
-import "../tokens/NPVToken.sol";
-import "../interfaces/ILiquidityPool.sol";
+import { YieldSlice } from  "./YieldSlice.sol";
+import { NPVToken } from "../tokens/NPVToken.sol";
+import { ILiquidityPool } from "../interfaces/ILiquidityPool.sol";
 
 contract NPVSwap {
     using SafeERC20 for IERC20;
@@ -30,7 +30,7 @@ contract NPVSwap {
     // --------------------------------------------------------- //
     // ---- Low level: Transacting in NPV tokens and slices ---- //
     // --------------------------------------------------------- //
-    function previewLockForNPV(uint256 tokens, uint256 yield) public returns (uint256) {
+    function previewLockForNPV(uint256 tokens, uint256 yield) public view returns (uint256) {
         (uint256 npv, uint256 fees) = slice.previewDebtSlice(tokens, yield);
         return npv - fees;
     }

@@ -94,6 +94,4 @@ contract UniswapV3LiquidityPool is ILiquidityPool {
         uint256 amountOut = router.exactInputSingle(params);
         return amountOut;
     }
-
-    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {}
 }

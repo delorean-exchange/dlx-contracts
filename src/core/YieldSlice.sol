@@ -2,15 +2,15 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/console.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-import "../interfaces/IYieldSlice.sol";
-import "../interfaces/IYieldSource.sol";
-import "../interfaces/IDiscounter.sol";
-import "../data/YieldData.sol";
-import "../tokens/NPVToken.sol";
+import { IYieldSlice } from "../interfaces/IYieldSlice.sol";
+import { IYieldSource } from "../interfaces/IYieldSource.sol";
+import { IDiscounter } from "../interfaces/IDiscounter.sol";
+import { YieldData } from "../data/YieldData.sol";
+import { NPVToken } from "../tokens/NPVToken.sol";
 
 contract YieldSlice is ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -93,10 +93,6 @@ contract YieldSlice is ReentrancyGuard {
         return x1 < x2 ? x1 : x2;
     }
 
-    function _max(uint256 x1, uint256 x2) private pure returns (uint256) {
-        return x1 > x2 ? x1 : x2;
-    }
-
     function setGov(address gov_) external onlyGov {
         gov = gov_;
     }
@@ -156,20 +152,20 @@ contract YieldSlice is ReentrancyGuard {
         return totalTokens() * debtSlices[id].shares / totalShares;
     }
 
-    function _previewDebtSlice(uint256 tokens, uint256 yield) internal returns (uint256, uint256) {
-        uint256 npv = discounter.discounted(tokens, yield);
+    function _previewDebtSlice(uint256 tokens_, uint256 yield) internal view returns (uint256, uint256) {
+        uint256 npv = discounter.discounted(tokens_, yield);
         uint256 fees = (npv * debtFee) / FEE_DENOM;
         return (npv, fees);
     }
 
-    function previewDebtSlice(uint256 tokens, uint256 yield) public returns (uint256, uint256) {
-        return _previewDebtSlice(tokens, yield);
+    function previewDebtSlice(uint256 tokens_, uint256 yield) public view returns (uint256, uint256) {
+        return _previewDebtSlice(tokens_, yield);
     }
 
     function debtSlice(address owner,
                        address recipient,
                        uint256 tokens_,
-                       uint256 yield) external returns (uint256) {
+                       uint256 yield) external nonReentrant returns (uint256) {
 
         require(tokens_ > dustLimit, "YS: dust");
 
@@ -219,32 +215,43 @@ contract YieldSlice is ReentrancyGuard {
         _recordData();
     }
 
-    function payDebt(uint256 id, uint256 amount) external returns (uint256) {
+    function payDebt(uint256 id, uint256 amount) external nonReentrant returns (uint256) {
+        require(id < nextId, "YS: invalid id");
         DebtSlice storage slice = debtSlices[id];
         require(slice.unlockedBlockTimestamp == 0, "YS: already unlocked");
 
-        (, uint256 npv, uint256 refund) = generated(id);
-        uint256 remaining = npv > slice.npv ? 0 : slice.npv - npv;
-        uint256 actual = _min(remaining, amount);
+        ( , uint256 npv, ) = generated(id);
+        uint256 left = npv > slice.npv ? 0 : slice.npv - npv;
+        uint256 actual = _min(left, amount);
         IERC20(npvToken).safeTransferFrom(msg.sender, address(this), actual);
         npvToken.burn(address(this), actual);
         slice.npv -= actual;
         return actual;
     }
 
-    function transferOwnership(uint256 id, address who) external {
-        DebtSlice storage slice = debtSlices[id];
-        require(slice.owner == msg.sender, "YS: only slice owner");
-        slice.owner = who;
+    function transferOwnership(uint256 id, address who) external nonReentrant {
+        require(id < nextId, "YS: invalid id");
+
+        if (debtSlices[id].owner != address(0)) {
+            DebtSlice storage slice = debtSlices[id];
+            require(slice.owner == msg.sender, "YS: only debt slice owner");
+            slice.owner = who;
+        } else {
+            assert(creditSlices[id].owner != address(0));
+            CreditSlice storage slice = creditSlices[id];
+            require(slice.owner == msg.sender, "YS: only crediti slice owner");
+            _claim(id);
+            slice.owner = who;
+        }
     }
 
-    function unlockDebtSlice(uint256 id) external {
+    function unlockDebtSlice(uint256 id) external nonReentrant {
         DebtSlice storage slice = debtSlices[id];
+        require(slice.owner == msg.sender, "YS: only owner");
         require(slice.unlockedBlockTimestamp == 0, "YS: already unlocked");
 
         (, uint256 npv, uint256 refund) = generated(id);
-        uint256 remaining = npv > slice.npv ? 0 : slice.npv - npv;
-        require(remaining == 0, "YS: npv debt");
+        require(npv >= slice.npv, "YS: npv debt");
 
         if (refund > 0) {
             _harvest();
@@ -258,11 +265,11 @@ contract YieldSlice is ReentrancyGuard {
         emit UnlockDebtSlice(slice.owner, id);
     }
 
-    function _creditFeesForNPV(uint256 npv) internal returns (uint256) {
+    function _creditFeesForNPV(uint256 npv) internal view returns (uint256) {
         return (npv * creditFee) / FEE_DENOM;
     }
 
-    function creditFeesForNPV(uint256 npv) external returns (uint256) {
+    function creditFeesForNPV(uint256 npv) external view returns (uint256) {
         return _creditFeesForNPV(npv);
     }
 
@@ -285,9 +292,9 @@ contract YieldSlice is ReentrancyGuard {
         return id;
     }
 
-    function claim(uint256 id) external returns (uint256) {
+    function _claim(uint256 id) internal returns (uint256) {
         CreditSlice storage slice = creditSlices[id];
-        (, , uint256 claimable) = generatedCredit(id);
+        ( , , uint256 claimable) = generatedCredit(id);
 
         if (claimable == 0) return 0;
 
@@ -297,6 +304,11 @@ contract YieldSlice is ReentrancyGuard {
         slice.claimed += amount;
 
         return amount;
+    }
+
+    function claim(uint256 id) external nonReentrant returns (uint256) {
+        require(creditSlices[id].owner == msg.sender, "YS: only slice owner");
+        return _claim(id);
     }
 
     function remaining(uint256 id) public view returns (uint256) {

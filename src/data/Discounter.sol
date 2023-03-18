@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
-import "../interfaces/IDiscounter.sol";
+import { IDiscounter } from "../interfaces/IDiscounter.sol";
 
 contract Discounter is IDiscounter, Ownable {
     uint256 public daily;

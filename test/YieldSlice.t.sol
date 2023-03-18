@@ -43,8 +43,6 @@ contract YieldSliceTest is BaseTest {
             slice.recordData();
         }
 
-        (uint256 nominal, uint256 npv, ) = slice.generated(id1);
-
         slice.unlockDebtSlice(id1);
         assertEq(generatorToken.balanceOf(alice), before);
 
@@ -73,7 +71,7 @@ contract YieldSliceTest is BaseTest {
         assertEq(discounter.discounted(200e18, 1e18), npvSliced);
         assertEq(npvToken.balanceOf(alice), npvSliced);
 
-        (uint256 nominal, uint256 npv, ) = slice.generated(id1);
+        ( , uint256 npv, ) = slice.generated(id1);
         assertEq(npv, 0);
 
         slice.recordData();
@@ -101,7 +99,7 @@ contract YieldSliceTest is BaseTest {
         assertEq(discounter.discounted(200e18, 1e18), npvSliced);
         assertEq(npvToken.balanceOf(alice), npvSliced);
 
-        (uint256 nominal, uint256 npv, ) = slice.generated(id1);
+        ( , uint256 npv, ) = slice.generated(id1);
         assertEq(npv, 0);
 
         slice.recordData();
@@ -143,20 +141,19 @@ contract YieldSliceTest is BaseTest {
         vm.startPrank(bob);
         npvToken.approve(address(npvSwap), npvSliced);
         npvSwap.swapNPVForSlice(npvSliced);
-        (, , uint256 npvEntitled, ) = slice.creditSlices(id2);
         vm.stopPrank();
 
         assertEq(discounter.discounted(200e18, 1e18), npvSliced);
-        (uint256 nominal1, uint256 npv1, ) = slice.generated(id1);
+        ( , uint256 npv1, ) = slice.generated(id1);
         assertEq(npv1, 0);
 
         slice.recordData();
         vm.warp(block.timestamp + 100);
 
         {
-            (uint256 nominal2, uint256 npv2, ) = slice.generated(id1);
+            ( , uint256 npv2, ) = slice.generated(id1);
             assertEq(npv2, 990000000000000);
-            (uint256 creditNominal2, uint256 creditNpv2, ) = slice.generatedCredit(id2);
+            ( , uint256 creditNpv2, ) = slice.generatedCredit(id2);
             assertEq(creditNpv2, 989999999999952);
 
             uint256 remaining = npvSliced - npv2;
@@ -292,14 +289,14 @@ contract YieldSliceTest is BaseTest {
             assertEq(npvCredit4,     657008058000000000);
             assertEq(claimable4,     657336726363181590);
 
-            vm.prank(alice);
             uint256 aliceBefore = yieldToken.balanceOf(alice);
+            vm.prank(alice);
             slice.unlockDebtSlice(id1);
             uint256 aliceAfter = yieldToken.balanceOf(alice);
             assertEq(aliceAfter - aliceBefore, refund4, "refund");
 
-            vm.prank(bob);
             uint256 bobBefore = yieldToken.balanceOf(bob);
+            vm.prank(bob);
             slice.claim(id2);
             uint256 bobAfter = yieldToken.balanceOf(bob);
             assertEq(bobAfter - bobBefore, claimable4, "claimable");
@@ -307,8 +304,6 @@ contract YieldSliceTest is BaseTest {
     }
 
     function testSliceCredit() public  {
-        uint256 id1 = slice.nextId();
-
         vm.startPrank(alice);
         uint256 before1 = generatorToken.balanceOf(alice);
         generatorToken.approve(address(npvSwap), 200e18);
@@ -340,7 +335,7 @@ contract YieldSliceTest is BaseTest {
         assertEq(afterVal3 - before3, 250884842544197042);
         assertEq(afterVal3 - before2, 500250125062531265);
 
-        (uint256 nominal3, uint256 npv3, uint256 claimable3) = slice.generatedCredit(id2);
+        ( , uint256 npv3, uint256 claimable3) = slice.generatedCredit(id2);
         assertEq(npv3, 5e17);
         assertEq(claimable3, 0);
 
@@ -360,8 +355,6 @@ contract YieldSliceTest is BaseTest {
         slice.setTreasury(treasury);
         slice.setDebtFee(5_0);
         slice.setCreditFee(10_0);
-
-        uint256 id1 = slice.nextId();
 
         vm.startPrank(alice);
         uint256 before = generatorToken.balanceOf(alice);
@@ -401,7 +394,7 @@ contract YieldSliceTest is BaseTest {
         assertEq(afterVal3 - before3, total3 - (total3 * 10_0) / (100_0));
         assertEq(afterVal3 - before2, total4 - (total4 * 10_0) / (100_0));
 
-        (uint256 nominal3, uint256 npv3, uint256 claimable3) = slice.generatedCredit(id2);
+        ( , uint256 npv3, uint256 claimable3) = slice.generatedCredit(id2);
         assertEq(npv3, 45e16);
         assertEq(claimable3, 0);
 
