@@ -70,7 +70,7 @@ contract YieldSlice is ReentrancyGuard {
         _;
     }
 
-    constructor(address npvToken_,
+    constructor(string memory symbol,
                 address yieldSource_,
                 address debtData_,
                 address creditData_,
@@ -79,7 +79,7 @@ contract YieldSlice is ReentrancyGuard {
         gov = msg.sender;
         treasury = msg.sender;
 
-        npvToken = NPVToken(npvToken_);
+        npvToken = new NPVToken(symbol, symbol);
         yieldSource = IYieldSource(yieldSource_);
         generatorToken = IYieldSource(yieldSource_).generatorToken();
         yieldToken = IYieldSource(yieldSource_).yieldToken();

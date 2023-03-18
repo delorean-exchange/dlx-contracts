@@ -86,14 +86,15 @@ contract BaseTest is Test {
         yieldToken = source.yieldToken();
         dataDebt = new YieldData(20);
         dataCredit = new YieldData(20);
-        npvToken = new NPVToken("npv[ETH] of FAKE", "npvE:FAKE");
+        /* npvToken = new NPVToken("npv[ETH] of FAKE", "npvE:FAKE"); */
         discounter = new Discounter(1e13, 500, 360, 18);
-        slice = new YieldSlice(address(npvToken),
+        slice = new YieldSlice("npvETH-FAKE",
                                address(source),
                                address(dataDebt),
                                address(dataCredit),
                                address(discounter),
                                1e18);
+        npvToken = slice.npvToken();
 
         alice = createUser(0);
         bob = createUser(1);
