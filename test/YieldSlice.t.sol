@@ -263,9 +263,9 @@ contract YieldSliceTest is BaseTest {
             (uint256 nominalDebt3, uint256 npvDebt3, uint256 refund3) = slice.generated(id1);
             (uint256 nominalCredit3, uint256 npvCredit3, uint256 claimable3) = slice.generatedCredit(id2);
 
-            assertTrue(npvDebt3 < nominalDebt3, "debt npv < nominal 3");
+            assertTrue(npvDebt3 <= nominalDebt3, "debt npv < nominal 3");
             assertEq(nominalDebt3, 504090000000000000);
-            assertEq(npvDebt3, 502328329268208614);
+            assertEq(npvDebt3, 504090000000000000);
             assertEq(refund3, 0);
 
             assertTrue(npvCredit3 <= nominalCredit3, "credit npv <= nominal 3");
@@ -281,10 +281,10 @@ contract YieldSliceTest is BaseTest {
             (uint256 nominalCredit4, uint256 npvCredit4, uint256 claimable4) = slice.generatedCredit(id2);
 
             assertTrue(npvDebt4 < nominalDebt4, "debt npv < nominal 4");
-            assertEq(nominalDebt4, 661624406955992695);
+            assertEq(nominalDebt4, 657336726363181590);
             assertEq(npvDebt4,     npvOwed);
             assertEq(npvDebt4,     657008058000000000);
-            assertEq(refund4,      346465593044007305);
+            assertEq(refund4,      350753273636818410);
 
             assertTrue(npvCredit4 < nominalCredit4, "credit npv < nominal 4");
             assertEq(nominalCredit4, 657336726363181590);

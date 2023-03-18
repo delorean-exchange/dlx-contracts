@@ -19,8 +19,6 @@ contract YieldSlice is ReentrancyGuard {
     event NewCreditSlice(address indexed owner, uint256 indexed id, uint256 npv, uint256 fees);
     event UnlockDebtSlice(address indexed owner, uint256 indexed id);
 
-    // 7 days at rate of 12 seconds per block
-    /* uint256 public constant GENERATION_PERIOD = 7 * 7200; */
     uint256 public constant GENERATION_PERIOD = 7 days;
 
     // Max fees that can be set by governance. Actual fee may be lower.
@@ -321,7 +319,7 @@ contract YieldSlice is ReentrancyGuard {
                                                           cumulativeYield());
 
             uint256 yield = (yts * (end - i) * slice.tokens) / debtData.PRECISION_FACTOR();
-            uint256 estimatedDays = (12 * (end - slice.createdBlockTimestamp)) / (24 * 3600);
+            uint256 estimatedDays = (end - slice.createdBlockTimestamp) / (24 * 3600);
             uint256 pv = discounter.pv(estimatedDays, yield);
 
             if (npv == slice.npv) {
