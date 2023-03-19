@@ -22,6 +22,7 @@ contract BaseTest is Test {
     address public mainnet_arbitrumNonfungiblePositionManager = 0xC36442b4a4522E871399CD717aBDD847Ab11FE88;
     address public mainnet_arbitrumSwapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
     address public mainnet_arbitrumQuoterV2 = 0x61fFE014bA17989E743c5F6cB21bF9697530B21e;
+    address public mainnet_arbitrumWeth = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1;
 
     // Arbitrum Goerli
     // From https://github.com/Uniswap/smart-order-router/pull/188
@@ -29,11 +30,13 @@ contract BaseTest is Test {
     address public goerli_arbitrumNonfungiblePositionManager = 0x622e4726a167799826d1E1D150b076A7725f5D81;
     address public goerli_arbitrumSwapRouter = 0xab7664500b19a7a2362Ab26081e6DfB971B6F1B0;
     address public goerli_arbitrumQuoterV2 = 0x1dd92b83591781D0C6d98d07391eea4b9a6008FA;
+    address public goerli_arbitrumWeth = address(0);
 
     address public arbitrumUniswapV3Factory;
     address public arbitrumNonfungiblePositionManager;
     address public arbitrumSwapRouter;
     address public arbitrumQuoterV2;
+    address public arbitrumWeth;
 
     FakeYieldSource public source;
 
@@ -70,6 +73,7 @@ contract BaseTest is Test {
             arbitrumNonfungiblePositionManager = goerli_arbitrumNonfungiblePositionManager;
             arbitrumSwapRouter = goerli_arbitrumSwapRouter;
             arbitrumQuoterV2 = goerli_arbitrumQuoterV2;
+            arbitrumWeth = goerli_arbitrumWeth;
 
         } else {
             arbitrumFork = vm.createFork(vm.envString("ARBITRUM_MAINNET_RPC_URL"));
@@ -78,6 +82,7 @@ contract BaseTest is Test {
             arbitrumNonfungiblePositionManager = mainnet_arbitrumNonfungiblePositionManager;
             arbitrumSwapRouter = mainnet_arbitrumSwapRouter;
             arbitrumQuoterV2 = mainnet_arbitrumQuoterV2;
+            arbitrumWeth = mainnet_arbitrumWeth;
         }
         vm.selectFork(arbitrumFork);
 
@@ -86,7 +91,6 @@ contract BaseTest is Test {
         yieldToken = source.yieldToken();
         dataDebt = new YieldData(20);
         dataCredit = new YieldData(20);
-        /* npvToken = new NPVToken("npv[ETH] of FAKE", "npvE:FAKE"); */
         discounter = new Discounter(1e13, 500, 360, 18);
         slice = new YieldSlice("npvETH-FAKE",
                                address(source),

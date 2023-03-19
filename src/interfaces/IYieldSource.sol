@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 abstract contract IYieldSource {
     function yieldToken() external virtual view returns (IERC20);
     function generatorToken() external virtual view returns (IERC20);
-    function setOwner(address) external virtual;
     function deposit(uint256 amount, bool claim) external virtual;
     function withdraw(uint256 amount, bool claim, address to) external virtual;
     function harvest() external virtual;
