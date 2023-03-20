@@ -5,6 +5,8 @@ import "forge-std/console.sol";
 import "forge-std/Script.sol";
 import "forge-std/StdJson.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { UniswapV3LiquidityPool } from "../src/liquidity/UniswapV3LiquidityPool.sol";
 import { IUniswapV3Pool } from "../src/interfaces/uniswap/IUniswapV3Pool.sol";
 import { INonfungiblePositionManager } from "../src/interfaces/uniswap/INonfungiblePositionManager.sol";
@@ -28,6 +30,7 @@ contract BaseScript is Script {
     address public tracker = 0x4e971a87900b931fF39d1Aad67697F49835400b6;
 
     address public npvToken;
+    address public yieldToken;
 
     NPVSwap public npvSwap;
     YieldSlice public slice;
@@ -45,6 +48,68 @@ contract BaseScript is Script {
 
     function eq(string memory str1, string memory str2) public pure returns (bool) {
         return keccak256(abi.encodePacked(str1)) == keccak256(abi.encodePacked(str2));
+    }
+
+    function addLiquidity(NPVSwap npvSwap,
+                          address who,
+                          uint256 yieldTokenAmount,
+                          uint256 generatorTokenAmount,
+                          uint256 yieldToLock,
+                          int24 tickLower,
+                          int24 tickUpper) public {
+
+        npvToken = address(npvSwap.npvToken());
+        yieldToken = address(npvSwap.slice().yieldToken());
+
+        console.log("yieldToken balance:    ", IERC20(yieldToken).balanceOf(who));
+        console.log("yieldTokenAmount:      ", yieldTokenAmount);
+        console.log("generatorToken balance:", IERC20(npvSwap.slice().generatorToken()).balanceOf(who));
+
+        uint256 before = IERC20(npvToken).balanceOf(who);
+        npvSwap.slice().yieldSource().generatorToken().approve(address(npvSwap), yieldToLock);
+        npvSwap.lockForNPV(who, who, generatorTokenAmount, yieldToLock);
+
+        console.log("delta npvToken balance:", IERC20(npvToken).balanceOf(who) - before);
+
+        {
+            /* uint256 npvTokenAmount = IERC20(npvToken).balanceOf(who); */
+            uint256 npvTokenAmount = IERC20(npvToken).balanceOf(who) - before;
+        
+            assert(IERC20(npvToken).balanceOf(who) >= npvTokenAmount);
+            assert(IERC20(yieldToken).balanceOf(who) >= yieldTokenAmount);
+
+            uint256 token0Amount;
+            uint256 token1Amount;
+            address token0;
+            address token1;
+
+            if (npvToken < yieldToken) {
+                (token0, token1) = (npvToken, yieldToken);
+                (token0Amount, token1Amount) = (npvTokenAmount, yieldTokenAmount);
+            } else {
+                (token0, token1) = (yieldToken, npvToken);
+                (token0Amount, token1Amount) = (yieldTokenAmount, npvTokenAmount);
+                (tickLower, tickUpper) = (-tickUpper, -tickLower);
+            }
+
+            manager = INonfungiblePositionManager(arbitrumNonfungiblePositionManager);
+            INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams({
+                token0: token0,
+                token1: token1,
+                fee: 3000,
+                tickLower: tickLower,
+                tickUpper: tickUpper,
+                amount0Desired: token0Amount,
+                amount1Desired: token1Amount,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: who,
+                deadline: block.timestamp + 10000 });
+            IERC20(params.token0).approve(address(manager), token0Amount);
+            IERC20(params.token1).approve(address(manager), token1Amount);
+
+            manager.mint(params);
+        }
     }
 
     function init() public {

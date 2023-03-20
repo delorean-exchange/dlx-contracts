@@ -40,14 +40,15 @@ contract DeployGLPMarket is BaseScript {
 
         string memory historical = vm.readFile("json/historical.json");
         uint256 daily = vm.parseJsonUint(historical, ".glp.avgDailyRewardPerToken");
-        discounter = new Discounter(daily, 250, 720, 18);
+        discounter = new Discounter(1e13, 500, 360, 18);
+        /* discounter = new Discounter(daily, 250, 720, 18); */
 
         slice = new YieldSlice("npvETH-GLP",
                                address(source),
                                address(dataDebt),
                                address(dataCredit),
                                address(discounter),
-                               1e15);
+                               1e9);
 
         source.transferOwnership(address(slice));
         dataDebt.setWriter(address(slice));
@@ -56,16 +57,19 @@ contract DeployGLPMarket is BaseScript {
 
         {
             uint160 initialPrice;
+            address token0;
+            address token1;
+
             // Initial price is 0.99 ETH/npvETH
             if (npvToken < yieldToken) {
                 initialPrice = 78831026366734653132768280576;
+                (token0, token1) = (npvToken, yieldToken);
             } else {
                 initialPrice = 79627299360338034355936952320;
+                (token0, token1) = (yieldToken, npvToken);
             }
 
             manager = INonfungiblePositionManager(arbitrumNonfungiblePositionManager);
-            (address token0, address token1) = npvToken < yieldToken
-                ? (npvToken, yieldToken) : (yieldToken, npvToken);
             uniswapV3Pool = IUniswapV3Pool(IUniswapV3Factory(arbitrumUniswapV3Factory).getPool(token0, token1, 3000));
             if (address(uniswapV3Pool) == address(0)) {
                 uniswapV3Pool = IUniswapV3Pool(IUniswapV3Factory(arbitrumUniswapV3Factory).createPool(token0, token1, 3000));

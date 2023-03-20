@@ -42,7 +42,7 @@ contract DeployGLPMarket is BaseScript {
                                address(dataDebt),
                                address(dataCredit),
                                address(discounter),
-                               1e18);
+                               1e9);
 
         npvToken = address(slice.npvToken());
 
