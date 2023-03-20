@@ -3,12 +3,12 @@ pragma solidity ^0.8.13;
 
 import "forge-std/console.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "./BaseTest.sol";
-import "../src/sources/StakedGLPYieldSource.sol";
-import "../src/interfaces/IGLPRewardTracker.sol";
-import "../src/data/YieldData.sol";
+import { BaseTest } from "./BaseTest.sol";
+import { StakedGLPYieldSource } from "../src/sources/StakedGLPYieldSource.sol";
+import { IGLPRewardTracker } from "../src/interfaces/IGLPRewardTracker.sol";
+import { YieldData } from "../src/data/YieldData.sol";
 
 contract StakedGLPYieldSourceTest is BaseTest {
     uint256 arbitrumForkFrom61289647;

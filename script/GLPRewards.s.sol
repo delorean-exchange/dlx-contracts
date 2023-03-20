@@ -5,7 +5,7 @@ import "forge-std/console.sol";
 import "forge-std/Script.sol";
 import "forge-std/StdJson.sol";
 
-import "../src/interfaces/IDiscounter.sol";
+import { IDiscounter } from "../src/interfaces/IDiscounter.sol";
 
 contract GLPRewardsScript is Script {
     using stdJson for string;

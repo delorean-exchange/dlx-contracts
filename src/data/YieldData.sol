@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "forge-std/console.sol";
+
+import { Ownable } from  "@openzeppelin/contracts/access/Ownable.sol";
 
 // YieldData keeps track of historical average yields on a periodic basis. It
 // uses this data to return the overall average yield for a range of time in
@@ -56,6 +58,7 @@ contract YieldData is Ownable {
         } else {
             Epoch memory c = epochs[epochIndex];
 
+            console.log("uint256 epochSeconds =", block.timestamp, c.blockTimestamp, c.epochSeconds);
             uint256 epochSeconds = block.timestamp - c.blockTimestamp - c.epochSeconds;
             uint256 delta = (yield - c.yield);
 

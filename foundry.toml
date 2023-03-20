@@ -3,4 +3,7 @@ src = 'src'
 out = 'out'
 libs = ['lib']
 
-fs_permissions = [{ access = 'read', path = './json' }]
+fs_permissions = [
+{ access = 'read-write', path = './json' },
+{ access = 'read', path = './out' },
+]

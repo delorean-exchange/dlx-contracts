@@ -4,16 +4,19 @@ pragma solidity ^0.8.13;
 import "forge-std/console.sol";
 import "forge-std/Test.sol";
 
-import "./helpers/FakeToken.sol";
-import "./helpers/FakeYieldSource.sol";
-import "../src/liquidity/UniswapV3LiquidityPool.sol";
-import "../src/interfaces/uniswap/IUniswapV3Pool.sol";
-import "../src/interfaces/uniswap/INonfungiblePositionManager.sol";
-import "../src/tokens/NPVToken.sol";
-import "../src/core/YieldSlice.sol";
-import "../src/core/NPVSwap.sol";
-import "../src/data/Discounter.sol";
-import "../src/data/YieldData.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import { FakeToken } from "./helpers/FakeToken.sol";
+import { FakeYieldSource } from "./helpers/FakeYieldSource.sol";
+import { UniswapV3LiquidityPool } from "../src/liquidity/UniswapV3LiquidityPool.sol";
+import { IUniswapV3Pool } from "../src/interfaces/uniswap/IUniswapV3Pool.sol";
+import { INonfungiblePositionManager } from "../src/interfaces/uniswap/INonfungiblePositionManager.sol";
+import { IUniswapV3Factory } from "../src/interfaces/uniswap/IUniswapV3Factory.sol";
+import { NPVToken } from "../src/tokens/NPVToken.sol";
+import { YieldSlice } from "../src/core/YieldSlice.sol";
+import { NPVSwap } from "../src/core/NPVSwap.sol";
+import { Discounter } from "../src/data/Discounter.sol";
+import { YieldData } from "../src/data/YieldData.sol";
 
 contract BaseTest is Test {
     // Arbitrum Mainnet

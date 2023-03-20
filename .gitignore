@@ -14,7 +14,9 @@ docs/
 # Dotenv file
 .env
 
-# Deployment folder
 deploy/
-
 json/
+python/
+Makefile
+
+BUGS
