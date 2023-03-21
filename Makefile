@@ -19,3 +19,7 @@ deploy_fakeglp_localhost:
 deploy_glp_localhost:
 	NETWORK=localhost forge script script/DeployGLPMarket.s.sol --rpc-url http://127.0.0.1:8545  --broadcast
 	python3 python/consolidate_config.py
+
+deploy_glp_mainnet:
+	NETWORK=arbitrum forge script script/DeployGLPMarket.s.sol --rpc-url https://arb1.arbitrum.io/rpc --broadcast
+	python3 python/consolidate_config.py

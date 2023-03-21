@@ -364,8 +364,9 @@ contract YieldSliceTest is BaseTest {
         assertEq(before - afterVal, 200e18);
         uint256 npv = discounter.discounted(200e18, 1e18);
         assertEq(npv, 657008058000000000);
-        assertEq(npvToken.balanceOf(alice), npv - (npv * 5_0) / 100_0);
-        assertEq(npvToken.balanceOf(treasury), (npv * 5_0) / 100_0);
+        uint256 expectedDebtFee = ((1e18 - npv) * 5_0) / 100_0;
+        assertEq(npvToken.balanceOf(alice), npv - expectedDebtFee);
+        assertEq(npvToken.balanceOf(treasury), expectedDebtFee);
         npvToken.transfer(bob, 5e17);
         vm.stopPrank();
 
@@ -400,6 +401,6 @@ contract YieldSliceTest is BaseTest {
 
         vm.stopPrank();
 
-        assertEq(npvToken.balanceOf(treasury), (npv * 5_0) / 100_0 + 5e16);
+        assertEq(npvToken.balanceOf(treasury), expectedDebtFee + 5e16);
     }
 }

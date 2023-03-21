@@ -43,7 +43,6 @@ contract BaseScript is Script {
     INonfungiblePositionManager public manager;
 
     uint256 pk;
-
     address deployerAddress;
 
     function eq(string memory str1, string memory str2) public pure returns (bool) {
@@ -61,18 +60,11 @@ contract BaseScript is Script {
         npvToken = address(npvSwap.npvToken());
         yieldToken = address(npvSwap.slice().yieldToken());
 
-        console.log("yieldToken balance:    ", IERC20(yieldToken).balanceOf(who));
-        console.log("yieldTokenAmount:      ", yieldTokenAmount);
-        console.log("generatorToken balance:", IERC20(npvSwap.slice().generatorToken()).balanceOf(who));
-
         uint256 before = IERC20(npvToken).balanceOf(who);
         npvSwap.slice().yieldSource().generatorToken().approve(address(npvSwap), yieldToLock);
         npvSwap.lockForNPV(who, who, generatorTokenAmount, yieldToLock);
 
-        console.log("delta npvToken balance:", IERC20(npvToken).balanceOf(who) - before);
-
         {
-            /* uint256 npvTokenAmount = IERC20(npvToken).balanceOf(who); */
             uint256 npvTokenAmount = IERC20(npvToken).balanceOf(who) - before;
         
             assert(IERC20(npvToken).balanceOf(who) >= npvTokenAmount);
@@ -113,7 +105,7 @@ contract BaseScript is Script {
     }
 
     function init() public {
-        if (eq(vm.envString("NETWORK"), "arbitrum_mainnet")) {
+        if (eq(vm.envString("NETWORK"), "arbitrum")) {
             console.log("Using Arbitrum mainnet private key");
             pk = vm.envUint("ARBITRUM_PRIVATE_KEY");
             deployerAddress = vm.envAddress("ARBITRUM_DEPLOYER_ADDRESS");

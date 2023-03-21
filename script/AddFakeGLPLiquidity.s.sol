@@ -24,7 +24,7 @@ contract AddFakeGLPLiquidity is BaseScript {
     }
 
     function run() public {
-        uint256 pk = vm.envUint("LOCALHOST_PRIVATE_KEY");
+        /* pk = vm.envUint("LOCALHOST_PRIVATE_KEY"); */
 
         vm.startBroadcast(pk);
 

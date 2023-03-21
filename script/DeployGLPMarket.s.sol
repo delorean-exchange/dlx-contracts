@@ -40,8 +40,7 @@ contract DeployGLPMarket is BaseScript {
 
         string memory historical = vm.readFile("json/historical.json");
         uint256 daily = vm.parseJsonUint(historical, ".glp.avgDailyRewardPerToken");
-        discounter = new Discounter(1e13, 500, 360, 18);
-        /* discounter = new Discounter(daily, 250, 720, 18); */
+        discounter = new Discounter(daily, 250, 720, 18);
 
         slice = new YieldSlice("npvETH-GLP",
                                address(source),
@@ -103,7 +102,7 @@ contract DeployGLPMarket is BaseScript {
             json = vm.serializeString(objName, "contractName_slice", "YieldSlice");
             json = vm.serializeString(objName, "contractName_yieldSource", "IYieldSource");
 
-            if (eq(vm.envString("NETWORK"), "arbitrum_mainnet")) {
+            if (eq(vm.envString("NETWORK"), "arbitrum")) {
                 vm.writeJson(json, "./json/deploy_glp.arbitrum.json");
             } else {
                 vm.writeJson(json, "./json/deploy_glp.localhost.json");

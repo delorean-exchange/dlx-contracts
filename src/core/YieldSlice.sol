@@ -21,9 +21,18 @@ contract YieldSlice is ReentrancyGuard {
 
     uint256 public constant DISCOUNT_PERIOD = 7 days;
 
-    // Max fees that can be set by governance. Actual fee may be lower.
     uint256 public constant FEE_DENOM = 100_0;
-    uint256 public constant MAX_DEBT_FEE = 20_0;
+
+    // Max fees limit what can be set by governance. Actual fee may be lower.
+
+    // -- Debt fees -- //
+    // Debt fees are a percent of the difference between nominal yield
+    // sold, and the net present value. This results in low borrowing
+    // cost for short term debt.
+    uint256 public constant MAX_DEBT_FEE = 50_0;
+
+    // -- Credit fees -- //
+    // Credit fees are are simple percent of the NPV tokens being purchased.
     uint256 public constant MAX_CREDIT_FEE = 20_0;
 
     address public gov;
@@ -154,7 +163,7 @@ contract YieldSlice is ReentrancyGuard {
 
     function _previewDebtSlice(uint256 tokens_, uint256 yield) internal view returns (uint256, uint256) {
         uint256 npv = discounter.discounted(tokens_, yield);
-        uint256 fees = (npv * debtFee) / FEE_DENOM;
+        uint256 fees = ((yield - npv) * debtFee) / FEE_DENOM;
         return (npv, fees);
     }
 
@@ -239,7 +248,7 @@ contract YieldSlice is ReentrancyGuard {
         } else {
             assert(creditSlices[id].owner != address(0));
             CreditSlice storage slice = creditSlices[id];
-            require(slice.owner == msg.sender, "YS: only crediti slice owner");
+            require(slice.owner == msg.sender, "YS: only credit slice owner");
             _claim(id);
             slice.owner = who;
         }
