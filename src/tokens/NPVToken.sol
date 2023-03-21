@@ -12,7 +12,7 @@ contract NPVToken is ERC20, Ownable {
         _mint(who, amount);
     }
 
-    function burn(address who, uint256 amount) external {
+    function burn(address who, uint256 amount) external onlyOwner {
         require(who == msg.sender, "NPVT: can only burn own");
         require(balanceOf(who) >= amount, "NPVT: insufficient balance");
         _burn(who, amount);

@@ -220,7 +220,7 @@ contract YieldSliceTest is BaseTest {
         vm.startPrank(bob);
         npvToken.approve(address(npvSwap), npvOwed);
         npvSwap.swapNPVForSlice(npvOwed);
-        (, , uint256 npvEntitled, ) = slice.creditSlices(id2);
+        (, , uint256 npvEntitled, , ) = slice.creditSlices(id2);
         vm.stopPrank();
 
         {
@@ -338,6 +338,56 @@ contract YieldSliceTest is BaseTest {
         ( , uint256 npv3, uint256 claimable3) = slice.generatedCredit(id2);
         assertEq(npv3, 5e17);
         assertEq(claimable3, 0);
+
+        vm.stopPrank();
+    }
+
+    function testReceiveNPV() public  {
+        vm.startPrank(alice);
+        uint256 before1 = generatorToken.balanceOf(alice);
+        generatorToken.approve(address(npvSwap), 200e18);
+        npvSwap.lockForNPV(alice, alice, 200e18, 1e18);
+        uint256 afterVal1 = generatorToken.balanceOf(alice);
+        assertEq(before1 - afterVal1, 200e18);
+        vm.warp(block.timestamp + 0x2000);
+        npvToken.transfer(bob, 5e17);
+        vm.stopPrank();
+
+        uint256 id2 = slice.nextId();
+
+        vm.startPrank(bob);
+        npvToken.approve(address(npvSwap), 5e17);
+        npvSwap.swapNPVForSlice(5e17);
+        vm.warp(block.timestamp + 0x8000);
+        uint256 before2 = yieldToken.balanceOf(bob);
+
+        slice.claim(id2);
+        uint256 afterVal2 = yieldToken.balanceOf(bob);
+        assertEq(afterVal2 - before2, 249365282518334223);
+
+        assertEq(npvToken.balanceOf(bob), 0);
+        slice.receiveNPV(id2, bob, 1e17);
+        assertEq(npvToken.balanceOf(bob), 1e17);
+        assertEq(npvToken.balanceOf(address(slice)), 4e17);
+
+        vm.warp(block.timestamp + 0xf000);
+        assertEq(npvToken.balanceOf(address(slice)), 4e17);
+        slice.updatePending(id2);
+        assertEq(npvToken.balanceOf(address(slice)), 0);
+
+        {
+            (uint256 nominal3, uint256 npv3, uint256 claimable3) = slice.generatedCredit(id2);
+            assertEq(npv3, 4e17);
+            assertEq(claimable3, 0);
+            assertEq(nominal3, 400200100050025012);
+            uint256 before3 = yieldToken.balanceOf(bob);
+
+            slice.claim(id2);
+
+            uint256 delta = yieldToken.balanceOf(bob) - before2;
+            assertEq(delta, 400200100050025012);
+            assertEq(delta, nominal3);
+        }
 
         vm.stopPrank();
     }

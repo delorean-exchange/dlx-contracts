@@ -18,6 +18,9 @@ contract YieldSlice is ReentrancyGuard {
     event NewDebtSlice(address indexed owner, uint256 indexed id, uint256 tokens, uint256 yield, uint256 npv, uint256 fees);
     event NewCreditSlice(address indexed owner, uint256 indexed id, uint256 npv, uint256 fees);
     event UnlockDebtSlice(address indexed owner, uint256 indexed id);
+    event PayDebt(uint256 indexed id, uint256 amount);
+    event ReceiveNPV(address indexed recipient, uint256 indexed id, uint256 amount);
+    event Claimed(uint256 indexed id, uint256 amount);
 
     uint256 public constant DISCOUNT_PERIOD = 7 days;
 
@@ -71,6 +74,7 @@ contract YieldSlice is ReentrancyGuard {
         uint256 blockTimestamp;
         uint256 npv;
         uint256 claimed;
+        uint256 pending;
     }
     mapping(uint256 => CreditSlice) public creditSlices;
 
@@ -235,6 +239,9 @@ contract YieldSlice is ReentrancyGuard {
         IERC20(npvToken).safeTransferFrom(msg.sender, address(this), actual);
         npvToken.burn(address(this), actual);
         slice.npv -= actual;
+
+        emit PayDebt(id, amount);
+
         return actual;
     }
 
@@ -293,7 +300,8 @@ contract YieldSlice is ReentrancyGuard {
             owner: who,
             blockTimestamp: block.timestamp,
             npv: npv - fees,
-            claimed: 0 });
+            claimed: 0,
+            pending: 0 });
         creditSlices[id] = slice;
 
         emit NewCreditSlice(who, id, npv, fees);
@@ -301,9 +309,26 @@ contract YieldSlice is ReentrancyGuard {
         return id;
     }
 
+    function _updatePending(uint256 id) internal {
+        CreditSlice storage slice = creditSlices[id];
+        ( , uint256 npv, uint256 claimable) = generatedCredit(id);
+
+        if (claimable == 0) return;
+
+        slice.pending += claimable;
+        if (npv == slice.npv) {
+            npvToken.burn(address(this), slice.npv);
+        }
+    }
+
+    function updatePending(uint256 id) external {
+        _updatePending(id);
+    }
+
     function _claim(uint256 id) internal returns (uint256) {
         CreditSlice storage slice = creditSlices[id];
-        ( , , uint256 claimable) = generatedCredit(id);
+        _updatePending(id);
+        uint256 claimable = slice.pending - slice.claimed;
 
         if (claimable == 0) return 0;
 
@@ -311,6 +336,8 @@ contract YieldSlice is ReentrancyGuard {
         uint256 amount = _min(claimable, yieldToken.balanceOf(address(this)));
         yieldToken.safeTransfer(slice.owner, amount);
         slice.claimed += amount;
+
+        emit Claimed(id, amount);
 
         return amount;
     }
@@ -320,8 +347,25 @@ contract YieldSlice is ReentrancyGuard {
         return _claim(id);
     }
 
+    function receiveNPV(uint256 id,
+                        address recipient,
+                        uint256 amount) external nonReentrant {
+        CreditSlice storage slice = creditSlices[id];
+        require(slice.owner == msg.sender, "YS: only slice owner");
+        ( , uint256 npv, ) = generatedCredit(id);
+        uint256 available = slice.npv - npv;
+        if (amount == 0) {
+            amount = available;
+        }
+        require(amount <= available, "YS: insufficient NPV");
+        npvToken.transfer(recipient, amount);
+        slice.npv -= amount;
+
+        emit ReceiveNPV(recipient, id, amount);
+    }
+
     function remaining(uint256 id) public view returns (uint256) {
-        ( , uint256 npv , ) = generated(id);
+        ( , uint256 npv, ) = generated(id);
         return debtSlices[id].npv - npv;
     }
 
@@ -340,7 +384,7 @@ contract YieldSlice is ReentrancyGuard {
                                                           cumulativeYield());
 
             uint256 yield = (yts * (end - i) * slice.tokens) / debtData.PRECISION_FACTOR();
-            uint256 estimatedDays = (end - slice.createdBlockTimestamp) / (24 * 3600);
+            uint256 estimatedDays = (end - slice.createdBlockTimestamp) / 1 days;
             uint256 pv = discounter.pv(estimatedDays, yield);
 
             if (npv == slice.npv) {
@@ -374,7 +418,7 @@ contract YieldSlice is ReentrancyGuard {
                                                             cumulativeYieldCredit());
 
             uint256 yield = (yts * (end - i) * slice.npv) / creditData.PRECISION_FACTOR();
-            uint256 estimatedDays = (end - slice.blockTimestamp) / (24 * 3600);
+            uint256 estimatedDays = (end - slice.blockTimestamp) / 1 days;
             uint256 pv = discounter.pv(estimatedDays, yield);
 
             if (npv + pv > slice.npv) {
@@ -387,6 +431,6 @@ contract YieldSlice is ReentrancyGuard {
             npv += pv;
         }
 
-        return (nominal, npv, claimable - slice.claimed);
+        return (nominal, npv, claimable - slice.pending);
     }
 }
