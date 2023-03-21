@@ -46,6 +46,7 @@ contract YieldSlice is ReentrancyGuard {
     uint256 public harvestedYield;
     uint256 public dustLimit;
     uint256 public cumulativePaidYield;
+    uint256 public activeNPV;
 
     uint256 public debtFee;
     uint256 public creditFee;
@@ -74,7 +75,6 @@ contract YieldSlice is ReentrancyGuard {
         uint256 blockTimestamp;
         uint256 npv;
         uint256 claimed;
-        uint256 pending;
     }
     mapping(uint256 => CreditSlice) public creditSlices;
 
@@ -214,6 +214,8 @@ contract YieldSlice is ReentrancyGuard {
         totalShares = newTotalShares;
         npvToken.mint(recipient, npv - fees);
         npvToken.mint(treasury, fees);
+        activeNPV += npv;
+
         _recordData();
 
         emit NewDebtSlice(owner, id, tokens_, yield, npv, fees);
@@ -239,6 +241,7 @@ contract YieldSlice is ReentrancyGuard {
         IERC20(npvToken).safeTransferFrom(msg.sender, address(this), actual);
         npvToken.burn(address(this), actual);
         slice.npv -= actual;
+        activeNPV -= actual;
 
         emit PayDebt(id, amount);
 
@@ -277,6 +280,7 @@ contract YieldSlice is ReentrancyGuard {
         uint256 amount = tokens(id);
         yieldSource.withdraw(amount, false, slice.owner);
         slice.unlockedBlockTimestamp = block.timestamp;
+        activeNPV -= slice.npv;
 
         emit UnlockDebtSlice(slice.owner, id);
     }
@@ -300,8 +304,7 @@ contract YieldSlice is ReentrancyGuard {
             owner: who,
             blockTimestamp: block.timestamp,
             npv: npv - fees,
-            claimed: 0,
-            pending: 0 });
+            claimed: 0 });
         creditSlices[id] = slice;
 
         emit NewCreditSlice(who, id, npv, fees);
@@ -309,26 +312,9 @@ contract YieldSlice is ReentrancyGuard {
         return id;
     }
 
-    function _updatePending(uint256 id) internal {
-        CreditSlice storage slice = creditSlices[id];
-        ( , uint256 npv, uint256 claimable) = generatedCredit(id);
-
-        if (claimable == 0) return;
-
-        slice.pending += claimable;
-        if (npv == slice.npv) {
-            npvToken.burn(address(this), slice.npv);
-        }
-    }
-
-    function updatePending(uint256 id) external {
-        _updatePending(id);
-    }
-
     function _claim(uint256 id) internal returns (uint256) {
         CreditSlice storage slice = creditSlices[id];
-        _updatePending(id);
-        uint256 claimable = slice.pending - slice.claimed;
+        ( , uint256 npv, uint256 claimable) = generatedCredit(id);
 
         if (claimable == 0) return 0;
 
@@ -336,6 +322,10 @@ contract YieldSlice is ReentrancyGuard {
         uint256 amount = _min(claimable, yieldToken.balanceOf(address(this)));
         yieldToken.safeTransfer(slice.owner, amount);
         slice.claimed += amount;
+
+        if (npv == slice.npv) {
+            npvToken.burn(address(this), slice.npv);
+        }
 
         emit Claimed(id, amount);
 
@@ -414,7 +404,7 @@ contract YieldSlice is ReentrancyGuard {
             uint256 end = _min(block.timestamp - 1, i + DISCOUNT_PERIOD);
             uint256 yts = creditData.yieldPerTokenPerSecond(i,
                                                             end,
-                                                            npvToken.totalSupply(),
+                                                            activeNPV,
                                                             cumulativeYieldCredit());
 
             uint256 yield = (yts * (end - i) * slice.npv) / creditData.PRECISION_FACTOR();
@@ -431,6 +421,6 @@ contract YieldSlice is ReentrancyGuard {
             npv += pv;
         }
 
-        return (nominal, npv, claimable - slice.pending);
+        return (nominal, npv, claimable - slice.claimed);
     }
 }

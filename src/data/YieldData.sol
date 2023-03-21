@@ -58,7 +58,6 @@ contract YieldData is Ownable {
         } else {
             Epoch memory c = epochs[epochIndex];
 
-            console.log("uint256 epochSeconds =", block.timestamp, c.blockTimestamp, c.epochSeconds);
             uint256 epochSeconds = block.timestamp - c.blockTimestamp - c.epochSeconds;
             uint256 delta = (yield - c.yield);
 

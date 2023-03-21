@@ -220,7 +220,7 @@ contract YieldSliceTest is BaseTest {
         vm.startPrank(bob);
         npvToken.approve(address(npvSwap), npvOwed);
         npvSwap.swapNPVForSlice(npvOwed);
-        (, , uint256 npvEntitled, , ) = slice.creditSlices(id2);
+        (, , uint256 npvEntitled, ) = slice.creditSlices(id2);
         vm.stopPrank();
 
         {
@@ -371,22 +371,32 @@ contract YieldSliceTest is BaseTest {
         assertEq(npvToken.balanceOf(address(slice)), 4e17);
 
         vm.warp(block.timestamp + 0xf000);
-        assertEq(npvToken.balanceOf(address(slice)), 4e17);
-        slice.updatePending(id2);
-        assertEq(npvToken.balanceOf(address(slice)), 0);
 
         {
             (uint256 nominal3, uint256 npv3, uint256 claimable3) = slice.generatedCredit(id2);
             assertEq(npv3, 4e17);
-            assertEq(claimable3, 0);
+            assertEq(claimable3, 150834817531690789);
             assertEq(nominal3, 400200100050025012);
+            assertEq(npvToken.totalSupply(), 657008058000000000);
+
             uint256 before3 = yieldToken.balanceOf(bob);
-
             slice.claim(id2);
-
             uint256 delta = yieldToken.balanceOf(bob) - before2;
+
+            assertClose(delta, 4e17, 1e16);
             assertEq(delta, 400200100050025012);
             assertEq(delta, nominal3);
+            assertEq(npvToken.totalSupply(), 257008058000000000);
+        }
+
+        vm.warp(block.timestamp + 0xf000);
+
+        {
+            ( , , uint256 claimable4) = slice.generatedCredit(id2);
+            assertEq(claimable4, 0);
+            assertEq(npvToken.totalSupply(), 257008058000000000);
+            assertEq(npvToken.balanceOf(bob), 1e17);
+            assertEq(npvToken.balanceOf(alice), npvToken.totalSupply() - 1e17);
         }
 
         vm.stopPrank();
