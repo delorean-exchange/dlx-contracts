@@ -97,9 +97,9 @@ contract DeployGLPMarket is BaseScript {
             json = vm.serializeString(objName, "contractName_npvToken", "NPVToken");
             json = vm.serializeString(objName, "contractName_pool", "UniswapV3LiquidityPool");
             json = vm.serializeString(objName, "contractName_slice", "YieldSlice");
-            json = vm.serializeString(objName, "contractName_yieldSource", "IYieldSource");
+            json = vm.serializeString(objName, "contractName_yieldSource", "FakeYieldSource");
 
-            if (eq(vm.envString("NETWORK"), "arbitrum_mainnet")) {
+            if (eq(vm.envString("NETWORK"), "arbitrum")) {
                 vm.writeJson(json, "./json/deploy_fakeglp.arbitrum.json");
             } else {
                 vm.writeJson(json, "./json/deploy_fakeglp.localhost.json");

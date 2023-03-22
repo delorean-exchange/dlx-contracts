@@ -19,19 +19,27 @@ import { NPVSwap } from "../src/core/NPVSwap.sol";
 contract AddFakeGLPLiquidity is BaseScript {
     using stdJson for string;
 
+    /* UniswapV3LiquidityPool public pool; */
+    FakeYieldSource public source;
+
     function setUp() public {
         init();
     }
 
     function run() public {
-        /* pk = vm.envUint("LOCALHOST_PRIVATE_KEY"); */
-
         vm.startBroadcast(pk);
 
-        string memory config = vm.readFile("json/config.localhost.json");
-        NPVSwap npvSwap = NPVSwap(vm.parseJsonAddress(config, ".fakeglp_npvSwap.address"));
-        UniswapV3LiquidityPool pool = UniswapV3LiquidityPool(vm.parseJsonAddress(config, ".fakeglp_pool.address"));
-        FakeYieldSource source = FakeYieldSource(vm.parseJsonAddress(config, ".fakeglp_yieldSource.address"));
+        if (eq(vm.envString("NETWORK"), "arbitrum")) {
+            string memory config = vm.readFile("json/config.arbitrum.json");
+            npvSwap = NPVSwap(vm.parseJsonAddress(config, ".fakeglp_npvSwap.address"));
+            pool = UniswapV3LiquidityPool(vm.parseJsonAddress(config, ".fakeglp_pool.address"));
+            source = FakeYieldSource(vm.parseJsonAddress(config, ".fakeglp_yieldSource.address"));
+        } else {
+            string memory config = vm.readFile("json/config.localhost.json");
+            npvSwap = NPVSwap(vm.parseJsonAddress(config, ".fakeglp_npvSwap.address"));
+            pool = UniswapV3LiquidityPool(vm.parseJsonAddress(config, ".fakeglp_pool.address"));
+            source = FakeYieldSource(vm.parseJsonAddress(config, ".fakeglp_yieldSource.address"));
+        }
 
         source.mintBoth(deployerAddress, 10000e18);
 

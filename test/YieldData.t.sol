@@ -23,7 +23,7 @@ contract YieldDataTest is BaseTest {
         vm.roll(block.number + 20);
         vm.warp(block.timestamp + 20);
         data.record(10e18, 5000);
-        assertEq(data.yieldPerTokenPerSecond(block.timestamp - 20, block.timestamp, 0, 0), 25);
+        assertEq(data.yieldPerTokenPerSecond(uint32(block.timestamp) - 20, uint32(block.timestamp), 0, 0), 25);
     }
 
     function testSplitEpoch() public {
@@ -33,7 +33,7 @@ contract YieldDataTest is BaseTest {
         vm.warp(block.timestamp + 7);
         data.record(20e18, 280000);
 
-        assertEq(data.yieldPerTokenPerSecond(block.timestamp - 8, block.timestamp, 0, 0), 1875);
+        assertEq(data.yieldPerTokenPerSecond(uint32(block.timestamp) - 8, uint32(block.timestamp), 0, 0), 1875);
     }
 
     function testMultipleEpochs() public {
@@ -47,17 +47,17 @@ contract YieldDataTest is BaseTest {
         vm.warp(block.timestamp + 20);
         data.record(10e18, 55000);
 
-        assertEq(data.yieldPerTokenPerSecond(block.timestamp - 60, block.timestamp - 40, 0, 0), 25);
-        assertEq(data.yieldPerTokenPerSecond(block.timestamp - 40, block.timestamp - 20, 0, 0), 50);
-        assertEq(data.yieldPerTokenPerSecond(block.timestamp - 20, block.timestamp, 0, 0), 200);
-        assertEq(data.yieldPerTokenPerSecond(block.timestamp - 60, block.timestamp - 20, 0, 0), (25 + 50) >> 1);
-        assertEq(data.yieldPerTokenPerSecond(block.timestamp - 50, block.timestamp - 20, 0, 0), 41);
-        assertEq(data.yieldPerTokenPerSecond(block.timestamp - 50, block.timestamp - 10, 0, 0), 81);
+        assertEq(data.yieldPerTokenPerSecond(uint32(block.timestamp) - 60, uint32(block.timestamp) - 40, 0, 0), 25);
+        assertEq(data.yieldPerTokenPerSecond(uint32(block.timestamp) - 40, uint32(block.timestamp) - 20, 0, 0), 50);
+        assertEq(data.yieldPerTokenPerSecond(uint32(block.timestamp) - 20, uint32(block.timestamp), 0, 0), 200);
+        assertEq(data.yieldPerTokenPerSecond(uint32(block.timestamp) - 60, uint32(block.timestamp) - 20, 0, 0), (25 + 50) >> 1);
+        assertEq(data.yieldPerTokenPerSecond(uint32(block.timestamp) - 50, uint32(block.timestamp) - 20, 0, 0), 41);
+        assertEq(data.yieldPerTokenPerSecond(uint32(block.timestamp) - 50, uint32(block.timestamp) - 10, 0, 0), 81);
     }
 
     function testManyDifferentEpochs() public {
         data.record(10e18, 0);
-        uint256 startBlockNumber = block.timestamp;
+        uint32 startBlockNumber = uint32(block.timestamp);
         for (uint256 i = 0; i < 100; i++) {
             vm.warp(block.timestamp + 20);
             data.record(10e18, (i+1) * (i+1) * 10e2);
@@ -72,7 +72,7 @@ contract YieldDataTest is BaseTest {
 
     function testValidateStartAndEnd() public {
         data.record(10e18, 0);
-        uint256 startBlockNumber = block.timestamp;
+        uint32 startBlockNumber = uint32(block.timestamp);
         for (uint256 i = 0; i < 100; i++) {
             vm.warp(block.timestamp + 20);
             data.record(10e18, (i+1) * (i+1) * 10e2);

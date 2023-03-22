@@ -52,15 +52,20 @@ contract AddGLPLiquidity is BaseScript {
         console.log("Liquidity before:", before);
 
         /* addLiquidity(npvSwap, dev, 1e15, 1e15, 1e18, -180, -60); */
-        /* addLiquidity(npvSwap, dev, 1e15, 1e15, 1e18, -360, -60); */
-        addLiquidity(npvSwap, dev, 1e15, 1e15, 1e18, -6960, -60);
+        addLiquidity(npvSwap, dev, 1e15, 1e15, 1e18, -360, -60);
+        /* addLiquidity(npvSwap, dev, 1e15, 1e15, 1e18, -6960, -60); */
 
         uint256 afterVal = IUniswapV3Pool(pool.pool()).liquidity();
         console.log("Liquidity after: ", afterVal);
         console.log("Delta:           ", afterVal - before);
 
         // Sanity check that liquidity is set up correctly
-        // npvSwap.previewSwapNPVForYield(115792089237316195423570985008687907853269984665640564039457584007913129639935, 75162434512514376853788557312);
+        uint256 m = 115792089237316195423570985008687907853269984665640564039457584007913129639935;
+        if (address(npvSwap.npvToken()) < address(npvSwap.slice().yieldToken())) {
+            npvSwap.previewSwapNPVForYield(m, 75162434512514376853788557312);
+        } else {
+            npvSwap.previewSwapNPVForYield(m, 83513816125015982100736638976);
+        }
 
         vm.stopBroadcast();
     }

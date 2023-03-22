@@ -71,22 +71,23 @@ contract NPVSwap {
     function lockForNPV(address owner,
                         address recipient,
                         uint256 tokens,
-                        uint256 yield) public returns (uint256) {
+                        uint256 yield,
+                        bytes calldata memo) public returns (uint256) {
 
         IERC20(slice.generatorToken()).safeTransferFrom(msg.sender, address(this), tokens);
         slice.generatorToken().safeApprove(address(slice), tokens);
 
-        uint256 id = slice.debtSlice(owner, recipient, tokens, yield);
+        uint256 id = slice.debtSlice(owner, recipient, tokens, yield, memo);
 
         return id;
     }
 
     // Swap NPV tokens for a future yield slice
-    function swapNPVForSlice(uint256 npv) public returns (uint256) {
+    function swapNPVForSlice(uint256 npv, bytes calldata memo) public returns (uint256) {
         IERC20(slice.npvToken()).safeTransferFrom(msg.sender, address(this), npv);
         IERC20(slice.npvToken()).safeApprove(address(slice), npv);
 
-        uint256 id = slice.creditSlice(npv, msg.sender);
+        uint256 id = slice.creditSlice(npv, msg.sender, memo);
 
         return id;
     }
@@ -119,10 +120,11 @@ contract NPVSwap {
                           uint256 tokens,
                           uint256 yield,
                           uint256 amountOutMin,
-                          uint128 sqrtPriceLimitX96) public returns (uint256) {
+                          uint128 sqrtPriceLimitX96,
+                          bytes calldata memo) public returns (uint256) {
 
         uint256 npv = previewLockForNPV(tokens, yield);
-        lockForNPV(owner, address(this), tokens, yield);
+        lockForNPV(owner, address(this), tokens, yield, memo);
         IERC20(npvToken).safeApprove(address(pool), npv);
         return pool.swap(owner,
                          address(npvToken),
@@ -135,7 +137,8 @@ contract NPVSwap {
     function swapForSlice(address recipient,
                           uint256 yield,
                           uint256 npvMin,
-                          uint128 sqrtPriceLimitX96) public returns (uint256) {
+                          uint128 sqrtPriceLimitX96,
+                          bytes calldata memo) public returns (uint256) {
         slice.yieldToken().safeTransferFrom(msg.sender, address(this), yield);
         slice.yieldToken().safeApprove(address(pool), yield);
 
@@ -146,7 +149,7 @@ contract NPVSwap {
                                 sqrtPriceLimitX96);
 
         IERC20(slice.npvToken()).safeApprove(address(slice), out);
-        uint256 id = slice.creditSlice(out, recipient);
+        uint256 id = slice.creditSlice(out, recipient, memo);
 
         return id;
     }

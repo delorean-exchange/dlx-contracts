@@ -1,5 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+
 
 import "forge-std/console.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -62,19 +61,21 @@ contract YieldSlice is ReentrancyGuard {
 
     struct DebtSlice {
         address owner;
-        uint256 createdBlockTimestamp;
-        uint256 unlockedBlockTimestamp;
+        uint128 createdBlockTimestamp;
+        uint128 unlockedBlockTimestamp;
         uint256 shares;
         uint256 tokens;  // TODO: redundant with shares?
         uint256 npv;
+        bytes memo;
     }
     mapping(uint256 => DebtSlice) public debtSlices;
 
     struct CreditSlice {
         address owner;
-        uint256 blockTimestamp;
+        uint128 blockTimestamp;
         uint256 npv;
         uint256 claimed;
+        bytes memo;
     }
     mapping(uint256 => CreditSlice) public creditSlices;
 
@@ -178,7 +179,8 @@ contract YieldSlice is ReentrancyGuard {
     function debtSlice(address owner,
                        address recipient,
                        uint256 tokens_,
-                       uint256 yield) external nonReentrant returns (uint256) {
+                       uint256 yield,
+                       bytes calldata memo) external nonReentrant returns (uint256) {
 
         require(tokens_ > dustLimit, "YS: dust");
 
@@ -204,11 +206,12 @@ contract YieldSlice is ReentrancyGuard {
         uint256 id = nextId++;
         DebtSlice memory slice = DebtSlice({
             owner: owner,
-            createdBlockTimestamp: block.timestamp,
+            createdBlockTimestamp: uint128(block.timestamp),
             unlockedBlockTimestamp: 0,
             shares: delta,
             tokens: tokens_,
-            npv: npv });
+            npv: npv,
+            memo: memo });
         debtSlices[id] = slice;
 
         totalShares = newTotalShares;
@@ -279,7 +282,7 @@ contract YieldSlice is ReentrancyGuard {
         }
         uint256 amount = tokens(id);
         yieldSource.withdraw(amount, false, slice.owner);
-        slice.unlockedBlockTimestamp = block.timestamp;
+        slice.unlockedBlockTimestamp = uint128(block.timestamp);
         activeNPV -= slice.npv;
 
         emit UnlockDebtSlice(slice.owner, id);
@@ -293,7 +296,7 @@ contract YieldSlice is ReentrancyGuard {
         return _creditFeesForNPV(npv);
     }
 
-    function creditSlice(uint256 npv, address who) external returns (uint256) {
+    function creditSlice(uint256 npv, address who, bytes calldata memo) external returns (uint256) {
         IERC20(npvToken).safeTransferFrom(msg.sender, address(this), npv);
 
         uint256 fees = _creditFeesForNPV(npv);
@@ -302,9 +305,10 @@ contract YieldSlice is ReentrancyGuard {
         uint256 id = nextId++;
         CreditSlice memory slice = CreditSlice({
             owner: who,
-            blockTimestamp: block.timestamp,
+            blockTimestamp: uint128(block.timestamp),
             npv: npv - fees,
-            claimed: 0 });
+            claimed: 0,
+            memo: memo });
         creditSlices[id] = slice;
 
         emit NewCreditSlice(who, id, npv, fees);
@@ -368,8 +372,8 @@ contract YieldSlice is ReentrancyGuard {
 
         for (uint256 i = slice.createdBlockTimestamp; i < last; i += DISCOUNT_PERIOD) {
             uint256 end = _min(last - 1, i + DISCOUNT_PERIOD);
-            uint256 yts = debtData.yieldPerTokenPerSecond(i,
-                                                          end,
+            uint256 yts = debtData.yieldPerTokenPerSecond(uint128(i),
+                                                          uint128(end),
                                                           totalTokens(),
                                                           cumulativeYield());
 
@@ -402,8 +406,8 @@ contract YieldSlice is ReentrancyGuard {
 
         for (uint256 i = slice.blockTimestamp; npv < slice.npv && i < block.timestamp; i += DISCOUNT_PERIOD) {
             uint256 end = _min(block.timestamp - 1, i + DISCOUNT_PERIOD);
-            uint256 yts = creditData.yieldPerTokenPerSecond(i,
-                                                            end,
+            uint256 yts = creditData.yieldPerTokenPerSecond(uint128(i),
+                                                            uint128(end),
                                                             activeNPV,
                                                             cumulativeYieldCredit());
 

@@ -22,7 +22,7 @@ contract EndToEndTest is BaseTest {
         // Alice: Get some NPV tokens so we can add liquidity
         vm.startPrank(alice);
         generatorToken.approve(address(npvSwap), 2000e18);
-        npvSwap.lockForNPV(alice, alice, 2000e18, 10e18);
+        npvSwap.lockForNPV(alice, alice, 2000e18, 10e18, new bytes(0));
 
         uint256 token0Amount = 1e18;
         uint256 token1Amount = 1e18;
@@ -59,7 +59,7 @@ contract EndToEndTest is BaseTest {
         source.mintGenerator(bob, 1000000e18);
         generatorToken.approve(address(npvSwap), 200e18);
         assertEq(npvSwap.previewLockForNPV(200e18, 1e18), 657008058000000000);
-        npvSwap.lockForNPV(bob, bob, 200e18, 1e18);
+        npvSwap.lockForNPV(bob, bob, 200e18, 1e18, new bytes(0));
         assertEq(IERC20(npvToken).balanceOf(bob), 657008058000000000);
 
         IERC20(npvToken).approve(address(pool), 5e17);
@@ -84,7 +84,7 @@ contract EndToEndTest is BaseTest {
         assertEq(balance2, 994537036467183765);
 
         IERC20(npvToken).approve(address(npvSwap), 99e16);
-        uint256 id = npvSwap.swapNPVForSlice(99e16);
+        uint256 id = npvSwap.swapNPVForSlice(99e16, new bytes(0));
         (, , uint256 claimable1) = slice.generatedCredit(id);
         assertEq(claimable1, 0);
 
@@ -126,8 +126,8 @@ contract EndToEndTest is BaseTest {
         assertEq(quote, npvSwap.previewLockForNPV(200e18, 1e18));
 
         uint256 id1 = npvSwap.slice().nextId();
-        uint256 amount = npvSwap.lockForYield(bob, 200e18, 1e18, preview, 0);
-        (address owner , , , , , ) = npvSwap.slice().debtSlices(id1);
+        uint256 amount = npvSwap.lockForYield(bob, 200e18, 1e18, preview, 0, new bytes(0));
+        (address owner , , , , , , ) = npvSwap.slice().debtSlices(id1);
         assertEq(owner, bob);
         assertEq(amount, 612862441028507418);
         assertEq(yieldToken.balanceOf(bob), 612862441028507418);
@@ -148,7 +148,7 @@ contract EndToEndTest is BaseTest {
         assertEq(yieldIn, 1e18);
 
         IERC20(yieldToken).approve(address(npvSwap), 1e18);
-        uint256 id = npvSwap.swapForSlice(chad, 1e18, previewNpv, 0);
+        uint256 id = npvSwap.swapForSlice(chad, 1e18, previewNpv, 0, new bytes(0));
 
         vm.warp(block.timestamp + 0x1000);
         (uint256 nominal2, uint256 npv2, uint256 claimable2) = slice.generatedCredit(id);
@@ -185,7 +185,7 @@ contract EndToEndTest is BaseTest {
         source.mintGenerator(bob, 200e18);
         generatorToken.approve(address(npvSwap), 200e18);
         uint256 id1 = npvSwap.slice().nextId();
-        npvSwap.lockForYield(bob, 200e18, 1e18, 0, 0);
+        npvSwap.lockForYield(bob, 200e18, 1e18, 0, 0, new bytes(0));
 
         uint256 remainingNPV = npvSwap.slice().remaining(id1);
 

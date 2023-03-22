@@ -62,7 +62,7 @@ contract BaseScript is Script {
 
         uint256 before = IERC20(npvToken).balanceOf(who);
         npvSwap.slice().yieldSource().generatorToken().approve(address(npvSwap), yieldToLock);
-        npvSwap.lockForNPV(who, who, generatorTokenAmount, yieldToLock);
+        npvSwap.lockForNPV(who, who, generatorTokenAmount, yieldToLock, new bytes(0));
 
         {
             uint256 npvTokenAmount = IERC20(npvToken).balanceOf(who) - before;

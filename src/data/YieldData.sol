@@ -16,19 +16,19 @@ contract YieldData is Ownable {
     uint256 public constant PRECISION_FACTOR = 10**18;
 
     address public writer;
-    uint256 public immutable interval;
+    uint128 public immutable interval;
 
     struct Epoch {
-        uint256 blockTimestamp;
-        uint256 epochSeconds;
         uint256 tokens;
         uint256 yield;
         uint256 acc;
+        uint128 blockTimestamp;
+        uint128 epochSeconds;
     }
     Epoch[] public epochs;
-    uint256 public epochIndex;
+    uint128 public epochIndex;
 
-    constructor(uint256 interval_) {
+    constructor(uint128 interval_) {
         interval = interval_;
     }
 
@@ -50,7 +50,7 @@ contract YieldData is Ownable {
 
         if (epochs.length == 0) {
             epochPush = Epoch({
-                blockTimestamp: block.timestamp,
+                blockTimestamp: uint128(block.timestamp),
                 epochSeconds: 0,
                 tokens: tokens,
                 yield: yield,
@@ -58,7 +58,7 @@ contract YieldData is Ownable {
         } else {
             Epoch memory c = epochs[epochIndex];
 
-            uint256 epochSeconds = block.timestamp - c.blockTimestamp - c.epochSeconds;
+            uint128 epochSeconds = uint128(block.timestamp) - c.blockTimestamp - c.epochSeconds;
             uint256 delta = (yield - c.yield);
 
             c.acc += c.tokens == 0 ? 0 : delta * PRECISION_FACTOR / c.tokens;
@@ -66,7 +66,7 @@ contract YieldData is Ownable {
 
             if (c.epochSeconds >= interval) {
                 epochPush = Epoch({
-                    blockTimestamp: block.timestamp,
+                    blockTimestamp: uint128(block.timestamp),
                     epochSeconds: 0,
                     tokens: tokens,
                     yield: yield,
@@ -90,11 +90,11 @@ contract YieldData is Ownable {
         }
         if (epochPush.blockTimestamp != 0) {
             epochs.push(epochPush);
-            epochIndex = epochs.length - 1;
+            epochIndex = uint128(epochs.length) - 1;
         }
     }
 
-    function _find(uint256 blockTimestamp) internal view returns (uint256) {
+    function _find(uint128 blockTimestamp) internal view returns (uint256) {
         require(epochs.length > 0, "no epochs");
         if (blockTimestamp >= epochs[epochIndex].blockTimestamp) return epochIndex;
         if (blockTimestamp <= epochs[0].blockTimestamp) return 0;
@@ -103,7 +103,7 @@ contract YieldData is Ownable {
         uint256 start = 0;
         uint256 end = epochs.length;
         while (true) {
-            uint256 bn = epochs[i].blockTimestamp;
+            uint128 bn = epochs[i].blockTimestamp;
             if (blockTimestamp >= bn &&
                 (i + 1 > epochIndex || blockTimestamp < epochs[i + 1].blockTimestamp)) {
                 return i;
@@ -120,13 +120,13 @@ contract YieldData is Ownable {
         return epochIndex;
     }
 
-    function yieldPerTokenPerSecond(uint256 start, uint256 end, uint256 tokens, uint256 yield) public view returns (uint256) {
+    function yieldPerTokenPerSecond(uint128 start, uint128 end, uint256 tokens, uint256 yield) public view returns (uint256) {
         if (start == end) return 0;
-        if (start == block.timestamp) return 0;
+        if (start == uint128(block.timestamp)) return 0;
 
         require(start < end, "YD: start must precede end");
-        require(end <= block.timestamp, "YD: end must be in the past or current");
-        require(start < block.timestamp, "YD: start must be in the past");
+        require(end <= uint128(block.timestamp), "YD: end must be in the past or current");
+        require(start < uint128(block.timestamp), "YD: start must be in the past");
 
         uint256 index = _find(start);
         uint256 acc;
@@ -135,7 +135,7 @@ contract YieldData is Ownable {
         Epoch memory epochPush;
         Epoch memory epochSet;
         if (yield != 0) (epochPush, epochSet) = _record(tokens, yield);
-        uint256 maxIndex = epochPush.blockTimestamp == 0 ? epochIndex : epochIndex + 1;
+        uint128 maxIndex = epochPush.blockTimestamp == 0 ? epochIndex : epochIndex + 1;
 
         while (true) {
             if (index > maxIndex) break;
