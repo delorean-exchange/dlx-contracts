@@ -75,6 +75,7 @@ contract NPVSwap {
                         bytes calldata memo) public returns (uint256) {
 
         IERC20(slice.generatorToken()).safeTransferFrom(msg.sender, address(this), tokens);
+        slice.generatorToken().safeApprove(address(slice), 0);
         slice.generatorToken().safeApprove(address(slice), tokens);
 
         uint256 id = slice.debtSlice(owner, recipient, tokens, yield, memo);
@@ -85,6 +86,7 @@ contract NPVSwap {
     // Swap NPV tokens for a future yield slice
     function swapNPVForSlice(uint256 npv, bytes calldata memo) public returns (uint256) {
         IERC20(slice.npvToken()).safeTransferFrom(msg.sender, address(this), npv);
+        IERC20(slice.npvToken()).safeApprove(address(slice), 0); 
         IERC20(slice.npvToken()).safeApprove(address(slice), npv);
 
         uint256 id = slice.creditSlice(npv, msg.sender, memo);
@@ -125,6 +127,7 @@ contract NPVSwap {
 
         uint256 npv = previewLockForNPV(tokens, yield);
         lockForNPV(owner, address(this), tokens, yield, memo);
+        IERC20(npvToken).safeApprove(address(pool), 0);
         IERC20(npvToken).safeApprove(address(pool), npv);
         return pool.swap(owner,
                          address(npvToken),
@@ -140,6 +143,7 @@ contract NPVSwap {
                           uint128 sqrtPriceLimitX96,
                           bytes calldata memo) public returns (uint256) {
         slice.yieldToken().safeTransferFrom(msg.sender, address(this), yield);
+        slice.yieldToken().safeApprove(address(pool), 0);
         slice.yieldToken().safeApprove(address(pool), yield);
 
         uint256 out = pool.swap(address(this),
@@ -148,6 +152,7 @@ contract NPVSwap {
                                 uint128(npvMin),
                                 sqrtPriceLimitX96);
 
+        IERC20(slice.npvToken()).safeApprove(address(slice), 0);
         IERC20(slice.npvToken()).safeApprove(address(slice), out);
         uint256 id = slice.creditSlice(out, recipient, memo);
 
@@ -161,8 +166,10 @@ contract NPVSwap {
     function mintAndPayWithYield(uint256 id, uint256 amount) public {
 
         slice.yieldToken().safeTransferFrom(msg.sender, address(this), amount);
+        slice.yieldToken().safeApprove(address(slice), 0);
         slice.yieldToken().safeApprove(address(slice), amount);
         slice.mintFromYield(address(this), amount);
+        IERC20(slice.npvToken()).safeApprove(address(slice), 0);
         IERC20(slice.npvToken()).safeApprove(address(slice), amount);
         uint256 paid = slice.payDebt(id, amount);
         if (paid != amount) {
