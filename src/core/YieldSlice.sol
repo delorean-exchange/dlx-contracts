@@ -40,7 +40,12 @@ contract YieldSlice is ReentrancyGuard {
     address public gov;
     address public treasury;
 
+    // The unallocated credit slice tracks yield that has been sold using a
+    // debt slice, but hasn't been purchased using a credit slice. When a
+    // credit slice purchase takes place, the receiver of that purhcase gets
+    // a proportional share of the claimable yield from this slice.
     uint256 public constant unallocId = 1;
+
     uint256 public nextId = unallocId + 1;
     uint256 public totalShares;
     uint256 public harvestedYield;
@@ -83,6 +88,26 @@ contract YieldSlice is ReentrancyGuard {
 
     modifier onlyGov() {
         require(msg.sender == gov, "YS: gov only");
+        _;
+    }
+
+    modifier isSlice(uint256 id) {
+        require(id < nextId, "YS: invalid id");
+        _;
+    }
+
+    modifier isDebtSlice(uint256 id) {
+        require(debtSlices[id].owner != address(0), "YS: no such debt slice");
+        _;
+    }
+
+    modifier debtSliceOwner(uint256 id) {
+        require(debtSlices[id].owner == msg.sender, "YS: only owner");
+        _;
+    }
+
+    modifier creditSliceOwner(uint256 id) {
+        require(creditSlices[id].owner == msg.sender, "YS: only owner");
         _;
     }
 
@@ -170,8 +195,7 @@ contract YieldSlice is ReentrancyGuard {
         creditData.record(npvToken.totalSupply(), cumulativeYieldCredit());
     }
 
-    function tokens(uint256 id) public view returns (uint256) {
-        require(debtSlices[id].owner != address(0), "YS: no such debt slice");
+    function tokens(uint256 id) public view isDebtSlice(id) returns (uint256) {
         if (totalShares == 0) return 0;
         return totalTokens() * debtSlices[id].shares / totalShares;
     }
@@ -245,8 +269,7 @@ contract YieldSlice is ReentrancyGuard {
         _recordData();
     }
 
-    function payDebt(uint256 id, uint256 amount) external nonReentrant returns (uint256) {
-        require(id < nextId, "YS: invalid id");
+    function payDebt(uint256 id, uint256 amount) external nonReentrant isDebtSlice(id) returns (uint256) {
         DebtSlice storage slice = debtSlices[id];
         require(slice.unlockedBlockTimestamp == 0, "YS: already unlocked");
 
@@ -263,9 +286,7 @@ contract YieldSlice is ReentrancyGuard {
         return actual;
     }
 
-    function transferOwnership(uint256 id, address who) external nonReentrant {
-        require(id < nextId, "YS: invalid id");
-
+    function transferOwnership(uint256 id, address who) external nonReentrant isSlice(id) {
         if (debtSlices[id].owner != address(0)) {
             DebtSlice storage slice = debtSlices[id];
             require(slice.owner == msg.sender, "YS: only debt slice owner");
@@ -279,9 +300,8 @@ contract YieldSlice is ReentrancyGuard {
         }
     }
 
-    function unlockDebtSlice(uint256 id) external nonReentrant {
+    function unlockDebtSlice(uint256 id) external nonReentrant debtSliceOwner(id) {
         DebtSlice storage slice = debtSlices[id];
-        require(slice.owner == msg.sender, "YS: only owner");
         require(slice.unlockedBlockTimestamp == 0, "YS: already unlocked");
 
         (, uint256 npv, uint256 refund) = generated(id);
@@ -369,16 +389,14 @@ contract YieldSlice is ReentrancyGuard {
         return amount;
     }
 
-    function claim(uint256 id, uint256 limit) external nonReentrant returns (uint256) {
-        require(creditSlices[id].owner == msg.sender, "YS: only slice owner");
+    function claim(uint256 id, uint256 limit) external nonReentrant creditSliceOwner(id) returns (uint256) {
         return _claim(id, limit);
     }
 
     function receiveNPV(uint256 id,
                         address recipient,
-                        uint256 amount) external nonReentrant {
+                        uint256 amount) external nonReentrant creditSliceOwner(id) {
         CreditSlice storage slice = creditSlices[id];
-        require(slice.owner == msg.sender, "YS: only slice owner");
         ( , uint256 npv, ) = generatedCredit(id);
         uint256 available = slice.npv - npv;
         if (amount == 0) {
@@ -403,7 +421,10 @@ contract YieldSlice is ReentrancyGuard {
         uint256 refund = 0;
         uint256 last = slice.unlockedBlockTimestamp == 0 ? block.timestamp : slice.unlockedBlockTimestamp;
 
-        for (uint256 i = slice.createdBlockTimestamp; i < last; i += DISCOUNT_PERIOD) {
+        for (uint256 i = slice.createdBlockTimestamp;
+             i < last;
+             i += DISCOUNT_PERIOD) {
+
             uint256 end = _min(last - 1, i + DISCOUNT_PERIOD);
             uint256 yts = debtData.yieldPerTokenPerSecond(uint128(i),
                                                           uint128(end),
@@ -437,7 +458,10 @@ contract YieldSlice is ReentrancyGuard {
         uint256 npv = 0;
         uint256 claimable = 0;
 
-        for (uint256 i = slice.blockTimestamp; npv < slice.npv && i < block.timestamp; i += DISCOUNT_PERIOD) {
+        for (uint256 i = slice.blockTimestamp;
+             npv < slice.npv && i < block.timestamp;
+             i += DISCOUNT_PERIOD) {
+
             uint256 end = _min(block.timestamp - 1, i + DISCOUNT_PERIOD);
             uint256 yts = creditData.yieldPerTokenPerSecond(uint128(i),
                                                             uint128(end),
