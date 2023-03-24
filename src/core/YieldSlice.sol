@@ -171,6 +171,7 @@ contract YieldSlice is ReentrancyGuard {
     }
 
     function tokens(uint256 id) public view returns (uint256) {
+        require(debtSlices[id].owner != address(0), "YS: no such debt slice");
         if (totalShares == 0) return 0;
         return totalTokens() * debtSlices[id].shares / totalShares;
     }
@@ -294,22 +295,27 @@ contract YieldSlice is ReentrancyGuard {
         uint256 amount = tokens(id);
         yieldSource.withdraw(amount, false, slice.owner);
         slice.unlockedBlockTimestamp = uint128(block.timestamp);
+
+        // TODO: Is there a griefing attack where the attacker takes out a large
+        // debt slice, spiking the `activeNPV` value, and never unlocks his tokens?
+        // with the goal of lowering the yield per second per NPV token?
+        // Not sure if this actually works, but need to think it through
         activeNPV -= slice.npv;
 
         emit UnlockDebtSlice(slice.owner, id);
     }
 
-    function _creditFeesForNPV(uint256 npv) internal view returns (uint256) {
+    function _creditFees(uint256 npv) internal view returns (uint256) {
         return (npv * creditFee) / FEE_DENOM;
     }
 
-    function creditFeesForNPV(uint256 npv) external view returns (uint256) {
-        return _creditFeesForNPV(npv);
+    function creditFees(uint256 npv) external view returns (uint256) {
+        return _creditFees(npv);
     }
 
     function creditSlice(uint256 npv, address who, bytes calldata memo) external returns (uint256) {
         IERC20(npvToken).safeTransferFrom(msg.sender, address(this), npv);
-        uint256 fees = _creditFeesForNPV(npv);
+        uint256 fees = _creditFees(npv);
         IERC20(npvToken).safeTransfer(treasury, fees);
 
         uint256 id = nextId++;

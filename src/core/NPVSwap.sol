@@ -115,7 +115,7 @@ contract NPVSwap {
         (uint256 npv, uint256 priceX96) = pool.previewSwap(address(slice.yieldToken()),
                                                            uint128(yieldIn),
                                                            sqrtPriceLimitX96);
-        uint256 fees = slice.creditFeesForNPV(npv);
+        uint256 fees = slice.creditFees(npv);
         return (npv - fees, priceX96);
     }
 
