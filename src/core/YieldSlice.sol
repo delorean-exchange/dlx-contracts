@@ -253,7 +253,15 @@ contract YieldSlice is ReentrancyGuard {
         npvToken.mint(treasury, fees);
         activeNPV += npv;
 
-        creditSlices[unallocId].npv += npv;
+        {
+            // TODO: Write a test to confirm this checkpointing is correct
+            CreditSlice storage unalloc = creditSlices[unallocId];
+            ( , , uint256 uClaimable) = generatedCredit(unallocId);
+            pendingClaimable[unallocId] = uClaimable;
+            unalloc.blockTimestamp = uint128(block.timestamp);
+            unalloc.npv += npv;
+            unalloc.claimed = 0;
+        }
 
         _recordData();
 
@@ -333,6 +341,24 @@ contract YieldSlice is ReentrancyGuard {
         return _creditFees(npv);
     }
 
+    function _checkpointUnalloc(uint256 npv) internal returns (uint256) {
+        // Grant proportional share of yield from the unallocated NPV slice
+        CreditSlice storage unalloc = creditSlices[unallocId];
+        if (unalloc.npv == 0) return 0;
+
+        ( , , uint256 uClaimable) = generatedCredit(unallocId);
+        uint256 claimableShare = uClaimable * npv / unalloc.npv;
+        _claim(unallocId, claimableShare);
+        pendingClaimable[unallocId] = uClaimable - claimableShare;
+
+        // Checkpoint the unallocated slice to the current block
+        unalloc.blockTimestamp = uint128(block.timestamp);
+        unalloc.npv -= npv;
+        unalloc.claimed = 0;
+
+        return claimableShare;
+    }
+
     function creditSlice(uint256 npv, address who, bytes calldata memo) external returns (uint256) {
         IERC20(npvToken).safeTransferFrom(msg.sender, address(this), npv);
         uint256 fees = _creditFees(npv);
@@ -340,18 +366,7 @@ contract YieldSlice is ReentrancyGuard {
 
         uint256 id = nextId++;
 
-        // Grant proportional share of yield from the unallocated NPV slice
-        CreditSlice memory unalloc = creditSlices[unallocId];
-        ( , , uint256 uClaimable) = generatedCredit(unallocId);
-        uint256 claimableShare = uClaimable * npv / unalloc.npv;
-        _claim(unallocId, claimableShare);
-        pendingClaimable[unallocId] = uClaimable - claimableShare;
-        pendingClaimable[id] = claimableShare;
-
-        // Checkpoint the unallocated slice to the current block
-        unalloc.blockTimestamp = uint128(block.timestamp);
-        unalloc.npv -= npv;
-        unalloc.claimed = 0;
+        pendingClaimable[id] = _checkpointUnalloc(npv);
 
         CreditSlice memory slice = CreditSlice({
             owner: who,
