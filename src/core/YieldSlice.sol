@@ -308,45 +308,24 @@ contract YieldSlice is ReentrancyGuard {
     }
 
     function creditSlice(uint256 npv, address who, bytes calldata memo) external returns (uint256) {
-        uint256 id = nextId++;
-
-        // -- compute unallocated --//
-
-        console.log("creditSlice comp unalloc");
-        {
-            (uint256 uNominal , uint256 uNpv, uint256 uClaimable) = generatedCredit(unallocId);
-            console.log("- uslice npv    ", creditSlices[unallocId].npv);
-            console.log("- npv           ", npv);
-            console.log("- uNpv          ", uNpv);
-            console.log("- uClaimable    ", uClaimable);
-
-            uint256 claimableShare = uClaimable * npv / creditSlices[unallocId].npv;
-            console.log("- claimableShare", claimableShare);
-            console.log("--");
-            console.log("- uslice claimed before", creditSlices[unallocId].claimed);
-            _claim(unallocId, claimableShare);
-            console.log("--");
-            pendingClaimable[unallocId] = uClaimable - claimableShare;
-            pendingClaimable[id] = claimableShare;
-            creditSlices[unallocId].blockTimestamp = uint128(block.timestamp);
-            creditSlices[unallocId].npv -= npv;
-            creditSlices[unallocId].claimed = 0;
-            (uint256 uNominal2 , uint256 uNpv2, uint256 uClaimable2) = generatedCredit(unallocId);
-            console.log("- uslice claimed after ", creditSlices[unallocId].claimed);
-            console.log("- uClaimable2          ", uClaimable2);
-
-            /* creditSlices[unallocId].npv -= npv; */
-            /* ( , uint256 uNpv2, uint256 uClaimable2) = generatedCredit(unallocId); */
-            /* console.log("- npv2      ", uNpv2); */
-            /* console.log("- claimable2", uClaimable2); */
-        }
-
-        // -- //
-
         IERC20(npvToken).safeTransferFrom(msg.sender, address(this), npv);
-
         uint256 fees = _creditFeesForNPV(npv);
         IERC20(npvToken).safeTransfer(treasury, fees);
+
+        uint256 id = nextId++;
+
+        // Grant proportional share of yield from the unallocated NPV slice
+        CreditSlice memory unalloc = creditSlices[unallocId];
+        ( , , uint256 uClaimable) = generatedCredit(unallocId);
+        uint256 claimableShare = uClaimable * npv / unalloc.npv;
+        _claim(unallocId, claimableShare);
+        pendingClaimable[unallocId] = uClaimable - claimableShare;
+        pendingClaimable[id] = claimableShare;
+
+        // Checkpoint the unallocated slice to the current block
+        unalloc.blockTimestamp = uint128(block.timestamp);
+        unalloc.npv -= npv;
+        unalloc.claimed = 0;
 
         CreditSlice memory slice = CreditSlice({
             owner: who,
@@ -361,7 +340,7 @@ contract YieldSlice is ReentrancyGuard {
         return id;
     }
 
-    function _claim(uint256 id, uint256 amt) internal returns (uint256) {
+    function _claim(uint256 id, uint256 limit) internal returns (uint256) {
         CreditSlice storage slice = creditSlices[id];
         ( , uint256 npv, uint256 claimable) = generatedCredit(id);
 
@@ -369,8 +348,8 @@ contract YieldSlice is ReentrancyGuard {
 
         _harvest();
         uint256 amount = _min(claimable, yieldToken.balanceOf(address(this)));
-        if (amt > 0) {
-            amount = _min(amt, amount);
+        if (limit > 0) {
+            amount = _min(limit, amount);
         }
         yieldToken.safeTransfer(slice.owner, amount);
         slice.claimed += amount;
@@ -384,9 +363,9 @@ contract YieldSlice is ReentrancyGuard {
         return amount;
     }
 
-    function claim(uint256 id, uint256 amt) external nonReentrant returns (uint256) {
+    function claim(uint256 id, uint256 limit) external nonReentrant returns (uint256) {
         require(creditSlices[id].owner == msg.sender, "YS: only slice owner");
-        return _claim(id, 0);
+        return _claim(id, limit);
     }
 
     function receiveNPV(uint256 id,
