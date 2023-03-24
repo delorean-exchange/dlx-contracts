@@ -84,12 +84,14 @@ contract NPVSwap {
     }
 
     // Swap NPV tokens for a future yield slice
-    function swapNPVForSlice(uint256 npv, bytes calldata memo) public returns (uint256) {
+    function swapNPVForSlice(address recipient,
+                             uint256 npv,
+                             bytes calldata memo) public returns (uint256) {
         IERC20(slice.npvToken()).safeTransferFrom(msg.sender, address(this), npv);
         IERC20(slice.npvToken()).safeApprove(address(slice), 0); 
         IERC20(slice.npvToken()).safeApprove(address(slice), npv);
 
-        uint256 id = slice.creditSlice(npv, msg.sender, memo);
+        uint256 id = slice.creditSlice(npv, recipient, memo);
 
         return id;
     }

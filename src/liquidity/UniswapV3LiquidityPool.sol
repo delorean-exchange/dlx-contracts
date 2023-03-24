@@ -78,6 +78,7 @@ contract UniswapV3LiquidityPool is ILiquidityPool {
 
         IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
         assert(IERC20(tokenIn).balanceOf(address(this)) >= amountIn);
+        IERC20(tokenIn).safeApprove(address(router), 0);
         IERC20(tokenIn).safeApprove(address(router), amountIn);
 
         ISwapRouter.ExactInputSingleParams memory params =

@@ -84,7 +84,7 @@ contract EndToEndTest is BaseTest {
         assertEq(balance2, 994537036467183765);
 
         IERC20(npvToken).approve(address(npvSwap), 99e16);
-        uint256 id = npvSwap.swapNPVForSlice(99e16, new bytes(0));
+        uint256 id = npvSwap.swapNPVForSlice(chad, 99e16, new bytes(0));
         (, , uint256 claimable1) = slice.generatedCredit(id);
         assertEq(claimable1, 0);
 
@@ -208,5 +208,90 @@ contract EndToEndTest is BaseTest {
         assertEq(generatorToken.balanceOf(bob), 200e18);
 
         vm.stopPrank();
+    }
+
+    function testNPVClaimableForExistingYield() public {
+        console.log("testNPVClaimableForExistingYield");
+
+        // Add liquidity and move forward in time
+        testAliceAddLiquidity();
+        vm.warp(block.timestamp + 0x8000);
+        slice.harvest();
+
+        console.log("YT balance:", yieldToken.balanceOf(address(slice)));
+
+        // Bob purchases future yield. Some should be immediately claimable.
+        vm.startPrank(bob);
+        source.mintYield(bob, 1000000e18);
+        IERC20(yieldToken).approve(address(npvSwap), 1e18);
+        (uint256 previewNpv, ) = npvSwap.previewSwapForSlice(1e18, 0);
+        console.log("previewNpv", previewNpv);
+        uint256 id = npvSwap.swapForSlice(bob, 1e18, previewNpv, 0, new bytes(0));
+        console.log("id", id);
+        vm.stopPrank();
+
+        {
+            (uint256 nominal, uint256 npv, uint256 claimable) = slice.generatedCredit(id);
+            console.log("nominal  ", nominal);
+            console.log("npv      ", npv);
+            console.log("claimable", claimable);
+        }
+
+        console.log("---");
+        slice.recordData();
+        source.setYieldPerBlock(0);
+        vm.warp(block.timestamp + 0xf000);
+        slice.recordData();
+
+        {
+            (uint256 nominal, uint256 npv, uint256 claimable) = slice.generatedCredit(id);
+            console.log("nominal  ", nominal);
+            console.log("npv      ", npv);
+            console.log("claimable", claimable);
+        }
+
+        console.log("---");
+        slice.recordData();
+        source.setYieldPerBlock(10000000000000);
+        vm.warp(block.timestamp + 0xf00);
+        slice.recordData();
+
+        {
+            (uint256 nominal, uint256 npv, uint256 claimable) = slice.generatedCredit(id);
+            console.log("nominal  ", nominal);
+            console.log("npv      ", npv);
+            console.log("claimable", claimable);
+        }
+
+        // Chad purchases some future yield. Some should be immediately available.
+        vm.startPrank(chad);
+        source.mintYield(chad, 1000000e18);
+        IERC20(yieldToken).approve(address(slice), 100e18);
+        slice.mintFromYield(chad, 100e18);
+        /* uint256 id2 = npvSwap.swapForSlice(chad, 100e18, 0, 0, new bytes(0)); */
+        /* console.log("id2", id2); */
+        console.log("npv balance", npvToken.balanceOf(chad));
+
+        console.log("previewNpv     ", previewNpv);
+        console.log("previewNpv 3e17", 3e17);
+
+        IERC20(npvToken).approve(address(npvSwap), 3e17);
+        uint256 id2 = npvSwap.swapNPVForSlice(chad, 3e17, new bytes(0));
+        console.log("id2", id2);
+        vm.stopPrank();
+
+        {
+            (uint256 bNominal, uint256 bNpv, uint256 bClaimable) = slice.generatedCredit(id);
+            (uint256 cNominal, uint256 cNpv, uint256 cClaimable) = slice.generatedCredit(id2);
+            console.log("-- BOB");
+            console.log("nominal  ", bNominal);
+            console.log("npv      ", bNpv);
+            console.log("claimable", bClaimable);
+
+            console.log("-- CHAD");
+            console.log("nominal  ", cNominal);
+            console.log("npv      ", cNpv);
+            console.log("claimable", cClaimable);
+        }
     }
 }
