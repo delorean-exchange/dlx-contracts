@@ -253,24 +253,6 @@ contract YieldSlice is ReentrancyGuard {
         return _previewDebtSlice(tokens_, yield);
     }
 
-    function _modifyDebtPositionNPV(uint256 id, uint256 deltaNPV)
-        internal
-        isDebtSlice(id)
-        returns (uint256) {
-
-        DebtSlice storage slice = debtSlices[id];
-
-        ( , uint256 npvGen, ) = generated(id);
-        uint256 left = npvGen > slice.npvDebt ? 0 : slice.npvDebt - npvGen;
-        uint256 actual = _min(left, deltaNPV);
-        IERC20(npvToken).safeTransferFrom(msg.sender, address(this), actual);
-        npvToken.burn(address(this), actual);
-        slice.npvDebt -= actual;
-        activeNPV -= actual;
-
-        return actual;
-    }
-
     function _modifyDebtPosition(uint256 id, uint256 deltaGenerator, uint256 deltaYield)
         internal
         isDebtSlice(id)
@@ -356,7 +338,13 @@ contract YieldSlice is ReentrancyGuard {
         DebtSlice storage slice = debtSlices[id];
         require(slice.unlockedBlockTimestamp == 0, "YS: already unlocked");
 
-        uint256 actual = _modifyDebtPositionNPV(id, amount);
+        ( , uint256 npvGen, ) = generated(id);
+        uint256 left = npvGen > slice.npvDebt ? 0 : slice.npvDebt - npvGen;
+        uint256 actual = _min(left, amount);
+        IERC20(npvToken).safeTransferFrom(msg.sender, address(this), actual);
+        slice.npvDebt -= actual;
+        npvToken.burn(address(this), actual);
+        activeNPV -= actual;
 
         emit PayDebt(id, actual);
 
@@ -383,18 +371,10 @@ contract YieldSlice is ReentrancyGuard {
 
         (uint256 nominalGen, uint256 npvGen, uint256 refund) = generated(id);
 
-        console.log("===");
-
-        console.log("can we unlock? npvGen ", npvGen);
-        console.log("can we unlock? npvDebt", slice.npvDebt);
-        console.log("nominalGen           :", nominalGen);
-        console.log("refund               :", refund);
-
         require(npvGen >= slice.npvDebt, "YS: npv debt");
 
         if (refund > 0) {
             _harvest();
-            console.log("Refunding", refund);
             uint256 balance = IERC20(yieldToken).balanceOf(address(this));
             IERC20(yieldToken).safeTransfer(slice.owner, _min(balance, refund));
         }
