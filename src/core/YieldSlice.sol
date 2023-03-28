@@ -249,6 +249,24 @@ contract YieldSlice is ReentrancyGuard {
         return _previewDebtSlice(tokens_, yield);
     }
 
+    function _modifyDebtPositionNPV(uint256 id, uint256 deltaNPV)
+        internal
+        isDebtSlice(id)
+        returns (uint256) {
+
+        DebtSlice storage slice = debtSlices[id];
+
+        ( , uint256 npvGen, ) = generated(id);
+        uint256 left = npvGen > slice.npvDebt ? 0 : slice.npvDebt - npvGen;
+        uint256 actual = _min(left, deltaNPV);
+        IERC20(npvToken).safeTransferFrom(msg.sender, address(this), actual);
+        npvToken.burn(address(this), actual);
+        slice.npvDebt -= actual;
+        activeNPV -= actual;
+
+        return actual;
+    }
+
     function _modifyDebtPosition(uint256 id,
                                  uint256 deltaGenerator,
                                  uint256 deltaYield)
@@ -330,15 +348,9 @@ contract YieldSlice is ReentrancyGuard {
         DebtSlice storage slice = debtSlices[id];
         require(slice.unlockedBlockTimestamp == 0, "YS: already unlocked");
 
-        ( , uint256 npvGen, ) = generated(id);
-        uint256 left = npvGen > slice.npvDebt ? 0 : slice.npvDebt - npvGen;
-        uint256 actual = _min(left, amount);
-        IERC20(npvToken).safeTransferFrom(msg.sender, address(this), actual);
-        npvToken.burn(address(this), actual);
-        slice.npvDebt -= actual;
-        activeNPV -= actual;
+        uint256 actual = _modifyDebtPositionNPV(id, amount);
 
-        emit PayDebt(id, amount);
+        emit PayDebt(id, actual);
 
         return actual;
     }
@@ -476,21 +488,22 @@ contract YieldSlice is ReentrancyGuard {
         return _claim(id, limit);
     }
 
-    /* function receiveNPV(uint256 id, */
-    /*                     address recipient, */
-    /*                     uint256 amount) external nonReentrant creditSliceOwner(id) { */
-    /*     CreditSlice storage slice = creditSlices[id]; */
-    /*     ( , uint256 npv, ) = generatedCredit(id); */
-    /*     uint256 available = slice.npv - npv; */
-    /*     if (amount == 0) { */
-    /*         amount = available; */
-    /*     } */
-    /*     require(amount <= available, "YS: insufficient NPV"); */
-    /*     npvToken.transfer(recipient, amount); */
-    /*     slice.npv -= amount; */
+    function receiveNPV(uint256 id,
+                        address recipient,
+                        uint256 amount) external nonReentrant creditSliceOwner(id) {
+        CreditSlice storage slice = creditSlices[id];
+        ( , uint256 npvGen, ) = generatedCredit(id);
+        uint256 available = slice.npvCredit - npvGen;
+        if (amount == 0) {
+            amount = available;
+        }
+        require(amount <= available, "YS: insufficient NPV");
 
-    /*     emit ReceiveNPV(recipient, id, amount); */
-    /* } */
+        npvToken.transfer(recipient, amount);
+        _modifyCreditPosition(id, -int256(amount));
+
+        emit ReceiveNPV(recipient, id, amount);
+    }
 
     function remaining(uint256 id) public view returns (uint256) {
         ( , uint256 npvGen, ) = generated(id);
