@@ -412,22 +412,12 @@ contract YieldSlice is ReentrancyGuard {
         slice.pending = claimable;
         slice.claimed = 0;
 
-        console.log("shiftedNPV", shiftedNPV);
-        console.log("deltaNPV       :", uint256(deltaNPV > 0 ? deltaNPV : -deltaNPV));
-        console.log("deltaNPV       :", uint256(deltaNPV > 0 ? 1 : 0));
-
-        console.log("slice.npvCredit:", slice.npvCredit);
-        console.log("slice.npvTokens:", slice.npvTokens);
-
         if (deltaNPV > 0) {
             slice.npvCredit = shiftedNPV + uint256(deltaNPV);
             slice.npvTokens += uint256(deltaNPV);
         } else {
-            console.log("SUB");
             slice.npvCredit = shiftedNPV - uint256(-deltaNPV);
-            console.log("SUB2");
             slice.npvTokens -= uint256(-deltaNPV);
-            console.log("SUB3");
         }
     }
 
@@ -438,22 +428,9 @@ contract YieldSlice is ReentrancyGuard {
 
         // Checkpoint the unallocated NPV slice, and transfer proportional
         // amount of pending yield to the new position.
-
-        CreditSlice storage unalloc = creditSlices[unallocId];
-
-        console.log("BEFORE unalloc.npvTokens:", unalloc.npvTokens);
-        console.log("BEFORE (npv - fees)     :", (npv - fees));
-
         _modifyCreditPosition(unallocId, -int256(npv - fees));
-
-
+        CreditSlice storage unalloc = creditSlices[unallocId];
         uint256 pendingShare = unalloc.pending * (npv - fees) / (unalloc.npvTokens + npv - fees);
-
-        console.log("AFTER  unalloc.npvTokens:", unalloc.npvTokens);
-        console.log("AFTER  (npv - fees)     :", (npv - fees));
-
-        console.log("unalloc.pending", unalloc.pending);
-        console.log("pendingShare   ", pendingShare);
         unalloc.pending -= pendingShare;
 
         uint256 id = nextId++;
