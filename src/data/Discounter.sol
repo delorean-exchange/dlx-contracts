@@ -11,6 +11,7 @@ contract Discounter is IDiscounter, Ownable {
     uint256 public maxDays;
     uint256 public immutable decimals;
 
+    uint256 public constant DISCOUNT_PERIOD = 1 days;
     uint256 public constant RATE_PRECISION = 10**6;
     uint256 public constant PERIOD = 10;
 
@@ -63,6 +64,14 @@ contract Discounter is IDiscounter, Ownable {
         uint256 acc = pv_;
         for (uint256 i = 0; i < numDays; i++) {
             acc = acc * RATE_PRECISION / (RATE_PRECISION - rate);
+        }
+        return acc;
+    }
+
+    function shiftNPV(uint256 npv, uint256 numDays) external override view returns (uint256) {
+        uint256 acc = npv;
+        for (uint256 i = 0; i < numDays; i++) {
+            acc = acc * (RATE_PRECISION - rate) / RATE_PRECISION;
         }
         return acc;
     }

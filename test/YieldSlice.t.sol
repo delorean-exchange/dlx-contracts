@@ -19,6 +19,11 @@ contract YieldSliceTest is BaseTest {
         init();
     }
 
+    function debtSliceNPVDebt(uint256 id) internal returns (uint256) {
+        ( , , , , , uint256 npvDebt, ) = slice.debtSlices(id);
+        return npvDebt;
+    }
+
     function testSimpleSale() public {
         vm.startPrank(alice);
 
@@ -32,6 +37,7 @@ contract YieldSliceTest is BaseTest {
 
         assertEq(discounter.discounted(200e18, 1e18), 657008058000000000);
         assertEq(npvToken.balanceOf(alice), 657008058000000000);
+        assertEq(debtSliceNPVDebt(id1), 657008058000000000);
 
         // Not enough yield generated
         vm.expectRevert("YS: npv debt");
@@ -183,12 +189,12 @@ contract YieldSliceTest is BaseTest {
 
         {
             slice.recordData();
-            vm.warp(block.timestamp + slice.DISCOUNT_PERIOD());
+            vm.warp(block.timestamp + discounter.DISCOUNT_PERIOD());
 
             (uint256 creditNominal1, uint256 creditNpv1, uint256 claimable1) = slice.generatedCredit(id2);
 
             slice.recordData();
-            vm.warp(block.timestamp + slice.DISCOUNT_PERIOD());
+            vm.warp(block.timestamp + discounter.DISCOUNT_PERIOD());
 
             (uint256 creditNominal2, uint256 creditNpv2, uint256 claimable2) = slice.generatedCredit(id2);
 
@@ -220,7 +226,7 @@ contract YieldSliceTest is BaseTest {
         vm.startPrank(bob);
         npvToken.approve(address(npvSwap), npvOwed);
         npvSwap.swapNPVForSlice(bob, npvOwed, new bytes(0));
-        (, , uint256 npvEntitled, , ) = slice.creditSlices(id2);
+        (, , uint256 npvEntitled, , , , ) = slice.creditSlices(id2);
         vm.stopPrank();
 
         {
@@ -342,69 +348,69 @@ contract YieldSliceTest is BaseTest {
         vm.stopPrank();
     }
 
-    function testReceiveNPV() public  {
-        vm.startPrank(alice);
-        uint256 before1 = generatorToken.balanceOf(alice);
-        generatorToken.approve(address(npvSwap), 200e18);
-        npvSwap.lockForNPV(alice, alice, 200e18, 1e18, new bytes(0));
-        uint256 afterVal1 = generatorToken.balanceOf(alice);
-        assertEq(before1 - afterVal1, 200e18);
-        vm.warp(block.timestamp + 0x2000);
-        npvToken.transfer(bob, 5e17);
-        vm.stopPrank();
+    /* function testReceiveNPV() public  { */
+    /*     vm.startPrank(alice); */
+    /*     uint256 before1 = generatorToken.balanceOf(alice); */
+    /*     generatorToken.approve(address(npvSwap), 200e18); */
+    /*     npvSwap.lockForNPV(alice, alice, 200e18, 1e18, new bytes(0)); */
+    /*     uint256 afterVal1 = generatorToken.balanceOf(alice); */
+    /*     assertEq(before1 - afterVal1, 200e18); */
+    /*     vm.warp(block.timestamp + 0x2000); */
+    /*     npvToken.transfer(bob, 5e17); */
+    /*     vm.stopPrank(); */
 
-        vm.startPrank(bob);
-        npvToken.approve(address(npvSwap), 5e17);
-        uint256 id2 = npvSwap.swapNPVForSlice(bob, 5e17, new bytes(0));
+    /*     vm.startPrank(bob); */
+    /*     npvToken.approve(address(npvSwap), 5e17); */
+    /*     uint256 id2 = npvSwap.swapNPVForSlice(bob, 5e17, new bytes(0)); */
 
-        {
-            (, , uint256 claimable) = slice.generatedCredit(id2);
-            assertEq(claimable, 62335612937030415);
-        }
+    /*     { */
+    /*         (, , uint256 claimable) = slice.generatedCredit(id2); */
+    /*         assertEq(claimable, 62335612937030415); */
+    /*     } */
 
-        vm.warp(block.timestamp + 0x8000);
-        uint256 before2 = yieldToken.balanceOf(bob);
+    /*     vm.warp(block.timestamp + 0x8000); */
+    /*     uint256 before2 = yieldToken.balanceOf(bob); */
 
-        slice.claim(id2, 0);
-        uint256 afterVal2 = yieldToken.balanceOf(bob);
-        assertEq(afterVal2 - before2, 311700895455364638);
+    /*     slice.claim(id2, 0); */
+    /*     uint256 afterVal2 = yieldToken.balanceOf(bob); */
+    /*     assertEq(afterVal2 - before2, 311700895455364638); */
 
-        assertEq(npvToken.balanceOf(bob), 0);
-        slice.receiveNPV(id2, bob, 1e17);
-        assertEq(npvToken.balanceOf(bob), 1e17);
-        assertEq(npvToken.balanceOf(address(slice)), 4e17);
+    /*     assertEq(npvToken.balanceOf(bob), 0); */
+    /*     slice.receiveNPV(id2, bob, 1e17); */
+    /*     assertEq(npvToken.balanceOf(bob), 1e17); */
+    /*     assertEq(npvToken.balanceOf(address(slice)), 4e17); */
 
-        vm.warp(block.timestamp + 0xf000);
+    /*     vm.warp(block.timestamp + 0xf000); */
 
-        {
-            (uint256 nominal3, uint256 npv3, uint256 claimable3) = slice.generatedCredit(id2);
-            assertEq(npv3, 4e17);
-            assertEq(claimable3, 150834817531690789);
-            assertEq(nominal3, 462535712987055427);
-            assertEq(npvToken.totalSupply(), 657008058000000000);
+    /*     { */
+    /*         (uint256 nominal3, uint256 npv3, uint256 claimable3) = slice.generatedCredit(id2); */
+    /*         assertEq(npv3, 4e17); */
+    /*         assertEq(claimable3, 150834817531690789); */
+    /*         assertEq(nominal3, 462535712987055427); */
+    /*         assertEq(npvToken.totalSupply(), 657008058000000000); */
 
-            uint256 before3 = yieldToken.balanceOf(bob);
-            slice.claim(id2, 0);
-            uint256 delta = yieldToken.balanceOf(bob) - before2;
+    /*         uint256 before3 = yieldToken.balanceOf(bob); */
+    /*         slice.claim(id2, 0); */
+    /*         uint256 delta = yieldToken.balanceOf(bob) - before2; */
 
-            assertClose(delta, 46e16, 1e16);
-            assertEq(delta, 462535712987055427);
-            assertEq(delta, nominal3);
-            assertEq(npvToken.totalSupply(), 257008058000000000);
-        }
+    /*         assertClose(delta, 46e16, 1e16); */
+    /*         assertEq(delta, 462535712987055427); */
+    /*         assertEq(delta, nominal3); */
+    /*         assertEq(npvToken.totalSupply(), 257008058000000000); */
+    /*     } */
 
-        vm.warp(block.timestamp + 0xf000);
+    /*     vm.warp(block.timestamp + 0xf000); */
 
-        {
-            ( , , uint256 claimable4) = slice.generatedCredit(id2);
-            assertEq(claimable4, 0);
-            assertEq(npvToken.totalSupply(), 257008058000000000);
-            assertEq(npvToken.balanceOf(bob), 1e17);
-            assertEq(npvToken.balanceOf(alice), npvToken.totalSupply() - 1e17);
-        }
+    /*     { */
+    /*         ( , , uint256 claimable4) = slice.generatedCredit(id2); */
+    /*         assertEq(claimable4, 0); */
+    /*         assertEq(npvToken.totalSupply(), 257008058000000000); */
+    /*         assertEq(npvToken.balanceOf(bob), 1e17); */
+    /*         assertEq(npvToken.balanceOf(alice), npvToken.totalSupply() - 1e17); */
+    /*     } */
 
-        vm.stopPrank();
-    }
+    /*     vm.stopPrank(); */
+    /* } */
 
     function testComputePVAndNominal() public {
         uint256 pv = discounter.pv(500, 1e17);

@@ -39,7 +39,7 @@ contract YieldSlice is ReentrancyGuard {
     event Claimed(uint256 indexed id,
                   uint256 amount);
 
-    uint256 public constant DISCOUNT_PERIOD = 7 days;
+    /* uint256 public constant DISCOUNT_PERIOD = 7 days; */
 
     uint256 public constant FEE_DENOM = 100_0;
 
@@ -88,18 +88,31 @@ contract YieldSlice is ReentrancyGuard {
         uint128 createdBlockTimestamp;
         uint128 unlockedBlockTimestamp;
         uint256 shares;  // Share of the vault's locked generators
-        uint256 tokens;  // Tokens locked for generation, doesn't change
-        uint256 npv;
+        uint256 tokens;  // Tokens locked for generation
+        uint256 npvDebt;
         bytes memo;
     }
     mapping(uint256 => DebtSlice) public debtSlices;
 
     struct CreditSlice {
         address owner;
+
+        // The slice is entitled to `npvCredit` amount of yield, discounted
+        // relative to `blockTimestamp`.
         uint128 blockTimestamp;
         uint256 npvCredit;
+
+        // This slice's share of yield, as a fraction of total NPV tokens.
         uint256 npvTokens;
+
+        // `pending` is accumulated but unclaimed yield for this slice,
+        // in nominal terms.
+        uint256 pending;
+
+        // `claimed` is the amount of yield claimed by this slice, in
+        // nominal terms
         uint256 claimed;
+
         bytes memo;
     }
     mapping(uint256 => CreditSlice) public creditSlices;
@@ -158,6 +171,7 @@ contract YieldSlice is ReentrancyGuard {
             blockTimestamp: uint128(block.timestamp),
             npvCredit: 0,
             npvTokens: 0,
+            pending: 0,
             claimed: 0,
             memo: new bytes(0) });
     }
@@ -235,6 +249,42 @@ contract YieldSlice is ReentrancyGuard {
         return _previewDebtSlice(tokens_, yield);
     }
 
+    function _modifyDebtPosition(uint256 id,
+                                 uint256 deltaGenerator,
+                                 uint256 deltaYield)
+        internal
+        isDebtSlice(id)
+        returns (uint256, uint256) {
+
+        DebtSlice storage slice = debtSlices[id];
+
+        uint256 newTotalShares;
+        uint256 deltaShares;
+        uint256 oldTotalTokens = totalTokens();
+        if (totalShares == 0 || oldTotalTokens == 0) {
+            newTotalShares = deltaGenerator;
+            deltaShares = deltaGenerator;
+        } else {
+            newTotalShares = (oldTotalTokens + deltaGenerator) * totalShares / oldTotalTokens;
+            deltaShares = newTotalShares - totalShares;
+        }
+
+        generatorToken.safeTransferFrom(msg.sender, address(this), deltaGenerator);
+        generatorToken.safeApprove(address(yieldSource), 0);
+        generatorToken.safeApprove(address(yieldSource), deltaGenerator);
+        yieldSource.deposit(deltaGenerator, false);
+
+        (uint256 npv, uint256 fees) = _previewDebtSlice(deltaGenerator, deltaYield);
+
+        slice.shares += deltaShares;
+        slice.tokens += deltaGenerator;
+        slice.npvDebt += npv;
+
+        totalShares = newTotalShares;
+
+        return (npv, fees);
+    }
+
     function debtSlice(address owner,
                        address recipient,
                        uint256 tokens_,
@@ -250,49 +300,17 @@ contract YieldSlice is ReentrancyGuard {
             unlockedBlockTimestamp: 0,
             shares: 0,
             tokens: 0,
-            npv: 0,
+            npvDebt: 0,
             memo: memo });
-
-        uint256 newTotalShares;
-        uint256 delta;
-        uint256 oldTotalTokens = totalTokens();
-        if (totalShares == 0 || oldTotalTokens == 0) {
-            newTotalShares = tokens_;
-            delta = tokens_;
-        } else {
-            newTotalShares = (oldTotalTokens + tokens_) * totalShares / oldTotalTokens;
-            delta = newTotalShares - totalShares;
-        }
-
-        generatorToken.safeTransferFrom(msg.sender, address(this), tokens_);
-        generatorToken.safeApprove(address(yieldSource), 0);
-        generatorToken.safeApprove(address(yieldSource), tokens_);
-
-        yieldSource.deposit(tokens_, false);
-
-        (uint256 npv, uint256 fees) = _previewDebtSlice(tokens_, yield);
-
-        slice.shares = delta;
-        slice.tokens = tokens_;
-        slice.npv = npv;
-
         debtSlices[id] = slice;
 
-        totalShares = newTotalShares;
+        (uint256 npv, uint256 fees) = _modifyDebtPosition(id, tokens_, yield);
+
         npvToken.mint(recipient, npv - fees);
         npvToken.mint(treasury, fees);
         activeNPV += npv;
 
-        {
-            // TODO: Write a test to confirm this checkpointing is correct
-            CreditSlice storage unalloc = creditSlices[unallocId];
-            ( , , uint256 uClaimable) = generatedCredit(unallocId);
-            pendingClaimable[unallocId] = uClaimable;
-            unalloc.blockTimestamp = uint128(block.timestamp);
-            unalloc.npvCredit += npv;
-            unalloc.npvTokens += npv;
-            unalloc.claimed = 0;
-        }
+        _modifyCreditPosition(unallocId, int256(npv - fees));
 
         _recordData();
 
@@ -312,12 +330,12 @@ contract YieldSlice is ReentrancyGuard {
         DebtSlice storage slice = debtSlices[id];
         require(slice.unlockedBlockTimestamp == 0, "YS: already unlocked");
 
-        ( , uint256 npv, ) = generated(id);
-        uint256 left = npv > slice.npv ? 0 : slice.npv - npv;
+        ( , uint256 npvGen, ) = generated(id);
+        uint256 left = npvGen > slice.npvDebt ? 0 : slice.npvDebt - npvGen;
         uint256 actual = _min(left, amount);
         IERC20(npvToken).safeTransferFrom(msg.sender, address(this), actual);
         npvToken.burn(address(this), actual);
-        slice.npv -= actual;
+        slice.npvDebt -= actual;
         activeNPV -= actual;
 
         emit PayDebt(id, amount);
@@ -343,8 +361,8 @@ contract YieldSlice is ReentrancyGuard {
         DebtSlice storage slice = debtSlices[id];
         require(slice.unlockedBlockTimestamp == 0, "YS: already unlocked");
 
-        (, uint256 npv, uint256 refund) = generated(id);
-        require(npv >= slice.npv, "YS: npv debt");
+        (, uint256 npvGen, uint256 refund) = generated(id);
+        require(npvGen >= slice.npvDebt, "YS: npv debt");
 
         if (refund > 0) {
             _harvest();
@@ -359,7 +377,10 @@ contract YieldSlice is ReentrancyGuard {
         // debt slice, spiking the `activeNPV` value, and never unlocks his tokens?
         // with the goal of lowering the yield per second per NPV token?
         // Not sure if this actually works, but need to think it through
-        activeNPV -= slice.npv;
+
+        // TODO: this assumes NPV tokens minted == NPV debt, may not be the case
+        // if we add _modifyDebtPosition(...)
+        activeNPV -= slice.npvDebt;
 
         emit UnlockDebtSlice(slice.owner, id);
     }
@@ -373,59 +394,75 @@ contract YieldSlice is ReentrancyGuard {
     }
 
     function _modifyCreditPosition(uint256 id, int256 deltaNPV) internal isCreditSlice(id) {
-
         if (deltaNPV == 0) return;
-
         CreditSlice storage slice = creditSlices[id];
-        ( , , uint256 claimable) = generatedCredit(id);
-        /* uint256 claimableShare = uClaimable * npv / unalloc.npv; */
-        pendingClaimable[id] = claimable;
-        unalloc.blockTimestamp = uint128(block.timestamp);
+        require(deltaNPV > 0 || uint256(-deltaNPV) <= slice.npvTokens, "YS: invalid negative delta");
+
+        // The new NPV credited will be the existing NPV's value shifted
+        // forward to the current timestamp, subtracting the already generated
+        // NPV to this point.
+        ( , uint256 npvGen, uint256 claimable) = generatedCredit(id);
+        uint256 numDays = ((block.timestamp - uint256(slice.blockTimestamp))
+                           / discounter.DISCOUNT_PERIOD());
+        uint256 shiftedNPV = discounter.shiftNPV(slice.npvCredit - npvGen, numDays);
+
+        // Checkpoint what we can claim as pending, and set claimed to zero
+        // as it is now relative to the new timestamp.
+        slice.blockTimestamp = uint128(block.timestamp);
+        slice.pending = claimable;
+        slice.claimed = 0;
+
+        console.log("shiftedNPV", shiftedNPV);
+        console.log("deltaNPV       :", uint256(deltaNPV > 0 ? deltaNPV : -deltaNPV));
+        console.log("deltaNPV       :", uint256(deltaNPV > 0 ? 1 : 0));
+
+        console.log("slice.npvCredit:", slice.npvCredit);
+        console.log("slice.npvTokens:", slice.npvTokens);
 
         if (deltaNPV > 0) {
-            slice.npvCredit += uint256(deltaNPV);
+            slice.npvCredit = shiftedNPV + uint256(deltaNPV);
             slice.npvTokens += uint256(deltaNPV);
         } else {
-            slice.npvCredit -= uint256(-deltaNPV);
+            console.log("SUB");
+            slice.npvCredit = shiftedNPV - uint256(-deltaNPV);
+            console.log("SUB2");
             slice.npvTokens -= uint256(-deltaNPV);
+            console.log("SUB3");
         }
-        slice.claimed = 0;
-    }
-
-    function _checkpointUnalloc(uint256 npv) internal returns (uint256) {
-        _modifyCreditPosition(unallocId, npv);
-
-        /* // Grant proportional share of yield from the unallocated NPV slice */
-        /* CreditSlice storage unalloc = creditSlices[unallocId]; */
-        /* if (unalloc.npv == 0) return 0; */
-
-        /* ( , , uint256 uClaimable) = generatedCredit(unallocId); */
-        /* uint256 claimableShare = uClaimable * npv / unalloc.npv; */
-        /* _claim(unallocId, claimableShare); */
-        /* pendingClaimable[unallocId] = uClaimable - claimableShare; */
-
-        /* // Checkpoint the unallocated slice to the current block */
-        /* unalloc.blockTimestamp = uint128(block.timestamp); */
-        /* unalloc.npv -= npv; */
-        /* unalloc.claimed = 0; */
-
-        /* return claimableShare; */
     }
 
     function creditSlice(uint256 npv, address who, bytes calldata memo) external returns (uint256) {
-        IERC20(npvToken).safeTransferFrom(msg.sender, address(this), npv);
         uint256 fees = _creditFees(npv);
+        IERC20(npvToken).safeTransferFrom(msg.sender, address(this), npv);
         IERC20(npvToken).safeTransfer(treasury, fees);
 
+        // Checkpoint the unallocated NPV slice, and transfer proportional
+        // amount of pending yield to the new position.
+
+        CreditSlice storage unalloc = creditSlices[unallocId];
+
+        console.log("BEFORE unalloc.npvTokens:", unalloc.npvTokens);
+        console.log("BEFORE (npv - fees)     :", (npv - fees));
+
+        _modifyCreditPosition(unallocId, -int256(npv - fees));
+
+
+        uint256 pendingShare = unalloc.pending * (npv - fees) / (unalloc.npvTokens + npv - fees);
+
+        console.log("AFTER  unalloc.npvTokens:", unalloc.npvTokens);
+        console.log("AFTER  (npv - fees)     :", (npv - fees));
+
+        console.log("unalloc.pending", unalloc.pending);
+        console.log("pendingShare   ", pendingShare);
+        unalloc.pending -= pendingShare;
+
         uint256 id = nextId++;
-
-        pendingClaimable[id] = _checkpointUnalloc(npv);
-
         CreditSlice memory slice = CreditSlice({
             owner: who,
             blockTimestamp: uint128(block.timestamp),
             npvCredit: npv - fees,
             npvTokens: npv - fees,
+            pending: pendingShare,
             claimed: 0,
             memo: memo });
         creditSlices[id] = slice;
@@ -437,7 +474,7 @@ contract YieldSlice is ReentrancyGuard {
 
     function _claim(uint256 id, uint256 limit) internal returns (uint256) {
         CreditSlice storage slice = creditSlices[id];
-        ( , uint256 npv, uint256 claimable) = generatedCredit(id);
+        ( , uint256 npvGen, uint256 claimable) = generatedCredit(id);
 
         if (claimable == 0) return 0;
 
@@ -449,7 +486,7 @@ contract YieldSlice is ReentrancyGuard {
         yieldToken.safeTransfer(slice.owner, amount);
         slice.claimed += amount;
 
-        if (npv == slice.npvCredit) {
+        if (npvGen == slice.npvCredit) {
             npvToken.burn(address(this), slice.npvTokens);
         }
 
@@ -462,25 +499,25 @@ contract YieldSlice is ReentrancyGuard {
         return _claim(id, limit);
     }
 
-    function receiveNPV(uint256 id,
-                        address recipient,
-                        uint256 amount) external nonReentrant creditSliceOwner(id) {
-        CreditSlice storage slice = creditSlices[id];
-        ( , uint256 npv, ) = generatedCredit(id);
-        uint256 available = slice.npv - npv;
-        if (amount == 0) {
-            amount = available;
-        }
-        require(amount <= available, "YS: insufficient NPV");
-        npvToken.transfer(recipient, amount);
-        slice.npv -= amount;
+    /* function receiveNPV(uint256 id, */
+    /*                     address recipient, */
+    /*                     uint256 amount) external nonReentrant creditSliceOwner(id) { */
+    /*     CreditSlice storage slice = creditSlices[id]; */
+    /*     ( , uint256 npv, ) = generatedCredit(id); */
+    /*     uint256 available = slice.npv - npv; */
+    /*     if (amount == 0) { */
+    /*         amount = available; */
+    /*     } */
+    /*     require(amount <= available, "YS: insufficient NPV"); */
+    /*     npvToken.transfer(recipient, amount); */
+    /*     slice.npv -= amount; */
 
-        emit ReceiveNPV(recipient, id, amount);
-    }
+    /*     emit ReceiveNPV(recipient, id, amount); */
+    /* } */
 
     function remaining(uint256 id) public view returns (uint256) {
-        ( , uint256 npv, ) = generated(id);
-        return debtSlices[id].npv - npv;
+        ( , uint256 npvGen, ) = generated(id);
+        return debtSlices[id].npvDebt - npvGen;
     }
 
     function generated(uint256 id) public view returns (uint256, uint256, uint256) {
@@ -492,26 +529,26 @@ contract YieldSlice is ReentrancyGuard {
 
         for (uint256 i = slice.createdBlockTimestamp;
              i < last;
-             i += DISCOUNT_PERIOD) {
+             i += discounter.DISCOUNT_PERIOD()) {
 
-            uint256 end = _min(last - 1, i + DISCOUNT_PERIOD);
+            uint256 end = _min(last - 1, i + discounter.DISCOUNT_PERIOD());
             uint256 yts = debtData.yieldPerTokenPerSecond(uint128(i),
                                                           uint128(end),
                                                           totalTokens(),
                                                           cumulativeYield());
 
             uint256 yield = (yts * (end - i) * slice.tokens) / debtData.PRECISION_FACTOR();
-            uint256 estimatedDays = (end - slice.createdBlockTimestamp) / 1 days;
+            uint256 estimatedDays = (end - slice.createdBlockTimestamp) / discounter.DISCOUNT_PERIOD();
             uint256 pv = discounter.pv(estimatedDays, yield);
 
-            if (npv == slice.npv) {
+            if (npv == slice.npvDebt) {
                 refund += yield;
-            } else if (npv + pv > slice.npv) {
-                uint256 owed = discounter.nominal(estimatedDays, slice.npv - npv);
+            } else if (npv + pv > slice.npvDebt) {
+                uint256 owed = discounter.nominal(estimatedDays, slice.npvDebt - npv);
                 uint256 leftover = yield - owed;
                 nominal += owed;
                 refund += leftover;
-                npv = slice.npv;
+                npv = slice.npvDebt;
             } else {
                 npv += pv;
                 nominal += yield;
@@ -529,16 +566,16 @@ contract YieldSlice is ReentrancyGuard {
 
         for (uint256 i = slice.blockTimestamp;
              npv < slice.npvCredit && i < block.timestamp;
-             i += DISCOUNT_PERIOD) {
+             i += discounter.DISCOUNT_PERIOD()) {
 
-            uint256 end = _min(block.timestamp - 1, i + DISCOUNT_PERIOD);
+            uint256 end = _min(block.timestamp - 1, i + discounter.DISCOUNT_PERIOD());
             uint256 yts = creditData.yieldPerTokenPerSecond(uint128(i),
                                                             uint128(end),
                                                             activeNPV,
                                                             cumulativeYieldCredit());
 
             uint256 yield = (yts * (end - i) * slice.npvTokens) / creditData.PRECISION_FACTOR();
-            uint256 estimatedDays = (end - slice.blockTimestamp) / 1 days;
+            uint256 estimatedDays = (end - slice.blockTimestamp) / discounter.DISCOUNT_PERIOD();
             uint256 pv = discounter.pv(estimatedDays, yield);
 
             if (npv + pv > slice.npvCredit) {
@@ -551,8 +588,8 @@ contract YieldSlice is ReentrancyGuard {
             npv += pv;
         }
 
-        return (pendingClaimable[id] + nominal,
+        return (slice.pending + nominal,
                 npv,
-                pendingClaimable[id] + claimable - slice.claimed);
+                slice.pending + claimable - slice.claimed);
     }
 }
