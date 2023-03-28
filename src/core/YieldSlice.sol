@@ -15,7 +15,7 @@ import { NPVToken } from "../tokens/NPVToken.sol";
 contract YieldSlice is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    event AddDebtSlice(address indexed owner,
+    event NewDebtSlice(address indexed owner,
                        uint256 indexed id,
                        uint256 tokens,
                        uint256 yield,
@@ -271,9 +271,7 @@ contract YieldSlice is ReentrancyGuard {
         return actual;
     }
 
-    function _modifyDebtPosition(uint256 id,
-                                 uint256 deltaGenerator,
-                                 uint256 deltaYield)
+    function _modifyDebtPosition(uint256 id, uint256 deltaGenerator, uint256 deltaYield)
         internal
         isDebtSlice(id)
         returns (uint256, uint256) {
@@ -298,22 +296,9 @@ contract YieldSlice is ReentrancyGuard {
         yieldSource.deposit(deltaGenerator, false);
 
         // Update NPV debt for the slice
-        uint256 npv;
-        uint256 fees;
-        if (slice.blockTimestamp == 0) {
-            assert(slice.npvDebt == 0);
-            (npv, fees) = _previewDebtSlice(deltaGenerator, deltaYield);
-            slice.npvDebt = npv;
-        } else {
-            // WRONG
-            (npv, fees) = _previewDebtSlice(slice.tokens + deltaGenerator, deltaYield);
-
-            ( , uint256 npvGen, ) = generated(id);
-            uint256 numDays = ((block.timestamp - uint256(slice.blockTimestamp))
-                               / discounter.DISCOUNT_PERIOD());
-            uint256 shiftedNPV = discounter.shiftNPV(slice.npvDebt - npvGen, numDays);
-            slice.npvDebt = shiftedNPV + npv;
-        }
+        assert(slice.npvDebt == 0);
+        (uint256 npv, uint256 fees) = _previewDebtSlice(deltaGenerator, deltaYield);
+        slice.npvDebt = npv;
         slice.blockTimestamp = uint128(block.timestamp);
         slice.shares += deltaShares;
         slice.tokens += deltaGenerator;
@@ -321,40 +306,6 @@ contract YieldSlice is ReentrancyGuard {
         totalShares = newTotalShares;
 
         return (npv, fees);
-    }
-
-    function _addDebt(uint256 id,
-                      address recipient,
-                      uint256 amountGenerator,
-                      uint256 amountYield) internal returns (uint256) {
-
-        DebtSlice storage slice = debtSlices[id];
-        (uint256 npv, uint256 fees) = _modifyDebtPosition(id, amountGenerator, amountYield);
-
-        npvToken.mint(recipient, npv - fees);
-        npvToken.mint(treasury, fees);
-        activeNPV += npv;
-
-        _modifyCreditPosition(unallocId, int256(npv - fees));
-
-        _recordData();
-
-        emit AddDebtSlice(slice.owner, id, amountGenerator, amountYield, npv, fees);
-
-        return npv;
-    }
-
-    function addDebt(uint256 id,
-                     address recipient,
-                     uint256 amountGenerator,
-                     uint256 amountYield)
-        external
-        nonReentrant
-        debtSliceOwner(id)
-        noDust(amountGenerator)
-        returns (uint256) {
-
-        return _addDebt(id, recipient, amountGenerator, amountYield);
     }
 
     function debtSlice(address owner,
@@ -377,7 +328,19 @@ contract YieldSlice is ReentrancyGuard {
             npvDebt: 0,
             memo: memo });
 
-        _addDebt(id, recipient, amountGenerator, amountYield);
+        (uint256 npv, uint256 fees) = _modifyDebtPosition(id, amountGenerator, amountYield);
+
+        npvToken.mint(recipient, npv - fees);
+        npvToken.mint(treasury, fees);
+        activeNPV += npv;
+
+        _modifyCreditPosition(unallocId, int256(npv - fees));
+
+        _recordData();
+
+        emit NewDebtSlice(owner, id, amountGenerator, amountYield, npv, fees);
+
+        return npv;
         
         return id;
     }
