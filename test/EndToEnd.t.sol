@@ -39,7 +39,7 @@ contract EndToEndTest is BaseTest {
             amount1Desired: token1Amount,
             amount0Min: 0,
             amount1Min: 0,
-            recipient: alice, 
+            recipient: alice,
             deadline: block.timestamp + 1 });
 
         assertEq(uniswapV3Pool.liquidity(), 0);
