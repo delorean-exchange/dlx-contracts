@@ -235,6 +235,9 @@ contract EndToEndTest is BaseTest {
             console.log("nominal  ", nominal);
             console.log("npv      ", npv);
             console.log("claimable", claimable);
+            assertEq(nominal, 40857239357584576);
+            assertEq(npv, 0);
+            assertEq(claimable, 40857239357584576);
         }
 
         console.log("---");
@@ -248,6 +251,9 @@ contract EndToEndTest is BaseTest {
             console.log("nominal  ", nominal);
             console.log("npv      ", npv);
             console.log("claimable", claimable);
+            assertEq(nominal, 40857239357584576);
+            assertEq(npv, 0);
+            assertEq(claimable, 40857239357584576);
         }
 
         console.log("---");
@@ -261,6 +267,9 @@ contract EndToEndTest is BaseTest {
             console.log("nominal  ", nominal);
             console.log("npv      ", npv);
             console.log("claimable", claimable);
+            assertEq(nominal, 45644096314068424);
+            assertEq(npv, 4786856956483848);
+            assertEq(claimable, 45644096314068424);
         }
 
         // Chad purchases some future yield. Some should be immediately available.
@@ -271,9 +280,11 @@ contract EndToEndTest is BaseTest {
         /* uint256 id2 = npvSwap.swapForSlice(chad, 100e18, 0, 0, new bytes(0)); */
         /* console.log("id2", id2); */
         console.log("npv balance", npvToken.balanceOf(chad));
+        assertEq(npvToken.balanceOf(chad), 100000000000000000000);
 
         console.log("previewNpv     ", previewNpv);
         console.log("previewNpv 3e17", 3e17);
+        assertEq(previewNpv, 819224692085661357);
 
         IERC20(npvToken).approve(address(npvSwap), 3e17);
         uint256 id2 = npvSwap.swapNPVForSlice(chad, 3e17, new bytes(0));
@@ -287,11 +298,17 @@ contract EndToEndTest is BaseTest {
             console.log("nominal  ", bNominal);
             console.log("npv      ", bNpv);
             console.log("claimable", bClaimable);
+            assertEq(bNominal, 45644096314068424);
+            assertEq(bNpv, 4786856956483848);
+            assertEq(bClaimable, 45644096314068424);
 
             console.log("-- CHAD");
             console.log("nominal  ", cNominal);
             console.log("npv      ", cNpv);
             console.log("claimable", cClaimable);
+            assertEq(cNominal, 16714863488012040);
+            assertEq(cNpv, 0);
+            assertEq(cClaimable, 16714863488012040);
         }
     }
 }
