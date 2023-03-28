@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/console.sol";
+
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -68,6 +69,10 @@ contract YieldSlice is ReentrancyGuard {
     uint256 public harvestedYield;
     uint256 public dustLimit;
     uint256 public cumulativePaidYield;
+
+    // Track separately from NPV token total supply, because burns
+    // happen on credit slice claims, even though debt slice unlocks
+    // are what result in yield generation changes.
     uint256 public activeNPV;
 
     uint256 public debtFee;
@@ -235,7 +240,7 @@ contract YieldSlice is ReentrancyGuard {
 
     function _recordData() private {
         debtData.record(totalTokens(), cumulativeYield());
-        creditData.record(npvToken.totalSupply(), cumulativeYieldCredit());
+        creditData.record(activeNPV, cumulativeYieldCredit());
     }
 
     function tokens(uint256 id) public view isDebtSlice(id) returns (uint256) {
@@ -330,6 +335,7 @@ contract YieldSlice is ReentrancyGuard {
     function mintFromYield(address recipient, uint256 amount) external {
         IERC20(yieldToken).safeTransferFrom(msg.sender, address(this), amount);
         npvToken.mint(recipient, amount);
+        activeNPV += amount;
         cumulativePaidYield += amount;
         _recordData();
     }
