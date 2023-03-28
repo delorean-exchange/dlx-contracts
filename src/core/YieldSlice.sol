@@ -1,4 +1,5 @@
-
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.13;
 
 import "forge-std/console.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -14,7 +15,7 @@ import { NPVToken } from "../tokens/NPVToken.sol";
 contract YieldSlice is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    event NewDebtSlice(address indexed owner,
+    event AddDebtSlice(address indexed owner,
                        uint256 indexed id,
                        uint256 tokens,
                        uint256 yield,
@@ -38,8 +39,6 @@ contract YieldSlice is ReentrancyGuard {
 
     event Claimed(uint256 indexed id,
                   uint256 amount);
-
-    /* uint256 public constant DISCOUNT_PERIOD = 7 days; */
 
     uint256 public constant FEE_DENOM = 100_0;
 
@@ -85,7 +84,7 @@ contract YieldSlice is ReentrancyGuard {
 
     struct DebtSlice {
         address owner;
-        uint128 createdBlockTimestamp;
+        uint128 blockTimestamp;
         uint128 unlockedBlockTimestamp;
         uint256 shares;  // Share of the vault's locked generators
         uint256 tokens;  // Tokens locked for generation
@@ -145,6 +144,11 @@ contract YieldSlice is ReentrancyGuard {
 
     modifier creditSliceOwner(uint256 id) {
         require(creditSlices[id].owner == msg.sender, "YS: only owner");
+        _;
+    }
+
+    modifier noDust(uint256 amount) {
+        require(amount > dustLimit, "YS: dust");
         _;
     }
 
@@ -276,6 +280,7 @@ contract YieldSlice is ReentrancyGuard {
 
         DebtSlice storage slice = debtSlices[id];
 
+        // Update generator shares and deposit the tokens
         uint256 newTotalShares;
         uint256 deltaShares;
         uint256 oldTotalTokens = totalTokens();
@@ -292,37 +297,39 @@ contract YieldSlice is ReentrancyGuard {
         generatorToken.safeApprove(address(yieldSource), deltaGenerator);
         yieldSource.deposit(deltaGenerator, false);
 
-        (uint256 npv, uint256 fees) = _previewDebtSlice(deltaGenerator, deltaYield);
+        // Update NPV debt for the slice
+        uint256 npv;
+        uint256 fees;
+        if (slice.blockTimestamp == 0) {
+            assert(slice.npvDebt == 0);
+            (npv, fees) = _previewDebtSlice(deltaGenerator, deltaYield);
+            slice.npvDebt = npv;
+        } else {
+            // WRONG
+            (npv, fees) = _previewDebtSlice(slice.tokens + deltaGenerator, deltaYield);
 
+            ( , uint256 npvGen, ) = generated(id);
+            uint256 numDays = ((block.timestamp - uint256(slice.blockTimestamp))
+                               / discounter.DISCOUNT_PERIOD());
+            uint256 shiftedNPV = discounter.shiftNPV(slice.npvDebt - npvGen, numDays);
+            slice.npvDebt = shiftedNPV + npv;
+        }
+        slice.blockTimestamp = uint128(block.timestamp);
         slice.shares += deltaShares;
         slice.tokens += deltaGenerator;
-        slice.npvDebt += npv;
 
         totalShares = newTotalShares;
 
         return (npv, fees);
     }
 
-    function debtSlice(address owner,
-                       address recipient,
-                       uint256 tokens_,
-                       uint256 yield,
-                       bytes calldata memo) external nonReentrant returns (uint256) {
+    function _addDebt(uint256 id,
+                      address recipient,
+                      uint256 amountGenerator,
+                      uint256 amountYield) internal returns (uint256) {
 
-        require(tokens_ > dustLimit, "YS: dust");
-
-        uint256 id = nextId++;
-        DebtSlice memory slice = DebtSlice({
-            owner: owner,
-            createdBlockTimestamp: uint128(block.timestamp),
-            unlockedBlockTimestamp: 0,
-            shares: 0,
-            tokens: 0,
-            npvDebt: 0,
-            memo: memo });
-        debtSlices[id] = slice;
-
-        (uint256 npv, uint256 fees) = _modifyDebtPosition(id, tokens_, yield);
+        DebtSlice storage slice = debtSlices[id];
+        (uint256 npv, uint256 fees) = _modifyDebtPosition(id, amountGenerator, amountYield);
 
         npvToken.mint(recipient, npv - fees);
         npvToken.mint(treasury, fees);
@@ -332,7 +339,45 @@ contract YieldSlice is ReentrancyGuard {
 
         _recordData();
 
-        emit NewDebtSlice(owner, id, tokens_, yield, npv, fees);
+        emit AddDebtSlice(slice.owner, id, amountGenerator, amountYield, npv, fees);
+
+        return npv;
+    }
+
+    function addDebt(uint256 id,
+                     address recipient,
+                     uint256 amountGenerator,
+                     uint256 amountYield)
+        external
+        nonReentrant
+        debtSliceOwner(id)
+        noDust(amountGenerator)
+        returns (uint256) {
+
+        return _addDebt(id, recipient, amountGenerator, amountYield);
+    }
+
+    function debtSlice(address owner,
+                       address recipient,
+                       uint256 amountGenerator,
+                       uint256 amountYield,
+                       bytes calldata memo)
+        external
+        nonReentrant
+        noDust(amountGenerator)
+        returns (uint256) {
+
+        uint256 id = nextId++;
+        debtSlices[id] = DebtSlice({
+            owner: owner,
+            blockTimestamp: 0,
+            unlockedBlockTimestamp: 0,
+            shares: 0,
+            tokens: 0,
+            npvDebt: 0,
+            memo: memo });
+
+        _addDebt(id, recipient, amountGenerator, amountYield);
         
         return id;
     }
@@ -373,11 +418,20 @@ contract YieldSlice is ReentrancyGuard {
         DebtSlice storage slice = debtSlices[id];
         require(slice.unlockedBlockTimestamp == 0, "YS: already unlocked");
 
-        (, uint256 npvGen, uint256 refund) = generated(id);
+        (uint256 nominalGen, uint256 npvGen, uint256 refund) = generated(id);
+
+        console.log("===");
+
+        console.log("can we unlock? npvGen ", npvGen);
+        console.log("can we unlock? npvDebt", slice.npvDebt);
+        console.log("nominalGen           :", nominalGen);
+        console.log("refund               :", refund);
+
         require(npvGen >= slice.npvDebt, "YS: npv debt");
 
         if (refund > 0) {
             _harvest();
+            console.log("Refunding", refund);
             uint256 balance = IERC20(yieldToken).balanceOf(address(this));
             IERC20(yieldToken).safeTransfer(slice.owner, _min(balance, refund));
         }
@@ -517,7 +571,7 @@ contract YieldSlice is ReentrancyGuard {
         uint256 refund = 0;
         uint256 last = slice.unlockedBlockTimestamp == 0 ? block.timestamp : slice.unlockedBlockTimestamp;
 
-        for (uint256 i = slice.createdBlockTimestamp;
+        for (uint256 i = slice.blockTimestamp;
              i < last;
              i += discounter.DISCOUNT_PERIOD()) {
 
@@ -528,7 +582,7 @@ contract YieldSlice is ReentrancyGuard {
                                                           cumulativeYield());
 
             uint256 yield = (yts * (end - i) * slice.tokens) / debtData.PRECISION_FACTOR();
-            uint256 estimatedDays = (end - slice.createdBlockTimestamp) / discounter.DISCOUNT_PERIOD();
+            uint256 estimatedDays = (end - slice.blockTimestamp) / discounter.DISCOUNT_PERIOD();
             uint256 pv = discounter.pv(estimatedDays, yield);
 
             if (npv == slice.npvDebt) {

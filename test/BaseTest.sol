@@ -69,6 +69,10 @@ contract BaseTest is Test {
     }
 
     function init() public {
+        init(10000000000000);
+    }
+
+    function init(uint256 yieldPerSecond) public {
         if (eq(vm.envString("NETWORK"), "arbitrum_goerli")) {
             arbitrumFork = vm.createFork(vm.envString("ARBITRUM_GOERLI_RPC_URL"));
 
@@ -89,7 +93,8 @@ contract BaseTest is Test {
         }
         vm.selectFork(arbitrumFork);
 
-        source = new FakeYieldSource(10000000000000);
+        /* source = new FakeYieldSource(10000000000000); */
+        source = new FakeYieldSource(yieldPerSecond);
         generatorToken = source.generatorToken();
         yieldToken = source.yieldToken();
         dataDebt = new YieldData(20);

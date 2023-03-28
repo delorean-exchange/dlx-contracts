@@ -14,22 +14,23 @@ import "../src/data/Discounter.sol";
 import "../src/data/YieldData.sol";
 
 contract YieldSliceTest is BaseTest {
-
     function setUp() public {
-        init();
     }
 
-    function debtSliceNPVDebt(uint256 id) internal returns (uint256) {
+    function debtSliceNPVDebt(uint256 id) internal view returns (uint256) {
         ( , , , , , uint256 npvDebt, ) = slice.debtSlices(id);
         return npvDebt;
     }
 
-    function creditSliceNPVCredit(uint256 id) internal returns (uint256) {
+    function creditSliceNPVCredit(uint256 id) internal view returns (uint256) {
         ( , , uint256 npvCredit, , , , ) = slice.creditSlices(id);
         return npvCredit;
     }
 
     function testSimpleSale() public {
+        init(10000000000);
+        discounter.setMaxDays(1440);
+
         vm.startPrank(alice);
 
         uint256 id1 = slice.nextId();
@@ -40,24 +41,51 @@ contract YieldSliceTest is BaseTest {
         uint256 afterVal = generatorToken.balanceOf(alice);
         assertEq(before - afterVal, 200e18);
 
-        assertEq(discounter.discounted(200e18, 1e18), 657008058000000000);
-        assertEq(npvToken.balanceOf(alice), 657008058000000000);
-        assertEq(debtSliceNPVDebt(id1), 657008058000000000);
+        assertEq(discounter.discounted(200e18, 1e18), 884433656000000000);
+        assertEq(npvToken.balanceOf(alice), 884433656000000000);
+        assertEq(debtSliceNPVDebt(id1), 884433656000000000);
 
-        // Not enough yield generated
         vm.expectRevert("YS: npv debt");
         slice.unlockDebtSlice(id1);
 
-        // Advance a few weeks */
         for (uint256 day = 0; day < 100; day += 7) {
-            vm.warp(block.timestamp + uint256(0xe000));
+            vm.warp(block.timestamp + 7 days);
+            slice.recordData();
+        }
+        vm.expectRevert("YS: npv debt");
+        slice.unlockDebtSlice(id1);
+
+        for (uint256 day = 0; day < 100; day += 7) {
+            vm.warp(block.timestamp + 7 days);
+            slice.recordData();
+        }
+        vm.expectRevert("YS: npv debt");
+        slice.unlockDebtSlice(id1);
+
+        for (uint256 day = 0; day < 1240; day += 7) {
+            vm.warp(block.timestamp + 7 days);
             slice.recordData();
         }
 
         slice.unlockDebtSlice(id1);
         assertEq(generatorToken.balanceOf(alice), before);
 
-        (uint256 nominal1, uint256 npv1, ) = slice.generated(id1);
+        slice.harvest();
+
+        (uint256 nominal1, uint256 npv1, uint256 refund1) = slice.generated(id1);
+
+        assertTrue(yieldToken.balanceOf(address(slice)) > npvToken.balanceOf(alice),
+                   "nominal should exceed npv");
+        assertTrue(yieldToken.balanceOf(address(slice)) > 1e18,
+                   "nominal should exceed sold");
+        assertEq(yieldToken.balanceOf(address(slice)), 1239713207999306393);
+
+        console.log(yieldToken.balanceOf(address(slice)) + refund1);
+        console.log(yieldToken.balanceOf(address(slice)));
+        console.log(nominal1);
+        assertClose(yieldToken.balanceOf(address(slice)), nominal1, 1e12);
+        assertEq(npv1, 884433656000000000);
+        assertEq(refund1, 18270792000693607);
 
         vm.warp(uint256(block.timestamp + 0x1000));
         (uint256 nominal2, uint256 npv2, ) = slice.generated(id1);
@@ -67,7 +95,79 @@ contract YieldSliceTest is BaseTest {
         vm.stopPrank();
     }
 
+    function testDoubleSale() public {
+        init(10000000000);
+        discounter.setMaxDays(1440);
+
+        vm.startPrank(alice);
+
+        uint256 id1 = slice.nextId();
+
+        uint256 starting = generatorToken.balanceOf(alice);
+
+        {
+            uint256 before = generatorToken.balanceOf(alice);
+            generatorToken.approve(address(npvSwap), 200e18);
+            npvSwap.lockForNPV(alice, alice, 200e18, 1e18, new bytes(0));
+            assertEq(before - generatorToken.balanceOf(alice), 200e18);
+        }
+
+        assertEq(discounter.discounted(200e18, 1e18), 884433656000000000);
+        assertEq(npvToken.balanceOf(alice), 884433656000000000);
+        assertEq(debtSliceNPVDebt(id1), 884433656000000000);
+
+        vm.warp(block.timestamp + 30 days);
+        slice.recordData();
+
+        vm.expectRevert("YS: npv debt");
+        slice.unlockDebtSlice(id1);
+
+        {
+            (uint256 nominal, uint256 npv, uint256 refund) = slice.generated(id1);
+            assertTrue(npv < nominal);
+            assertEq(nominal, 25919990000000000);
+            assertEq(npv, 25720503454576052);
+            assertEq(refund, 0);
+        }
+
+        {
+            uint256 before = debtSliceNPVDebt(id1);
+            generatorToken.approve(address(slice), 200e18);
+            slice.addDebt(id1, alice, 200e18, 1e18);
+
+            assertEq(debtSliceNPVDebt(id1), 1730359061982655432);
+
+            // Semantic sanity check, the new debt should be slightly under
+            // the double the old debt
+            assertClose(debtSliceNPVDebt(id1), 2 * before, 1e17);
+            assertTrue(debtSliceNPVDebt(id1) < 2 * before);
+        }
+
+        {
+            uint256 before = debtSliceNPVDebt(id1);
+            generatorToken.approve(address(slice), 200e18);
+            slice.addDebt(id1, alice, 200e18, 1e18);
+            uint256 delta = debtSliceNPVDebt(id1) - before;
+            assertEq(delta, 657008058000000000);
+            assertEq(debtSliceNPVDebt(id1), 1397594174000000000);
+        }
+
+        vm.warp(block.timestamp + uint256(0xf00000));
+        slice.recordData();
+
+        slice.unlockDebtSlice(id1);
+        assertEq(generatorToken.balanceOf(alice), starting);
+
+        slice.harvest();
+        assertEq(yieldToken.balanceOf(address(slice.yieldSource())), 3e18);
+        assertEq(slice.harvestedYield(), 3e18);
+
+        vm.stopPrank();
+    }
+
     function testUnlockWithNPVTokens() public {
+        init();
+
         vm.startPrank(alice);
 
         uint256 id1 = slice.nextId();
@@ -96,6 +196,8 @@ contract YieldSliceTest is BaseTest {
     }
 
     function testUnlockWithNPVTokensPayExtra() public {
+        init();
+
         vm.startPrank(alice);
 
         uint256 id1 = slice.nextId();
@@ -132,6 +234,7 @@ contract YieldSliceTest is BaseTest {
     }
 
     function testUnlockWithNPVTokensCreditSlice() public {
+        init();
 
         uint256 id1 = slice.nextId();
         uint256 id2 = slice.nextId() + 1;
@@ -216,6 +319,8 @@ contract YieldSliceTest is BaseTest {
     }
 
     function testRefund() public {
+        init();
+
         uint256 id1 = slice.nextId();
         uint256 id2 = slice.nextId() + 1;
 
@@ -315,6 +420,8 @@ contract YieldSliceTest is BaseTest {
     }
 
     function testSliceCredit() public  {
+        init();
+
         vm.startPrank(alice);
         uint256 before1 = generatorToken.balanceOf(alice);
         generatorToken.approve(address(npvSwap), 200e18);
@@ -354,6 +461,8 @@ contract YieldSliceTest is BaseTest {
     }
 
     function testReceiveNPV() public  {
+        init();
+
         vm.startPrank(alice);
         uint256 before1 = generatorToken.balanceOf(alice);
         generatorToken.approve(address(npvSwap), 200e18);
@@ -419,6 +528,8 @@ contract YieldSliceTest is BaseTest {
     }
 
     function testComputePVAndNominal() public {
+        init();
+
         uint256 pv = discounter.pv(500, 1e17);
         assertEq(pv, 77875209331343579);
 
@@ -428,6 +539,8 @@ contract YieldSliceTest is BaseTest {
     }
 
     function testFees() public {
+        init();
+
         slice.setTreasury(treasury);
         slice.setDebtFee(5_0);
         slice.setCreditFee(10_0);
