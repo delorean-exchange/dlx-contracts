@@ -49,7 +49,8 @@ contract DeployGLPMarket is BaseScript {
                                address(discounter),
                                1e9);
 
-        source.transferOwnership(address(slice));
+        /* source.transferOwnership(address(slice)); */
+        source.setOwner(address(slice));
         dataDebt.setWriter(address(slice));
         dataCredit.setWriter(address(slice));
         address npvToken = address(slice.npvToken());

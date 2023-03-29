@@ -9,12 +9,15 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { BaseScript } from "./BaseScript.sol";
 
+import { IWrappedETH } from "../src/interfaces/IWrappedETH.sol";
 import { FakeToken } from "../test/helpers/FakeToken.sol";
 import { FakeYieldSource } from "../test/helpers/FakeYieldSource.sol";
+import { FakeYieldSourceWETH } from "../test/helpers/FakeYieldSourceWETH.sol";
 import { UniswapV3LiquidityPool } from "../src/liquidity/UniswapV3LiquidityPool.sol";
 import { IUniswapV3Pool } from "../src/interfaces/uniswap/IUniswapV3Pool.sol";
 import { INonfungiblePositionManager } from "../src/interfaces/uniswap/INonfungiblePositionManager.sol";
 import { IUniswapV3Factory } from "../src/interfaces/uniswap/IUniswapV3Factory.sol";
+import { IYieldSource } from "../src/interfaces/IYieldSource.sol";
 import { StakedGLPYieldSource } from "../src/sources/StakedGLPYieldSource.sol";
 import { YieldSlice } from "../src/core/YieldSlice.sol";
 import { NPVToken } from "../src/tokens/NPVToken.sol";
@@ -29,32 +32,12 @@ contract DeployGLPMarket is BaseScript {
         init();
     }
 
-    function run() public {
-        vm.startBroadcast(pk);
-
-        FakeYieldSource source = new FakeYieldSource(10000000000000);
-        address yieldToken = address(source.yieldToken());
-        dataDebt = new YieldData(20);
-        dataCredit = new YieldData(20);
-        discounter = new Discounter(1e13, 500, 360, 18);
-        slice = new YieldSlice("npvETH-fGLP",
-                               address(source),
-                               address(dataDebt),
-                               address(dataCredit),
-                               address(discounter),
-                               1e9);
-
-        npvToken = address(slice.npvToken());
-
-        source.setOwner(address(slice));
-        dataDebt.setWriter(address(slice));
-        dataCredit.setWriter(address(slice));
-
+    function initUniswapV3Pool() public returns (address) {
+        // Initial price is 0.99 ETH/npvETH
         uint160 initialPrice;
         address token0;
         address token1;
 
-        // Initial price is 0.99 ETH/npvETH
         if (npvToken < yieldToken) {
             initialPrice = 78831026366734653132768280576;
             (token0, token1) = (npvToken, yieldToken);
@@ -70,11 +53,52 @@ contract DeployGLPMarket is BaseScript {
             IUniswapV3Pool(uniswapV3Pool).initialize(initialPrice);
         }
         pool = new UniswapV3LiquidityPool(address(uniswapV3Pool), arbitrumSwapRouter, arbitrumQuoterV2);
+        return address(pool);
+    }
+
+    function run() public {
+        vm.startBroadcast(pk);
+
+        IYieldSource source;
+
+        if (eq(vm.envString("USE_WETH"), "1")) {
+            uint256 amount = 5000 ether;
+            vm.deal(deployerAddress, amount);
+            IWrappedETH(arbitrumWeth).deposit{value: amount}();
+
+            FakeYieldSourceWETH fakeSource = new FakeYieldSourceWETH(100000000, arbitrumWeth);
+            IERC20(arbitrumWeth).transfer(address(fakeSource), amount);
+
+            fakeSource.mintBoth(0x70997970C51812dc3A010C7d01b50e0d17dc79C8, amount / 10);
+            fakeSource.mintBoth(deployerAddress, amount / 10);
+
+            source = IYieldSource(fakeSource);
+        } else {
+            FakeYieldSource fakeSource = new FakeYieldSource(10000000000000);
+            fakeSource.mintBoth(0x70997970C51812dc3A010C7d01b50e0d17dc79C8, 10000e18);
+            fakeSource.mintBoth(deployerAddress, 10000e18);
+            source = IYieldSource(fakeSource);
+        }
+
+        yieldToken = address(source.yieldToken());
+        dataDebt = new YieldData(20);
+        dataCredit = new YieldData(20);
+        discounter = new Discounter(1e13, 500, 360, 18);
+        slice = new YieldSlice("npvETH-fGLP",
+                               address(source),
+                               address(dataDebt),
+                               address(dataCredit),
+                               address(discounter),
+                               1e9);
+        npvToken = address(slice.npvToken());
+
+        source.setOwner(address(slice));
+        dataDebt.setWriter(address(slice));
+        dataCredit.setWriter(address(slice));
+
+        pool = UniswapV3LiquidityPool(initUniswapV3Pool());
 
         npvSwap = new NPVSwap(address(npvToken), address(slice), address(pool));
-
-        source.mintBoth(0x70997970C51812dc3A010C7d01b50e0d17dc79C8, 10000e18);
-        source.mintBoth(deployerAddress, 10000e18);
 
         vm.stopBroadcast();
 
@@ -99,11 +123,21 @@ contract DeployGLPMarket is BaseScript {
             json = vm.serializeString(objName, "contractName_slice", "YieldSlice");
             json = vm.serializeString(objName, "contractName_yieldSource", "FakeYieldSource");
 
-            if (eq(vm.envString("NETWORK"), "arbitrum")) {
-                vm.writeJson(json, "./json/deploy_fakeglp.arbitrum.json");
+            string memory filename = "./json/";
+
+            if (eq(vm.envString("USE_WETH"), "1")) {
+                filename = string.concat(filename, "deploy_fakeglp_weth");
             } else {
-                vm.writeJson(json, "./json/deploy_fakeglp.localhost.json");
+                filename = string.concat(filename, "deploy_fakeglp");
             }
+
+            if (eq(vm.envString("NETWORK"), "arbitrum")) {
+                filename = string.concat(filename, ".arbitrum.json");
+            } else {
+                filename = string.concat(filename, ".localhost.json");
+            }
+
+            vm.writeJson(json, filename);
         }
     }
 }

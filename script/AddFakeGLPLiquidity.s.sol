@@ -41,14 +41,27 @@ contract AddFakeGLPLiquidity is BaseScript {
             source = FakeYieldSource(vm.parseJsonAddress(config, ".fakeglp_yieldSource.address"));
         }
 
-        source.mintBoth(deployerAddress, 10000e18);
+        uint256 yieldTokenAmount;
+        uint256 generatorTokenAmount;
+        uint256 yieldToLock;
+
+        if (eq(vm.envString("USE_WETH"), "1")) {
+            yieldTokenAmount = 10 ether;
+            generatorTokenAmount = 10e18;
+            yieldToLock = 10 ether;
+        } else {
+            source.mintBoth(deployerAddress, 10000e18);
+            yieldTokenAmount = 1000e18;
+            generatorTokenAmount = 1000e18;
+            yieldToLock = 1000e18;
+        }
 
         uint256 before = IUniswapV3Pool(pool.pool()).liquidity();
         console.log("Liquidity before:", before);
 
-        addLiquidity(npvSwap, deployerAddress, 1000e18, 1000e18, 1000e18, -180, -60);
-        addLiquidity(npvSwap, deployerAddress, 1000e18, 1000e18, 1000e18, -360, -60);
-        addLiquidity(npvSwap, deployerAddress, 1000e18, 1000e18, 1000e18, -6960, -60);
+        addLiquidity(npvSwap, deployerAddress, yieldTokenAmount, generatorTokenAmount, yieldToLock,  -180, -60);
+        addLiquidity(npvSwap, deployerAddress, yieldTokenAmount, generatorTokenAmount, yieldToLock,  -360, -60);
+        addLiquidity(npvSwap, deployerAddress, yieldTokenAmount, generatorTokenAmount, yieldToLock,  -6960, -60);
 
         uint256 afterVal = IUniswapV3Pool(pool.pool()).liquidity();
         console.log("Liquidity after: ", afterVal);

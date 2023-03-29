@@ -58,7 +58,7 @@ contract FakeYieldSource is IYieldSource {
         checkpointPending();
     }
 
-    function setOwner(address owner_) external {
+    function setOwner(address owner_) external override {
         owner = owner_;
     }
 

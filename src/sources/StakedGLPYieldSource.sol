@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IYieldSource } from "../interfaces/IYieldSource.sol";
 import { IGLPRewardTracker } from "../interfaces/IGLPRewardTracker.sol";
 
-contract StakedGLPYieldSource is IYieldSource, Ownable {
+contract StakedGLPYieldSource is IYieldSource {
     using SafeERC20 for IERC20;
 
     IERC20 public immutable override generatorToken;
     IERC20 public immutable override yieldToken;
     IGLPRewardTracker public immutable tracker;
     uint256 public deposits;
+    address public owner;
 
-    constructor(address stglp_, address weth_, address tracker_) Ownable() {
+    constructor(address stglp_, address weth_, address tracker_) {
         require(stglp_ != address(0), "SGYS: zero address stglp");
         require(weth_ != address(0), "SGYS: zero address weth");
         require(tracker_ != address(0), "SGYS: zero address tracker");
@@ -26,13 +26,20 @@ contract StakedGLPYieldSource is IYieldSource, Ownable {
         tracker = IGLPRewardTracker(tracker_);
     }
 
-    function deposit(uint256 amount, bool claim) external onlyOwner override {
+    function setOwner(address owner_) external override {
+        owner = owner_;
+    }
+
+    function deposit(uint256 amount, bool claim) external override {
+        require(msg.sender == owner);
         generatorToken.safeTransferFrom(msg.sender, address(this), amount);
 
         if (claim) _harvest();
     }
 
-    function withdraw(uint256 amount, bool claim, address to) external onlyOwner override {
+    function withdraw(uint256 amount, bool claim, address to) external override {
+        require(msg.sender == owner);
+
         uint256 balance = generatorToken.balanceOf(address(this));
         if (amount > balance) {
             amount = balance;
@@ -50,10 +57,11 @@ contract StakedGLPYieldSource is IYieldSource, Ownable {
         uint256 before = yieldToken.balanceOf(address(this));
         tracker.claim(address(this));
         uint256 amount = yieldToken.balanceOf(address(this)) - before;
-        yieldToken.safeTransfer(owner(), amount);
+        yieldToken.safeTransfer(owner, amount);
     }
 
-    function harvest() external onlyOwner override {
+    function harvest() external override {
+        require(msg.sender == owner);
         _harvest();
     }
 
