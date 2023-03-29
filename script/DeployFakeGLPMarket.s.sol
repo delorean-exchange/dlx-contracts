@@ -100,6 +100,8 @@ contract DeployGLPMarket is BaseScript {
 
         npvSwap = new NPVSwap(address(npvToken), address(slice), address(pool));
 
+        console.log("???", address(npvSwap.slice()));
+
         vm.stopBroadcast();
 
         {
