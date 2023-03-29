@@ -387,11 +387,6 @@ contract YieldSlice is ReentrancyGuard {
         uint256 amount = tokens(id);
         yieldSource.withdraw(amount, false, slice.owner);
         slice.unlockedBlockTimestamp = uint128(block.timestamp);
-
-        // TODO: Is there a griefing attack where the attacker takes out a large
-        // debt slice, spiking the `activeNPV` value, and never unlocks his tokens?
-        // with the goal of lowering the yield per second per NPV token?
-        // Not sure if this actually works, but need to think it through
         activeNPV -= slice.npvDebt;
 
         emit UnlockDebtSlice(slice.owner, id);
