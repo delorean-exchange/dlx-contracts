@@ -37,12 +37,14 @@ contract FakeYieldSourceWETH is IYieldSource {
     IFakeToken public _generatorToken;
     address[] public holders;
     address public owner;
+    address public minter;
     bool public isWeth;
 
-    constructor(uint256 yieldPerBlock_, address weth_) {
+    constructor(uint256 yieldPerBlock_, address weth_, address minter_) {
         startBlockNumber = block.number;
         yieldPerBlock = yieldPerBlock_;
         owner = msg.sender;
+        minter = minter_;
 
         isWeth = address(weth_) != address(0);
         if (isWeth) {
@@ -97,10 +99,8 @@ contract FakeYieldSourceWETH is IYieldSource {
     }
 
     function mintYield(address who, uint256 amount) public {
-        console.log("MINT YIELD", who);
         if (isWeth) {
-            console.log("MINT weth", amount);
-            console.log("MINT weth", IERC20(_yieldToken).balanceOf(address(this)));
+            require(minter == address(0) || minter == msg.sender, "only minter");
             IERC20(_yieldToken).transfer(who, amount);
         } else {
             IFakeToken(_yieldToken).publicMint(who, amount);

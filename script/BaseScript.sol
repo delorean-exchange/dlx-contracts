@@ -61,7 +61,11 @@ contract BaseScript is Script {
         yieldToken = address(npvSwap.slice().yieldToken());
 
         uint256 before = IERC20(npvToken).balanceOf(who);
-        npvSwap.slice().yieldSource().generatorToken().approve(address(npvSwap), yieldToLock);
+
+        console.log("before", before);
+        console.log("GT bal", npvSwap.slice().yieldSource().generatorToken().balanceOf(deployerAddress));
+
+        npvSwap.slice().yieldSource().generatorToken().approve(address(npvSwap), generatorTokenAmount);
         npvSwap.lockForNPV(who, who, generatorTokenAmount, yieldToLock, new bytes(0));
 
         {
@@ -97,6 +101,7 @@ contract BaseScript is Script {
                 amount1Min: 0,
                 recipient: who,
                 deadline: block.timestamp + 10000 });
+
             IERC20(params.token0).approve(address(manager), token0Amount);
             IERC20(params.token1).approve(address(manager), token1Amount);
 

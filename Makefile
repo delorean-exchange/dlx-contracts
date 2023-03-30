@@ -24,6 +24,10 @@ fakeglp_weth_localhost: deploy_fakeglp_weth_localhost
 deploy_fakeglp_mainnet:
 	NETWORK=arbitrum forge script script/DeployFakeGLPMarket.s.sol --rpc-url $(RPC_URL) --broadcast
 	python3 python/consolidate_config.py
+deploy_fakeglp_weth_mainnet:
+	NETWORK=arbitrum USE_WETH=1 forge script script/DeployFakeGLPMarket.s.sol --rpc-url $(RPC_URL) --broadcast
+	python3 python/consolidate_config.py
+
 deploy_fakeglp_localhost:
 	NETWORK=localhost USE_WETH=0 forge script script/DeployFakeGLPMarket.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
 	python3 python/consolidate_config.py

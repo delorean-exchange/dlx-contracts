@@ -62,15 +62,34 @@ contract DeployGLPMarket is BaseScript {
         IYieldSource source;
 
         if (eq(vm.envString("USE_WETH"), "1")) {
-            uint256 amount = 5000 ether;
-            vm.deal(deployerAddress, amount);
-            IWrappedETH(arbitrumWeth).deposit{value: amount}();
+            uint256 amount;
 
-            FakeYieldSourceWETH fakeSource = new FakeYieldSourceWETH(100000000, arbitrumWeth);
-            IERC20(arbitrumWeth).transfer(address(fakeSource), amount);
+            FakeYieldSourceWETH fakeSource;
 
-            fakeSource.mintBoth(0x70997970C51812dc3A010C7d01b50e0d17dc79C8, amount / 10);
-            fakeSource.mintBoth(deployerAddress, amount / 10);
+            if (eq(vm.envString("NETWORK"), "arbitrum")) {
+                amount = 5000 wei;
+                IWrappedETH(arbitrumWeth).deposit{value: amount}();
+
+                fakeSource = new FakeYieldSourceWETH(1 wei,
+                                                     arbitrumWeth,
+                                                     0x70997970C51812dc3A010C7d01b50e0d17dc79C8);
+                IERC20(arbitrumWeth).transfer(address(fakeSource), amount);
+
+                fakeSource.mintGenerator(0x70997970C51812dc3A010C7d01b50e0d17dc79C8, 100e18);
+                fakeSource.mintGenerator(deployerAddress, 100e18);
+            } else {
+                amount = 5000 ether;
+
+                vm.deal(deployerAddress, amount);
+                IWrappedETH(arbitrumWeth).deposit{value: amount}();
+
+                fakeSource = new FakeYieldSourceWETH(100000000,
+                                                     arbitrumWeth,
+                                                     address(0));
+                IERC20(arbitrumWeth).transfer(address(fakeSource), amount);
+                fakeSource.mintBoth(0x70997970C51812dc3A010C7d01b50e0d17dc79C8, amount / 10);
+                fakeSource.mintBoth(deployerAddress, amount / 10);
+            }
 
             source = IYieldSource(fakeSource);
         } else {
@@ -126,13 +145,11 @@ contract DeployGLPMarket is BaseScript {
             json = vm.serializeString(objName, "contractName_yieldSource", "FakeYieldSource");
 
             string memory filename = "./json/";
-
             if (eq(vm.envString("USE_WETH"), "1")) {
                 filename = string.concat(filename, "deploy_fakeglp_weth");
             } else {
                 filename = string.concat(filename, "deploy_fakeglp");
             }
-
             if (eq(vm.envString("NETWORK"), "arbitrum")) {
                 filename = string.concat(filename, ".arbitrum.json");
             } else {

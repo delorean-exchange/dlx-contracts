@@ -29,26 +29,41 @@ contract AddFakeGLPLiquidity is BaseScript {
     function run() public {
         vm.startBroadcast(pk);
 
+        string memory filename = "./json/";
         if (eq(vm.envString("NETWORK"), "arbitrum")) {
-            string memory config = vm.readFile("json/config.arbitrum.json");
-            npvSwap = NPVSwap(vm.parseJsonAddress(config, ".fakeglp_npvSwap.address"));
-            pool = UniswapV3LiquidityPool(vm.parseJsonAddress(config, ".fakeglp_pool.address"));
-            source = FakeYieldSource(vm.parseJsonAddress(config, ".fakeglp_yieldSource.address"));
+            filename = "json/config.arbitrum.json";
         } else {
-            string memory config = vm.readFile("json/config.localhost.json");
-            npvSwap = NPVSwap(vm.parseJsonAddress(config, ".fakeglp_npvSwap.address"));
-            pool = UniswapV3LiquidityPool(vm.parseJsonAddress(config, ".fakeglp_pool.address"));
-            source = FakeYieldSource(vm.parseJsonAddress(config, ".fakeglp_yieldSource.address"));
+            filename = "json/config.localhost.json";
         }
+
+        string memory prefix;
+        if (eq(vm.envString("USE_WETH"), "1")) {
+            prefix = ".fakeglp_weth_";
+        } else {
+            prefix = ".fakeglp_";
+        }
+        
+        string memory config = vm.readFile(filename);
+        npvSwap = NPVSwap(vm.parseJsonAddress(config, string.concat(prefix, "npvSwap.address")));
+
+        pool = UniswapV3LiquidityPool(vm.parseJsonAddress(config, string.concat(prefix, "pool.address")));
+        source = FakeYieldSource(vm.parseJsonAddress(config, string.concat(prefix, "yieldSource.address")));
 
         uint256 yieldTokenAmount;
         uint256 generatorTokenAmount;
         uint256 yieldToLock;
 
         if (eq(vm.envString("USE_WETH"), "1")) {
-            yieldTokenAmount = 10 ether;
-            generatorTokenAmount = 10e18;
-            yieldToLock = 10 ether;
+            if (eq(vm.envString("NETWORK"), "arbitrum")) {
+                yieldTokenAmount = 1000 wei;
+                generatorTokenAmount = 10e18;
+                yieldToLock = 1000 wei;
+            } else {
+                yieldTokenAmount = 10 ether;
+                generatorTokenAmount = 10e18;
+                yieldToLock = 10 ether;
+            }
+            source.mintGenerator(deployerAddress, 10 * generatorTokenAmount);
         } else {
             source.mintBoth(deployerAddress, 10000e18);
             yieldTokenAmount = 1000e18;
