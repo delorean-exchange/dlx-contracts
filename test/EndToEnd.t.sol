@@ -178,41 +178,6 @@ contract EndToEndTest is BaseTest {
         vm.stopPrank();
     }
 
-
-    function testPayOffWithYield() public {
-        testAliceAddLiquidity();
-
-        // Bob locks and swaps generator tokens for upfront payment
-        vm.startPrank(bob);
-
-        source.mintGenerator(bob, 200e18);
-        generatorToken.approve(address(npvSwap), 200e18);
-        uint256 id1 = npvSwap.slice().nextId();
-        npvSwap.lockForYield(bob, 200e18, 1e18, 0, 0, new bytes(0));
-
-        uint256 remainingNPV = npvSwap.slice().remaining(id1);
-
-        uint256 part = remainingNPV / 10;
-
-        // Pay part of it
-        yieldToken.approve(address(npvSwap), part);
-        npvSwap.mintAndPayWithYield(id1, part);
-
-        vm.expectRevert("YS: npv debt");
-        slice.unlockDebtSlice(id1);
-
-        source.mintYield(bob, 1000000e18);
-        uint256 rest = remainingNPV - part;
-        yieldToken.approve(address(npvSwap), rest);
-
-        npvSwap.mintAndPayWithYield(id1, rest);
-        slice.unlockDebtSlice(id1);
-
-        assertEq(generatorToken.balanceOf(bob), 200e18);
-
-        vm.stopPrank();
-    }
-
     function testNPVClaimableForExistingYield() public {
         console.log("testNPVClaimableForExistingYield");
 
@@ -227,9 +192,9 @@ contract EndToEndTest is BaseTest {
         vm.startPrank(bob);
         source.mintYield(bob, 1000000e18);
         IERC20(yieldToken).approve(address(npvSwap), 1e18);
-        (uint256 previewNpv, ) = npvSwap.previewSwapForSlice(1e18, 0);
+        (uint256 previewNpv, ) = npvSwap.previewSwapForSlice(5e17, 0);
         console.log("previewNpv", previewNpv);
-        uint256 id = npvSwap.swapForSlice(bob, 1e18, previewNpv, 0, new bytes(0));
+        uint256 id = npvSwap.swapForSlice(bob, 5e17, previewNpv, 0, new bytes(0));
         console.log("id", id);
         vm.stopPrank();
 
@@ -238,11 +203,12 @@ contract EndToEndTest is BaseTest {
             console.log("nominal  ", nominal);
             console.log("npv      ", npv);
             console.log("claimable", claimable);
-            assertEq(nominal, 40857239357584576);
+            assertEq(nominal, 23624490900579010);
             assertEq(npv, 0);
-            assertEq(claimable, 40857239357584576);
+            assertEq(claimable, 23624490900579010);
         }
 
+        // Set yield rate to 0 and advance. No new yield, so claimable should stay flat.
         console.log("---");
         slice.recordData();
         source.setYieldPerBlock(0);
@@ -254,11 +220,12 @@ contract EndToEndTest is BaseTest {
             console.log("nominal  ", nominal);
             console.log("npv      ", npv);
             console.log("claimable", claimable);
-            assertEq(nominal, 40857239357584576);
+            assertEq(nominal, 23624490900579010);
             assertEq(npv, 0);
-            assertEq(claimable, 40857239357584576);
+            assertEq(claimable, 23624490900579010);
         }
 
+        // Resume yield generation
         console.log("---");
         slice.recordData();
         source.setYieldPerBlock(10000000000000);
@@ -270,28 +237,27 @@ contract EndToEndTest is BaseTest {
             console.log("nominal  ", nominal);
             console.log("npv      ", npv);
             console.log("claimable", claimable);
-            assertEq(nominal, 45644096314068424);
-            assertEq(npv, 4786856956483848);
-            assertEq(claimable, 45644096314068424);
+            assertTrue(npv < nominal);
+            assertEq(nominal,   26392349434071262);
+            assertEq(npv,        2767858533492252);
+            assertEq(claimable, 26392349434071262);
         }
 
         // Chad purchases some future yield. Some should be immediately available.
         vm.startPrank(chad);
-        source.mintYield(chad, 1000000e18);
-        IERC20(yieldToken).approve(address(slice), 100e18);
-        slice.mintFromYield(chad, 100e18);
-        /* uint256 id2 = npvSwap.swapForSlice(chad, 100e18, 0, 0, new bytes(0)); */
-        /* console.log("id2", id2); */
-        console.log("npv balance", npvToken.balanceOf(chad));
-        assertEq(npvToken.balanceOf(chad), 100000000000000000000);
+        source.mintBoth(chad, 1000000e18);
+
+        yieldToken.approve(address(npvSwap), 5e17);
+        uint256 id2 = npvSwap.swapForSlice(chad, 5e17, 0, 0, new bytes(0));
+        console.log("id2", id2);
+
+        /* console.log("npv balance", npvToken.balanceOf(chad)); */
+        /* assertEq(npvToken.balanceOf(chad), 100000000000000000000); */
 
         console.log("previewNpv     ", previewNpv);
         console.log("previewNpv 3e17", 3e17);
-        assertEq(previewNpv, 819224692085661357);
+        assertEq(previewNpv, 473692461556744701);
 
-        IERC20(npvToken).approve(address(npvSwap), 3e17);
-        uint256 id2 = npvSwap.swapNPVForSlice(chad, 3e17, new bytes(0));
-        console.log("id2", id2);
         vm.stopPrank();
 
         {
@@ -301,17 +267,17 @@ contract EndToEndTest is BaseTest {
             console.log("nominal  ", bNominal);
             console.log("npv      ", bNpv);
             console.log("claimable", bClaimable);
-            assertEq(bNominal, 45644096314068424);
-            assertEq(bNpv, 4786856956483848);
-            assertEq(bClaimable, 45644096314068424);
+            assertEq(bNominal, 26392349434071262);
+            assertEq(bNpv, 2767858533492252);
+            assertEq(bClaimable, 26392349434071262);
 
             console.log("-- CHAD");
             console.log("nominal  ", cNominal);
             console.log("npv      ", cNpv);
             console.log("claimable", cClaimable);
-            assertEq(cNominal, 16714863488012040);
+            assertEq(cNominal, 19251746879997161);
             assertEq(cNpv, 0);
-            assertEq(cClaimable, 16714863488012040);
+            assertEq(cClaimable, 19251746879997161);
         }
     }
 }

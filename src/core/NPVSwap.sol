@@ -160,22 +160,4 @@ contract NPVSwap {
 
         return id;
     }
-
-    // ----------------------------------------------------------------- //
-    // ---- Repay with yield: Mint NPV with yield, and pay off debt ---- //
-    // ----------------------------------------------------------------- //
-
-    function mintAndPayWithYield(uint256 id, uint256 amount) public {
-
-        slice.yieldToken().safeTransferFrom(msg.sender, address(this), amount);
-        slice.yieldToken().safeApprove(address(slice), 0);
-        slice.yieldToken().safeApprove(address(slice), amount);
-        slice.mintFromYield(address(this), amount);
-        IERC20(slice.npvToken()).safeApprove(address(slice), 0);
-        IERC20(slice.npvToken()).safeApprove(address(slice), amount);
-        uint256 paid = slice.payDebt(id, amount);
-        if (paid != amount) {
-            IERC20(slice.npvToken()).safeTransfer(msg.sender, amount - paid);
-        }
-    }
 }
