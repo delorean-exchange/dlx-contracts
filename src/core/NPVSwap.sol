@@ -125,17 +125,20 @@ contract NPVSwap {
                           uint256 yield,
                           uint256 amountOutMin,
                           uint128 sqrtPriceLimitX96,
-                          bytes calldata memo) public returns (uint256) {
+                          bytes calldata memo) public returns (uint256, uint256) {
 
         uint256 npv = previewLockForNPV(tokens, yield);
-        lockForNPV(owner, address(this), tokens, yield, memo);
+        uint256 id = lockForNPV(owner, address(this), tokens, yield, memo);
+
         IERC20(npvToken).safeApprove(address(pool), 0);
         IERC20(npvToken).safeApprove(address(pool), npv);
-        return pool.swap(owner,
-                         address(npvToken),
-                         uint128(npv),
-                         uint128(amountOutMin),
-                         sqrtPriceLimitX96);
+        uint256 out = pool.swap(owner,
+                                address(npvToken),
+                                uint128(npv),
+                                uint128(amountOutMin),
+                                sqrtPriceLimitX96);
+
+        return (id, out);
     }
 
     // Swap yield for future yield slice

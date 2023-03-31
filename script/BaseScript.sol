@@ -44,6 +44,7 @@ contract BaseScript is Script {
 
     uint256 pk;
     address deployerAddress;
+    address devAddress;
 
     function eq(string memory str1, string memory str2) public pure returns (bool) {
         return keccak256(abi.encodePacked(str1)) == keccak256(abi.encodePacked(str2));
@@ -114,10 +115,12 @@ contract BaseScript is Script {
             console.log("Using Arbitrum mainnet private key");
             pk = vm.envUint("ARBITRUM_PRIVATE_KEY");
             deployerAddress = vm.envAddress("ARBITRUM_DEPLOYER_ADDRESS");
+            devAddress = vm.envAddress("ARBITRUM_DEV_ADDRESS");
         } else {
             console.log("Using localhost private key");
             pk = vm.envUint("LOCALHOST_PRIVATE_KEY");
             deployerAddress = vm.envAddress("LOCALHOST_DEPLOYER_ADDRESS");
+            devAddress = vm.envAddress("LOCALHOST_DEV_ADDRESS");
         }
     }
 }

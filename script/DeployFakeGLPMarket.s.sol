@@ -72,10 +72,10 @@ contract DeployGLPMarket is BaseScript {
 
                 fakeSource = new FakeYieldSourceWETH(1 wei,
                                                      arbitrumWeth,
-                                                     0x70997970C51812dc3A010C7d01b50e0d17dc79C8);
+                                                     devAddress);
                 IERC20(arbitrumWeth).transfer(address(fakeSource), amount);
 
-                fakeSource.mintGenerator(0x70997970C51812dc3A010C7d01b50e0d17dc79C8, 100e18);
+                fakeSource.mintGenerator(devAddress, 100e18);
                 fakeSource.mintGenerator(deployerAddress, 100e18);
             } else {
                 amount = 5000 ether;

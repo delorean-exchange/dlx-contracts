@@ -326,8 +326,6 @@ contract YieldSlice is ReentrancyGuard {
         _recordData();
 
         emit NewDebtSlice(owner, id, amountGenerator, amountYield, npv, fees);
-
-        return npv;
         
         return id;
     }

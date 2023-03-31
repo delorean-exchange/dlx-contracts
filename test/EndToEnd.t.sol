@@ -129,8 +129,7 @@ contract EndToEndTest is BaseTest {
         assertEq(quote, 657008058000000000);
         assertEq(quote, npvSwap.previewLockForNPV(200e18, 1e18));
 
-        uint256 id1 = npvSwap.slice().nextId();
-        uint256 amount = npvSwap.lockForYield(bob, 200e18, 1e18, preview, 0, new bytes(0));
+        (uint256 id1 , uint256 amount) = npvSwap.lockForYield(bob, 200e18, 1e18, preview, 0, new bytes(0));
         (address owner , , , , , , ) = npvSwap.slice().debtSlices(id1);
         assertEq(owner, bob);
         assertEq(amount, 612862441028507418);

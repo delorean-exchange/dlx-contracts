@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "forge-std/console.sol";
+
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -21,24 +23,26 @@ contract StakedGLPYieldSource is IYieldSource {
         require(weth_ != address(0), "SGYS: zero address weth");
         require(tracker_ != address(0), "SGYS: zero address tracker");
 
+        owner = msg.sender;
         generatorToken = IERC20(stglp_);
         yieldToken = IERC20(weth_);
         tracker = IGLPRewardTracker(tracker_);
     }
 
     function setOwner(address owner_) external override {
+        require(msg.sender == owner, "only owner");
         owner = owner_;
     }
 
     function deposit(uint256 amount, bool claim) external override {
-        require(msg.sender == owner);
+        require(msg.sender == owner, "only owner");
         generatorToken.safeTransferFrom(msg.sender, address(this), amount);
 
         if (claim) _harvest();
     }
 
     function withdraw(uint256 amount, bool claim, address to) external override {
-        require(msg.sender == owner);
+        require(msg.sender == owner, "only owner");
 
         uint256 balance = generatorToken.balanceOf(address(this));
         if (amount > balance) {
@@ -61,7 +65,7 @@ contract StakedGLPYieldSource is IYieldSource {
     }
 
     function harvest() external override {
-        require(msg.sender == owner);
+        require(msg.sender == owner, "only owner");
         _harvest();
     }
 
