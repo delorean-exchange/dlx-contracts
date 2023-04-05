@@ -147,6 +147,7 @@ contract NPVSwap {
                           uint256 npvMin,
                           uint128 sqrtPriceLimitX96,
                           bytes calldata memo) public returns (uint256) {
+
         slice.yieldToken().safeTransferFrom(msg.sender, address(this), yield);
         slice.yieldToken().safeApprove(address(pool), 0);
         slice.yieldToken().safeApprove(address(pool), yield);

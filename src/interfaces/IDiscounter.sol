@@ -4,7 +4,6 @@ pragma solidity ^0.8.13;
 interface IDiscounter {
     function DISCOUNT_PERIOD() external view returns (uint256);
 
-    function setRate(uint256 rate) external;
     function setDaily(uint256 daily) external;
     function setMaxDays(uint256 maxDays) external;
 

@@ -7,7 +7,7 @@ import { IDiscounter } from "../interfaces/IDiscounter.sol";
 
 contract Discounter is IDiscounter, Ownable {
     uint256 public daily;
-    uint256 public rate;
+    uint256 public immutable rate;
     uint256 public maxDays;
     uint256 public immutable decimals;
 
@@ -19,10 +19,6 @@ contract Discounter is IDiscounter, Ownable {
         daily = daily_;
         maxDays = maxDays_;
         decimals = decimals_;
-        rate = rate_;
-    }
-
-    function setRate(uint256 rate_) external onlyOwner {
         rate = rate_;
     }
 
