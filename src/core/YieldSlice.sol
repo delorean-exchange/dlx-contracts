@@ -334,7 +334,7 @@ contract YieldSlice is ReentrancyGuard {
         DebtSlice storage slice = debtSlices[id];
         require(slice.unlockedBlockTimestamp == 0, "YS: already unlocked");
 
-        ( , uint256 npvGen, ) = generated(id);
+        ( , uint256 npvGen, ) = generatedDebt(id);
         uint256 left = npvGen > slice.npvDebt ? 0 : slice.npvDebt - npvGen;
         uint256 actual = _min(left, amount);
         IERC20(npvToken).safeTransferFrom(msg.sender, address(this), actual);
@@ -365,7 +365,7 @@ contract YieldSlice is ReentrancyGuard {
         DebtSlice storage slice = debtSlices[id];
         require(slice.unlockedBlockTimestamp == 0, "YS: already unlocked");
 
-        (uint256 nominalGen, uint256 npvGen, uint256 refund) = generated(id);
+        (uint256 nominalGen, uint256 npvGen, uint256 refund) = generatedDebt(id);
 
         require(npvGen >= slice.npvDebt, "YS: npv debt");
 
@@ -491,11 +491,11 @@ contract YieldSlice is ReentrancyGuard {
     }
 
     function remaining(uint256 id) public view returns (uint256) {
-        ( , uint256 npvGen, ) = generated(id);
+        ( , uint256 npvGen, ) = generatedDebt(id);
         return debtSlices[id].npvDebt - npvGen;
     }
 
-    function generated(uint256 id) public view returns (uint256, uint256, uint256) {
+    function generatedDebt(uint256 id) public view returns (uint256, uint256, uint256) {
         DebtSlice storage slice = debtSlices[id];
         uint256 nominal = 0;
         uint256 npv = 0;

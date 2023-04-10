@@ -72,7 +72,7 @@ contract YieldSliceTest is BaseTest {
 
         slice.harvest();
 
-        (uint256 nominal1, uint256 npv1, uint256 refund1) = slice.generated(id1);
+        (uint256 nominal1, uint256 npv1, uint256 refund1) = slice.generatedDebt(id1);
 
         assertTrue(yieldToken.balanceOf(address(slice)) > npvToken.balanceOf(alice),
                    "nominal should exceed npv");
@@ -88,7 +88,7 @@ contract YieldSliceTest is BaseTest {
         assertEq(refund1, 18270792000693607);
 
         vm.warp(uint256(block.timestamp + 0x1000));
-        (uint256 nominal2, uint256 npv2, ) = slice.generated(id1);
+        (uint256 nominal2, uint256 npv2, ) = slice.generatedDebt(id1);
         assertEq(nominal1, nominal2);
         assertEq(npv1, npv2);
 
@@ -112,7 +112,7 @@ contract YieldSliceTest is BaseTest {
         assertEq(discounter.discounted(200e18, 1e18), npvSliced);
         assertEq(npvToken.balanceOf(alice), npvSliced);
 
-        ( , uint256 npv, ) = slice.generated(id1);
+        ( , uint256 npv, ) = slice.generatedDebt(id1);
         assertEq(npv, 0);
 
         slice.recordData();
@@ -142,7 +142,7 @@ contract YieldSliceTest is BaseTest {
         assertEq(discounter.discounted(200e18, 1e18), npvSliced);
         assertEq(npvToken.balanceOf(alice), npvSliced);
 
-        ( , uint256 npv, ) = slice.generated(id1);
+        ( , uint256 npv, ) = slice.generatedDebt(id1);
         assertEq(npv, 0);
 
         slice.recordData();
@@ -189,14 +189,14 @@ contract YieldSliceTest is BaseTest {
         vm.stopPrank();
 
         assertEq(discounter.discounted(200e18, 1e18), npvSliced);
-        ( , uint256 npv1, ) = slice.generated(id1);
+        ( , uint256 npv1, ) = slice.generatedDebt(id1);
         assertEq(npv1, 0);
 
         slice.recordData();
         vm.warp(block.timestamp + 100);
 
         {
-            ( , uint256 npv2, ) = slice.generated(id1);
+            ( , uint256 npv2, ) = slice.generatedDebt(id1);
             assertEq(npv2, 990000000000000);
             ( , uint256 creditNpv2, ) = slice.generatedCredit(id2);
             assertEq(creditNpv2, 989999999999952);
@@ -263,7 +263,7 @@ contract YieldSliceTest is BaseTest {
         vm.stopPrank();
 
         {
-            (uint256 nominalDebt1, uint256 npvDebt1, uint256 refund1) = slice.generated(id1);
+            (uint256 nominalDebt1, uint256 npvDebt1, uint256 refund1) = slice.generatedDebt(id1);
             (uint256 nominalCredit1, uint256 npvCredit1, uint256 claimable1) = slice.generatedCredit(id2);
             assertEq(npvOwed, 657008058000000000);
             assertEq(npvEntitled, 657008058000000000);
@@ -278,7 +278,7 @@ contract YieldSliceTest is BaseTest {
         vm.warp(block.timestamp + 10);
 
         {
-            (uint256 nominalDebt2, uint256 npvDebt2, uint256 refund2) = slice.generated(id1);
+            (uint256 nominalDebt2, uint256 npvDebt2, uint256 refund2) = slice.generatedDebt(id1);
             (uint256 nominalCredit2, uint256 npvCredit2, uint256 claimable2) = slice.generatedCredit(id2);
 
             assertEq(npvDebt2, nominalDebt2);
@@ -296,7 +296,7 @@ contract YieldSliceTest is BaseTest {
         vm.warp(block.timestamp + 7 * 7200);
 
         {
-            (uint256 nominalDebt3, uint256 npvDebt3, uint256 refund3) = slice.generated(id1);
+            (uint256 nominalDebt3, uint256 npvDebt3, uint256 refund3) = slice.generatedDebt(id1);
             (uint256 nominalCredit3, uint256 npvCredit3, uint256 claimable3) = slice.generatedCredit(id2);
 
             assertTrue(npvDebt3 <= nominalDebt3, "debt npv < nominal 3");
@@ -313,7 +313,7 @@ contract YieldSliceTest is BaseTest {
         vm.warp(block.timestamp + 7 * 7200);
 
         {
-            (uint256 nominalDebt4, uint256 npvDebt4, uint256 refund4) = slice.generated(id1);
+            (uint256 nominalDebt4, uint256 npvDebt4, uint256 refund4) = slice.generatedDebt(id1);
             (uint256 nominalCredit4, uint256 npvCredit4, uint256 claimable4) = slice.generatedCredit(id2);
 
             assertTrue(npvDebt4 < nominalDebt4, "debt npv < nominal 4");
