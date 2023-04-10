@@ -330,6 +330,14 @@ contract YieldSlice is ReentrancyGuard {
         return id;
     }
 
+    function mintFromYield(address recipient, uint256 amount) external {
+        IERC20(yieldToken).safeTransferFrom(msg.sender, address(this), amount);
+        npvToken.mint(recipient, amount);
+        activeNPV += amount;
+        cumulativePaidYield += amount;
+        _recordData();
+    }
+
     function payDebt(uint256 id, uint256 amount) external nonReentrant isDebtSlice(id) returns (uint256) {
         DebtSlice storage slice = debtSlices[id];
         require(slice.unlockedBlockTimestamp == 0, "YS: already unlocked");
