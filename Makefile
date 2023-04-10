@@ -1,12 +1,12 @@
 RPC_URL=https://arb-mainnet.g.alchemy.com/v2/0R0ziU-Vo3g37WxX7ItzFOnL3doOIPh1
 
-all: json historical
-
 json:
 	curl "https://dlx-app.vercel.app/api/historical" >json/historical.json
 
-historical:
-	forge script script/GLPRewards.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
+historical_local: json
+	NETWORK=localhost forge script script/GLPRewards.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
+historical_mainnet: json
+	NETWORK=arbitrum forge script script/GLPRewards.s.sol --rpc-url $(RPC_URL) --broadcast
 
 glp_mainnet: deploy_glp_mainnet
 glp_localhost: deploy_glp_localhost
