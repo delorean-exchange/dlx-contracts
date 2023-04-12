@@ -130,7 +130,7 @@ contract BaseTest is Test {
         }
         pool = new UniswapV3LiquidityPool(address(uniswapV3Pool), arbitrumSwapRouter, arbitrumQuoterV2);
 
-        npvSwap = new NPVSwap(address(npvToken), address(slice), address(pool));
+        npvSwap = new NPVSwap(address(slice), address(pool));
     }
 
     function createUser(uint32 i) public returns (address) {

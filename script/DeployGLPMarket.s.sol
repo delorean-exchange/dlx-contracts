@@ -49,7 +49,6 @@ contract DeployGLPMarket is BaseScript {
                                address(discounter),
                                1e9);
 
-        /* source.transferOwnership(address(slice)); */
         source.setOwner(address(slice));
         dataDebt.setWriter(address(slice));
         dataCredit.setWriter(address(slice));
@@ -78,7 +77,7 @@ contract DeployGLPMarket is BaseScript {
             pool = new UniswapV3LiquidityPool(address(uniswapV3Pool), arbitrumSwapRouter, arbitrumQuoterV2);
         }
         
-        npvSwap = new NPVSwap(address(npvToken), address(slice), address(pool));
+        npvSwap = new NPVSwap(address(slice), address(pool));
 
         vm.stopBroadcast();
 

@@ -13,6 +13,7 @@ import { IDiscounter } from "../interfaces/IDiscounter.sol";
 import { YieldData } from "../data/YieldData.sol";
 import { NPVToken } from "../tokens/NPVToken.sol";
 
+/// @title Slice and transfer future yield based on net present value.
 contract YieldSlice is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -157,6 +158,13 @@ contract YieldSlice is ReentrancyGuard {
         _;
     }
 
+    /// @notice Create a YieldSlice.
+    /// @param symbol Symbol for the NPV token.
+    /// @param yieldSource_ An interface to interact with the underlying source of yield.
+    /// @param debtData_ Tracker for yield per token per second on debt side.
+    /// @param creditData_ Tracker for yield per token per second on credit side.
+    /// @param discounter_ Discount function for the future yield.
+    /// @param dustLimit_ Smallest amount of generating tokens that can be locked.
     constructor(string memory symbol,
                 address yieldSource_,
                 address debtData_,
@@ -189,40 +197,57 @@ contract YieldSlice is ReentrancyGuard {
         return x1 < x2 ? x1 : x2;
     }
 
+    /// @notice Set the governance address.
+    /// @param gov_ The new governance address.
     function setGov(address gov_) external onlyGov {
         gov = gov_;
     }
 
+    /// @notice Set the treasury address.
+    /// @param treasury_ The new treasury address.
     function setTreasury(address treasury_) external onlyGov {
         treasury = treasury_;
     }
 
+    /// @notice Set the dust limit.
+    /// @param dustLimit_ The new dust limit.
     function setDustLimit(uint256 dustLimit_) external onlyGov {
         dustLimit = dustLimit_;
     }
 
+    /// @notice Set the fee ratio othe debt side.
+    /// @param debtFee_ The new debt fee ratio.
     function setDebtFee(uint256 debtFee_) external onlyGov {
         require(debtFee_ <= MAX_DEBT_FEE, "YS: max debt fee");
         debtFee = debtFee_;
     }
 
+    /// @notice Set the fee ratio othe credit side.
+    /// @param creditFee_ The new credit fee ratio.
     function setCreditFee(uint256 creditFee_) external onlyGov {
         require(creditFee_ <= MAX_CREDIT_FEE, "YS: max credit fee");
         creditFee = creditFee_;
     }
 
+    /// @notice Total number of yield generating tokens.
+    /// @return Total number of yield generating tokens.
     function totalTokens() public view returns (uint256) {
         return yieldSource.amountGenerator();
     }
 
+    /// @notice Amount of yield generated in the contract's lifetime.
+    /// @return Cumulative yield on debt side.
     function cumulativeYield() public view returns (uint256) {
         return harvestedYield + yieldSource.amountPending();
     }
 
+    /// @notice Amount of yield generated in the contract's lifetime, exclusive of refunded amounts.
+    /// @return Cumulative yield on credit side.
     function cumulativeYieldCredit() public view returns (uint256) {
         return harvestedYield + cumulativePaidYield + yieldSource.amountPending();
     }
 
+    /// @notice Harvest yield from the yield generating tokens.
     function harvest() external nonReentrant {
         _harvest();
     }
@@ -234,6 +259,7 @@ contract YieldSlice is ReentrancyGuard {
         harvestedYield += pending;
     }
 
+    /// @notice Recrod data for yield generation rates on both debt and credit side.
     function recordData() public nonReentrant {
         _recordData();
     }
@@ -243,6 +269,8 @@ contract YieldSlice is ReentrancyGuard {
         creditData.record(activeNPV, cumulativeYieldCredit());
     }
 
+    /// @notice Number of locked tokens associated with a debt slice.
+    /// @param id ID of the debt slice.
     function tokens(uint256 id) public view isDebtSlice(id) returns (uint256) {
         if (totalShares == 0) return 0;
         return totalTokens() * debtSlices[id].shares / totalShares;
@@ -254,6 +282,11 @@ contract YieldSlice is ReentrancyGuard {
         return (npv, fees);
     }
 
+    /// @notice Compute the amount of NPV tokens from locking yield into a slice.
+    /// @param tokens_ Amount of yield generating tokens to lock.
+    /// @param yield Amount of future yield to lock.
+    /// @return uint256 Amount of NPV tokens minted to recipient.
+    /// @return uint256 Amount of NPV tokens going to fees.
     function previewDebtSlice(uint256 tokens_, uint256 yield) public view returns (uint256, uint256) {
         return _previewDebtSlice(tokens_, yield);
     }
@@ -295,6 +328,13 @@ contract YieldSlice is ReentrancyGuard {
         return (npv, fees);
     }
 
+    /// @notice Lock yield generating tokens into a slice, in exchange for NPV tokens.
+    /// @param owner Owner of the resulting debt slice, entitled to transfer the slice and unlock underlying.
+    /// @param recipient Recipient of the NPV tokens minted.
+    /// @param amountGenerator Amount of yield generating tokens to lock.
+    /// @param amountYield Amount of yield to lock.
+    /// @param memo Optional memo data to associate with the yield slice.
+    /// @return ID of the debt slice.
     function debtSlice(address owner,
                        address recipient,
                        uint256 amountGenerator,
@@ -330,6 +370,9 @@ contract YieldSlice is ReentrancyGuard {
         return id;
     }
 
+    /// @notice Mint NPV tokens from yield at 1:1 rate.
+    /// @param recipient Recipient of the NPV tokens minted.
+    /// @param amount The amount of yield tokens to exchange for NPV tokens.
     function mintFromYield(address recipient, uint256 amount) external {
         IERC20(yieldToken).safeTransferFrom(msg.sender, address(this), amount);
         npvToken.mint(recipient, amount);
@@ -338,6 +381,10 @@ contract YieldSlice is ReentrancyGuard {
         _recordData();
     }
 
+    /// @notice Pay off a debt slice using NPV tokens.
+    /// @param id ID of the debt slice to pay.
+    /// @param amount Amount of NPV tokens to pay off.
+    /// @return Actual amouhnt of NPV tokens used to pay off.
     function payDebt(uint256 id, uint256 amount) external nonReentrant isDebtSlice(id) returns (uint256) {
         DebtSlice storage slice = debtSlices[id];
         require(slice.unlockedBlockTimestamp == 0, "YS: already unlocked");
@@ -355,20 +402,25 @@ contract YieldSlice is ReentrancyGuard {
         return actual;
     }
 
-    function transferOwnership(uint256 id, address who) external nonReentrant isSlice(id) {
+    /// @notice Transfer ownership of a yield slice.
+    /// @param id ID of the slice to transfer.
+    /// @param recipient Recipient of the transfer
+    function transferOwnership(uint256 id, address recipient) external nonReentrant isSlice(id) {
         if (debtSlices[id].owner != address(0)) {
             DebtSlice storage slice = debtSlices[id];
             require(slice.owner == msg.sender, "YS: only debt slice owner");
-            slice.owner = who;
+            slice.owner = recipient;
         } else {
             assert(creditSlices[id].owner != address(0));
             CreditSlice storage slice = creditSlices[id];
             require(slice.owner == msg.sender, "YS: only credit slice owner");
             _claim(id, 0);
-            slice.owner = who;
+            slice.owner = recipient;
         }
     }
 
+    /// @notice Unlock the underlying tokens for a debt slice, if possible. Excess yield generated will be refunded.
+    /// @param id ID of the debt slice.
     function unlockDebtSlice(uint256 id) external nonReentrant debtSliceOwner(id) {
         DebtSlice storage slice = debtSlices[id];
         require(slice.unlockedBlockTimestamp == 0, "YS: already unlocked");
@@ -426,7 +478,12 @@ contract YieldSlice is ReentrancyGuard {
         }
     }
 
-    function creditSlice(uint256 npv, address who, bytes calldata memo) external returns (uint256) {
+    /// @notice Exchange NPV tokens for future yield, in the form of a credit slice.
+    /// @param npv Amount of NPV tokens to swap.
+    /// @param recipient Recipient of the credit slice.
+    /// @param memo Optional memo data to associate with the yield slice.
+    /// @return ID of the credit slice.
+    function creditSlice(uint256 npv, address recipient, bytes calldata memo) external returns (uint256) {
         uint256 fees = _creditFees(npv);
         IERC20(npvToken).safeTransferFrom(msg.sender, address(this), npv);
         IERC20(npvToken).safeTransfer(treasury, fees);
@@ -440,7 +497,7 @@ contract YieldSlice is ReentrancyGuard {
 
         uint256 id = nextId++;
         CreditSlice memory slice = CreditSlice({
-            owner: who,
+            owner: recipient,
             blockTimestamp: uint128(block.timestamp),
             npvCredit: npv - fees,
             npvTokens: npv - fees,
@@ -449,7 +506,7 @@ contract YieldSlice is ReentrancyGuard {
             memo: memo });
         creditSlices[id] = slice;
 
-        emit NewCreditSlice(who, id, npv, fees);
+        emit NewCreditSlice(recipient, id, npv, fees);
 
         return id;
     }
@@ -477,13 +534,29 @@ contract YieldSlice is ReentrancyGuard {
         return amount;
     }
 
-    function claim(uint256 id, uint256 limit) external nonReentrant creditSliceOwner(id) returns (uint256) {
+    /// @notice Claim yield from a credit slice.
+    /// @param id ID of the credit slice.
+    /// @param limit Max amount of yield to claim, where 0 is no limit.
+    /// @return Amount of yield claimed.
+    function claim(uint256 id, uint256 limit)
+        external
+        nonReentrant
+        creditSliceOwner(id) returns (uint256) {
+
         return _claim(id, limit);
     }
 
+    /// @notice Withdraw NPV tokens from a credit slice, if possible.
+    /// @param id ID of the credit slice.
+    /// @param recipient Recipient of the NPV tokens.
+    /// @param amount Amount of NPV to withdraw.
     function receiveNPV(uint256 id,
                         address recipient,
-                        uint256 amount) external nonReentrant creditSliceOwner(id) {
+                        uint256 amount)
+            external
+            nonReentrant
+            creditSliceOwner(id) {
+
         CreditSlice storage slice = creditSlices[id];
         ( , uint256 npvGen, ) = generatedCredit(id);
         uint256 available = slice.npvCredit - npvGen;
@@ -498,11 +571,19 @@ contract YieldSlice is ReentrancyGuard {
         emit ReceiveNPV(recipient, id, amount);
     }
 
+    /// @notice Amount of NPV debt remaining for debt slice.
+    /// @param id ID of the debt slice.
+    /// @return Amount of NPV debt remaining.
     function remaining(uint256 id) public view returns (uint256) {
         ( , uint256 npvGen, ) = generatedDebt(id);
         return debtSlices[id].npvDebt - npvGen;
     }
 
+    /// @notice Yield generated by a debt slice.
+    /// @param id ID of the debt slice.
+    /// @return Total nominal yield generated.
+    /// @return NPV of the yield generated, relative to slice creation.
+    /// @return Amount of yield tokens to refund upon unlock.
     function generatedDebt(uint256 id) public view returns (uint256, uint256, uint256) {
         DebtSlice storage slice = debtSlices[id];
         uint256 nominal = 0;
@@ -540,7 +621,12 @@ contract YieldSlice is ReentrancyGuard {
 
         return (nominal, npv, refund);
     }
-        
+
+    /// @notice Yield generated by a credit slice.
+    /// @param id ID of the credit slice.
+    /// @return Total nominal yield generated.
+    /// @return NPV of the yield generated, relative to slice creation.
+    /// @return Amount of yield tokens claimable for this slice.
     function generatedCredit(uint256 id) public view returns (uint256, uint256, uint256) {
         CreditSlice storage slice = creditSlices[id];
         uint256 nominal = 0;

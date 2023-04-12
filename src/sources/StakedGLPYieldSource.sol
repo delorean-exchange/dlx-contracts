@@ -9,6 +9,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IYieldSource } from "../interfaces/IYieldSource.sol";
 import { IGLPRewardTracker } from "../interfaces/IGLPRewardTracker.sol";
 
+/// @notice Wrapper interface for managing yield from sGLP.
 contract StakedGLPYieldSource is IYieldSource {
     using SafeERC20 for IERC20;
 
@@ -18,6 +19,10 @@ contract StakedGLPYieldSource is IYieldSource {
     uint256 public deposits;
     address public owner;
 
+    /// @notice Create a StakedGLPYieldSource.
+    /// @param stglp_ Address of sGLP.
+    /// @param weth_ Address fo WETH.
+    /// @param tracker_ Address of the GLP rewards tracker.
     constructor(address stglp_, address weth_, address tracker_) {
         require(stglp_ != address(0), "SGYS: zero address stglp");
         require(weth_ != address(0), "SGYS: zero address weth");
@@ -29,11 +34,16 @@ contract StakedGLPYieldSource is IYieldSource {
         tracker = IGLPRewardTracker(tracker_);
     }
 
+    /// @notice Set a new owner.
+    /// @param owner_ The new owner.
     function setOwner(address owner_) external override {
         require(msg.sender == owner, "only owner");
         owner = owner_;
     }
 
+    /// @notice Deposit sGLP.
+    /// @param amount Amount of sGLP to deposit.
+    /// @param claim If true, harvest yield.
     function deposit(uint256 amount, bool claim) external override {
         require(msg.sender == owner, "only owner");
         generatorToken.safeTransferFrom(msg.sender, address(this), amount);
@@ -41,6 +51,10 @@ contract StakedGLPYieldSource is IYieldSource {
         if (claim) _harvest();
     }
 
+    /// @notice Withdraw sGLP.
+    /// @param amount Amount of sGLP to withdraw.
+    /// @param claim If true, harvest yield.
+    /// @param to Recipient of the withdrawal.
     function withdraw(uint256 amount, bool claim, address to) external override {
         require(msg.sender == owner, "only owner");
 
@@ -69,10 +83,14 @@ contract StakedGLPYieldSource is IYieldSource {
         _harvest();
     }
 
+    /// @notice Amount of WETH yield pending that will be harvestable.
+    /// @return Amount of WETH yield pending that will be harvestable.
     function amountPending() external override view returns (uint256) {
         return _amountPending();
     }
 
+    /// @notice Amount of sGLP locked.
+    /// @return Amount of sGLP locked.
     function amountGenerator() external override view returns (uint256) {
         return generatorToken.balanceOf(address(this));
     }

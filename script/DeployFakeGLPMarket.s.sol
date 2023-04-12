@@ -117,9 +117,7 @@ contract DeployGLPMarket is BaseScript {
 
         pool = UniswapV3LiquidityPool(initUniswapV3Pool());
 
-        npvSwap = new NPVSwap(address(npvToken), address(slice), address(pool));
-
-        console.log("???", address(npvSwap.slice()));
+        npvSwap = new NPVSwap(address(slice), address(pool));
 
         vm.stopBroadcast();
 

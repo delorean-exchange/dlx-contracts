@@ -10,6 +10,7 @@ import { YieldSlice } from  "./YieldSlice.sol";
 import { NPVToken } from "../tokens/NPVToken.sol";
 import { ILiquidityPool } from "../interfaces/ILiquidityPool.sol";
 
+/// @title Swap future yield for upfront tokens.
 contract NPVSwap {
     using SafeERC20 for IERC20;
 
@@ -17,7 +18,11 @@ contract NPVSwap {
     YieldSlice public immutable slice;
     ILiquidityPool public immutable pool;
 
-    constructor(address npvToken_, address slice_, address pool_) {
+    /// @notice Create an NPVSwap.
+    /// @param slice_ Yield slice contract that will use to slice and swap yield.
+    /// @param pool_ Liquidity pool to trade NPV for real tokens.
+    constructor(address slice_, address pool_) {
+        address npvToken_ = address(YieldSlice(slice_).npvToken());
         require(npvToken_ == ILiquidityPool(pool_).token0() ||
                 npvToken_ == ILiquidityPool(pool_).token1(), "NS: wrong token");
 
@@ -30,11 +35,19 @@ contract NPVSwap {
     // --------------------------------------------------------- //
     // ---- Low level: Transacting in NPV tokens and slices ---- //
     // --------------------------------------------------------- //
+
+    /// @notice Compute the amount of NPV that will be generated.
+    /// @param tokens The number of yield generating tokens to be locked.
+    /// @param yield The amount of yield to be commited into the slice.
     function previewLockForNPV(uint256 tokens, uint256 yield) public view returns (uint256) {
         (uint256 npv, uint256 fees) = slice.previewDebtSlice(tokens, yield);
         return npv - fees;
     }
 
+    /// @notice Compute the result of a swap from yield to NPV tokens.
+    /// @dev Not a view, and should not be used on-chain, due to underlying Uniswap v3 behavior.
+    /// @param yieldIn The amount of yield tokens input.
+    /// @param sqrtPriceLimitX96 Price limit in sqrtX96 format.
     function previewSwapYieldForNPV(uint256 yieldIn, uint128 sqrtPriceLimitX96)
         public returns (uint256, uint256) {
 
@@ -43,6 +56,10 @@ contract NPVSwap {
                                 sqrtPriceLimitX96);
     }
 
+    /// @notice Compute the result of a swap from yield to NPV tokens, with exact output.
+    /// @dev Not a view, and should not be used, on-chain, due to underlying Uniswap v3 behavior.
+    /// @param npvOut The amount of NPV tokens desired as output.
+    /// @param sqrtPriceLimitX96 Price limit in sqrtX96 format.
     function previewSwapYieldForNPVOut(uint256 npvOut, uint128 sqrtPriceLimitX96)
         public returns (uint256, uint256) {
 
@@ -51,6 +68,10 @@ contract NPVSwap {
                                    sqrtPriceLimitX96);
     }
 
+    /// @notice Compute the result of a swap from NPV tokens to yield.
+    /// @dev Not a view, and should not be used on-chain, due to underlying Uniswap v3 behavior.
+    /// @param npvIn The amount of NPV tokens input.
+    /// @param sqrtPriceLimitX96 Price limit in sqrtX96 format.
     function previewSwapNPVForYield(uint256 npvIn, uint128 sqrtPriceLimitX96)
         public returns (uint256, uint256) {
 
@@ -59,6 +80,10 @@ contract NPVSwap {
                                 sqrtPriceLimitX96);
     }
 
+    /// @notice Compute the result of a swap from NPV tokens to yield, with exact output.
+    /// @dev Not a view, and should not be used on-chain, due to underlying Uniswap v3 behavior.
+    /// @param yieldOut The amount of yield tokens desired as output.
+    /// @param sqrtPriceLimitX96 Price limit in sqrtX96 format.
     function previewSwapNPVForYieldOut(uint256 yieldOut, uint128 sqrtPriceLimitX96)
         public returns (uint256, uint256) {
 
@@ -67,7 +92,12 @@ contract NPVSwap {
                                    sqrtPriceLimitX96);
     }
 
-    // Lock yield generating tokens for NPV tokens
+    /// @notice Lock yield generating tokens to generate NPV tokens.
+    /// @param owner Owner of the resulting yield slice.
+    /// @param recipient Recipient of the NPV tokens.
+    /// @param tokens The number of yield generating tokens to be locked.
+    /// @param yield The amount of yield to be commited into the slice.
+    /// @param memo Optional memo data to associate with the yield slice.
     function lockForNPV(address owner,
                         address recipient,
                         uint256 tokens,
@@ -83,7 +113,10 @@ contract NPVSwap {
         return id;
     }
 
-    // Swap NPV tokens for a future yield slice
+    /// @notice Swap NPV tokens for a future yield in the form of a yield slice.
+    /// @param recipient Recipient of the yield slice.
+    /// @param npv Amount of NPV tokens to swap into the yield slice.
+    /// @param memo Optional memo data to associate with the yield slice.
     function swapNPVForSlice(address recipient,
                              uint256 npv,
                              bytes calldata memo) public returns (uint256) {
@@ -97,13 +130,15 @@ contract NPVSwap {
     }
 
 
-
     // --------------------------------------------------------------- //
     // ---- High level: Transacting in generator and yield tokens ---- //
     // --------------------------------------------------------------- //
 
-    // Give a preview of `lockForYield`. Not a view, and should not be used
-    // on-chain, due to underlying Uniswap v3 behavior.
+    /// @notice Compute the result of a swap from locking yield into upfront yield.
+    /// @dev Not a view, and should not be used on-chain, due to underlying Uniswap v3 behavior.
+    /// @param tokens The number of yield generating tokens to be locked.
+    /// @param yield The amount of yield to be commited into the slice.
+    /// @param sqrtPriceLimitX96 Price limit in sqrtX96 format.
     function previewLockForYield(uint256 tokens, uint256 yield, uint128 sqrtPriceLimitX96)
         public returns (uint256, uint256) {
 
@@ -111,6 +146,10 @@ contract NPVSwap {
         return pool.previewSwap(address(npvToken), uint128(previewNPV), sqrtPriceLimitX96);
     }
 
+    /// @notice Compute the result of a swap of yield for future yield.
+    /// @dev Not a view, and should not be used on-chain, due to underlying Uniswap v3 behavior.
+    /// @param yieldIn The amount of yield tokens input.
+    /// @param sqrtPriceLimitX96 Price limit in sqrtX96 format.
     function previewSwapForSlice(uint256 yieldIn, uint128 sqrtPriceLimitX96) public returns (uint256, uint256) {
         (uint256 npv, uint256 priceX96) = pool.previewSwap(address(slice.yieldToken()),
                                                            uint128(yieldIn),
@@ -119,7 +158,13 @@ contract NPVSwap {
         return (npv - fees, priceX96);
     }
 
-    // Lock and swap yield generating tokens for yield tokens
+    /// @notice Lock yield generating tokens into a slice, and swap for yield tokens.
+    /// @param owner Owner of the resulting debt yield slice.
+    /// @param tokens The number of yield generating tokens to be locked.
+    /// @param yield The amount of yield to be commited into the slice.
+    /// @param amountOutMin Minimum amount of yield to output.
+    /// @param sqrtPriceLimitX96 Price limit in sqrtX96 format.
+    /// @param memo Optional memo data to associate with the yield slice.
     function lockForYield(address owner,
                           uint256 tokens,
                           uint256 yield,
@@ -141,7 +186,12 @@ contract NPVSwap {
         return (id, out);
     }
 
-    // Swap yield for future yield slice
+    /// @notice Swap upfront yield for a future yield slice.
+    /// @param recipient Recipient of the future yield.
+    /// @param yield Amount of upfront yield to swap for future yield.
+    /// @param npvMin Minumum amount of NPV of yield to receive.
+    /// @param sqrtPriceLimitX96 Price limit in sqrtX96 format.
+    /// @param memo Optional memo data to associate with the yield slice.
     function swapForSlice(address recipient,
                           uint256 yield,
                           uint256 npvMin,
@@ -169,6 +219,9 @@ contract NPVSwap {
     // ---- Repay with yield: Mint NPV with yield, and pay off debt ---- //
     // ----------------------------------------------------------------- //
 
+    /// @notice Mint NPV tokens from yield at 1:1 rate, and pay off debt for a slice.
+    /// @param id The debt slice ID.
+    /// @param amount The amount of yield tokens to exchange for NPV tokens.
     function mintAndPayWithYield(uint256 id, uint256 amount) public {
 
         slice.yieldToken().safeTransferFrom(msg.sender, address(this), amount);
