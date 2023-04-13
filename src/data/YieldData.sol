@@ -22,7 +22,7 @@ contract YieldData is Ownable {
     struct Epoch {
         uint256 tokens;
         uint256 yield;
-        uint256 acc;
+        uint256 yieldPerToken;
         uint128 blockTimestamp;
         uint128 epochSeconds;
     }
@@ -63,14 +63,14 @@ contract YieldData is Ownable {
                 epochSeconds: 0,
                 tokens: tokens,
                 yield: yield,
-                acc: 0 });
+                yieldPerToken: 0 });
         } else {
             Epoch memory c = epochs[epochIndex];
 
             uint128 epochSeconds = uint128(block.timestamp) - c.blockTimestamp - c.epochSeconds;
             uint256 delta = (yield - c.yield);
 
-            c.acc += c.tokens == 0 ? 0 : delta * PRECISION_FACTOR / c.tokens;
+            c.yieldPerToken += c.tokens == 0 ? 0 : delta * PRECISION_FACTOR / c.tokens;
             c.epochSeconds += epochSeconds;
 
             if (c.epochSeconds >= interval) {
@@ -79,7 +79,7 @@ contract YieldData is Ownable {
                     epochSeconds: 0,
                     tokens: tokens,
                     yield: yield,
-                    acc: 0 });
+                    yieldPerToken: 0 });
             } else {
                 c.tokens = tokens;
             }
@@ -147,8 +147,8 @@ contract YieldData is Ownable {
         require(start < uint128(block.timestamp), "YD: start must be in the past");
 
         uint256 index = _find(start);
-        uint256 acc;
-        uint256 sum;
+        uint256 yieldPerToken;
+        uint256 numSeconds;
 
         Epoch memory epochPush;
         Epoch memory epochSet;
@@ -179,16 +179,16 @@ contract YieldData is Ownable {
                 epochSeconds -= epoch.blockTimestamp + epoch.epochSeconds - end;
             }
 
-            uint256 incr = (epochSeconds * epoch.acc) / epoch.epochSeconds;
+            uint256 incr = (epochSeconds * epoch.yieldPerToken) / epoch.epochSeconds;
 
-            acc += incr;
-            sum += epochSeconds;
+            yieldPerToken += incr;
+            numSeconds += epochSeconds;
 
             if (end < epoch.blockTimestamp + epoch.epochSeconds) break;
         }
 
-        if (sum == 0) return 0;
+        if (numSeconds == 0) return 0;
 
-        return acc / sum;
+        return yieldPerToken / numSeconds;
     }
 }
