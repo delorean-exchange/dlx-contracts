@@ -515,4 +515,46 @@ contract YieldSliceTest is BaseTest {
 
         assertEq(npvToken.balanceOf(treasury), expectedDebtFee + 5e16);
     }
+
+    function testUnlockAmounts() public {
+        init();
+
+        // Alice sells yield
+        vm.startPrank(alice);
+        generatorToken.approve(address(npvSwap), 200e18);
+        uint256 beforeAlice = generatorToken.balanceOf(alice);
+        uint256 idAlice = npvSwap.lockForNPV(alice, alice, 200e18, 1e18, new bytes(0));
+        uint256 deltaAlice = beforeAlice - generatorToken.balanceOf(alice);
+        assertEq(deltaAlice, 200e18);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 1000);
+
+        // Bob sells yield
+        source.mintGenerator(bob, 200e18);
+
+        vm.startPrank(bob);
+        generatorToken.approve(address(npvSwap), 100e18);
+        uint256 beforeBob = generatorToken.balanceOf(bob);
+        uint256 idBob = npvSwap.lockForNPV(bob, bob, 100e18, 1e18, new bytes(0));
+        uint256 deltaBob = beforeBob - generatorToken.balanceOf(bob);
+        assertEq(deltaBob, 100e18);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 0xf0000);
+
+        vm.startPrank(alice);
+        slice.unlockDebtSlice(idAlice);
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        slice.unlockDebtSlice(idBob);
+        vm.stopPrank();
+
+        assertEq(generatorToken.balanceOf(alice), beforeAlice);
+        assertEq(generatorToken.balanceOf(alice), 1000000e18);
+
+        assertEq(generatorToken.balanceOf(bob), beforeBob);
+        assertEq(generatorToken.balanceOf(bob), 200e18);
+    }
 }

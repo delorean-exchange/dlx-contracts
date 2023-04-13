@@ -434,10 +434,13 @@ contract YieldSlice is ReentrancyGuard {
             uint256 balance = IERC20(yieldToken).balanceOf(address(this));
             IERC20(yieldToken).safeTransfer(slice.owner, _min(balance, refund));
         }
-        uint256 amount = tokens(id);
+
+        uint256 amount = _min(yieldSource.amountGenerator(), slice.tokens);
         yieldSource.withdraw(amount, false, slice.owner);
-        slice.unlockedBlockTimestamp = uint128(block.timestamp);
         activeNPV -= slice.npvDebt;
+        totalShares -= slice.shares;
+
+        slice.unlockedBlockTimestamp = uint128(block.timestamp);
 
         emit UnlockDebtSlice(slice.owner, id);
     }
