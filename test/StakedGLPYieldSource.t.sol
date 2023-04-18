@@ -18,7 +18,7 @@ contract StakedGLPYieldSourceTest is BaseTest {
     StakedGLPYieldSource glpYieldSource;
     IGLPRewardTracker tracker = IGLPRewardTracker(0x4e971a87900b931fF39d1Aad67697F49835400b6);
 
-    IERC20 stakedGLP = IERC20(0x5402B5F40310bDED796c7D0F3FF6683f5C0cFfdf);
+    IERC20 glp = IERC20(0x5402B5F40310bDED796c7D0F3FF6683f5C0cFfdf);
 
     function setUp() public {
         init();
@@ -27,18 +27,18 @@ contract StakedGLPYieldSourceTest is BaseTest {
 
     function testGLPYieldSource() public {
         vm.selectFork(arbitrumForkFrom61289647);
-        assertEq(stakedGLP.balanceOf(glpWhale), 1e18);
+        assertEq(glp.balanceOf(glpWhale), 1e18);
 
         vm.startPrank(glpWhale);
 
-        glpYieldSource = new StakedGLPYieldSource(address(stakedGLP),
+        glpYieldSource = new StakedGLPYieldSource(address(glp),
                                                   arbitrumWeth,
                                                   address(tracker));
 
-        stakedGLP.approve(address(glpYieldSource), 2e17);
+        glp.approve(address(glpYieldSource), 2e17);
         glpYieldSource.deposit(2e17, false);
-        assertEq(stakedGLP.balanceOf(glpWhale), 8e17);
-        assertEq(stakedGLP.balanceOf(address(glpYieldSource)), 2e17);
+        assertEq(glp.balanceOf(glpWhale), 8e17);
+        assertEq(glp.balanceOf(address(glpYieldSource)), 2e17);
         assertEq(glpYieldSource.amountPending(), 0);
 
         vm.roll(block.number + 100);
@@ -58,11 +58,11 @@ contract StakedGLPYieldSourceTest is BaseTest {
         assertEq(IERC20(arbitrumWeth).balanceOf(address(glpYieldSource)), 0);
         assertEq(glpYieldSource.amountPending(), 0);
 
-        assertEq(IERC20(stakedGLP).balanceOf(address(alice)), 0);
+        assertEq(IERC20(glp).balanceOf(address(alice)), 0);
         glpYieldSource.withdraw(100, false, alice);
-        assertEq(IERC20(stakedGLP).balanceOf(address(alice)), 100);
+        assertEq(IERC20(glp).balanceOf(address(alice)), 100);
         glpYieldSource.withdraw(99e18, false, alice);
-        assertEq(IERC20(stakedGLP).balanceOf(address(alice)), 2e17);
+        assertEq(IERC20(glp).balanceOf(address(alice)), 2e17);
 
         vm.stopPrank();
     }

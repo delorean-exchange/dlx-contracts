@@ -116,6 +116,11 @@ contract BaseScript is Script {
             pk = vm.envUint("ARBITRUM_PRIVATE_KEY");
             deployerAddress = vm.envAddress("ARBITRUM_DEPLOYER_ADDRESS");
             devAddress = vm.envAddress("ARBITRUM_DEV_ADDRESS");
+        } else if (eq(vm.envString("NETWORK"), "polygon")) {
+            console.log("Using Polygon mainnet private key");
+            pk = vm.envUint("POLYGON_PRIVATE_KEY");
+            deployerAddress = vm.envAddress("POLYGON_DEPLOYER_ADDRESS");
+            devAddress = vm.envAddress("POLYGON_DEV_ADDRESS");
         } else {
             console.log("Using localhost private key");
             pk = vm.envUint("LOCALHOST_PRIVATE_KEY");
