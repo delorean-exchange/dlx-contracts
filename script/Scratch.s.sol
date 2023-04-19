@@ -18,6 +18,8 @@ import { NPVSwap } from "../src/core/NPVSwap.sol";
 import { YieldSlice } from "../src/core/YieldSlice.sol";
 import { ISwapRouter } from  "../src/interfaces/uniswap/ISwapRouter.sol";
 
+import { SwapRouter } from "@v3-per/contracts/SwapRouter.sol";
+
 contract Scratch is BaseScript {
     using stdJson for string;
 
