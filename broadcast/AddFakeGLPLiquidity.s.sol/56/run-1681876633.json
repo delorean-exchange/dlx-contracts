@@ -1,0 +1,354 @@
+{
+  "transactions": [
+    {
+      "hash": "0xfa3f73e3e59745b95b0ce5731efda6264d3806a0b1522c417a809e3657b244ba",
+      "transactionType": "CALL",
+      "contractName": null,
+      "contractAddress": "0xC1bb5d5EE99096d907c5c719e7808c6100aF0d2e",
+      "function": null,
+      "arguments": null,
+      "rpc": "https://bsc-dataseed2.binance.org",
+      "transaction": {
+        "type": "0x00",
+        "from": "0x08fa296ca8d0c9cb34ace38ae9cf49b751dc8aec",
+        "to": "0xc1bb5d5ee99096d907c5c719e7808c6100af0d2e",
+        "gas": "0x2731e",
+        "value": "0x0",
+        "data": "0xff496fe000000000000000000000000008fa296ca8d0c9cb34ace38ae9cf49b751dc8aec00000000000000000000000000000000000000000000021e19e0c9bab2400000",
+        "nonce": "0x131"
+      },
+      "additionalContracts": []
+    },
+    {
+      "hash": "0xb26bb53bb14f0e6226490b52f3ff9b39294e37489bfe48a6e0f26aba653837b1",
+      "transactionType": "CALL",
+      "contractName": null,
+      "contractAddress": "0xcfE82d8C44DFe6ba289306b7AF8397F37F47960D",
+      "function": null,
+      "arguments": null,
+      "rpc": "https://bsc-dataseed2.binance.org",
+      "transaction": {
+        "type": "0x00",
+        "from": "0x08fa296ca8d0c9cb34ace38ae9cf49b751dc8aec",
+        "to": "0xcfe82d8c44dfe6ba289306b7af8397f37f47960d",
+        "gas": "0x111d1",
+        "value": "0x0",
+        "data": "0x095ea7b3000000000000000000000000b95f7b1ae9083d118e443e0da3be758f0b90736f00000000000000000000000000000000000000000000003635c9adc5dea00000",
+        "nonce": "0x132"
+      },
+      "additionalContracts": []
+    },
+    {
+      "hash": "0x7b814b763b03633bc24bf4cdd32d0d28d001d54ac02528362e173195abd3bb44",
+      "transactionType": "CALL",
+      "contractName": null,
+      "contractAddress": "0xB95F7b1AE9083d118E443e0DA3be758f0b90736f",
+      "function": null,
+      "arguments": null,
+      "rpc": "https://bsc-dataseed2.binance.org",
+      "transaction": {
+        "type": "0x00",
+        "from": "0x08fa296ca8d0c9cb34ace38ae9cf49b751dc8aec",
+        "to": "0xb95f7b1ae9083d118e443e0da3be758f0b90736f",
+        "gas": "0x3891c9",
+        "value": "0x0",
+        "data": "0x90aefd3900000000000000000000000008fa296ca8d0c9cb34ace38ae9cf49b751dc8aec00000000000000000000000008fa296ca8d0c9cb34ace38ae9cf49b751dc8aec00000000000000000000000000000000000000000000003635c9adc5dea0000000000000000000000000000000000000000000000000003635c9adc5dea0000000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000000",
+        "nonce": "0x133"
+      },
+      "additionalContracts": []
+    },
+    {
+      "hash": "0x5524c81d47a5c6b47754877679ede009ec810539352824ebfd2e4c4d048fd721",
+      "transactionType": "CALL",
+      "contractName": null,
+      "contractAddress": "0x8FFA6ba3D61F5d43BAEeD0CbC2ef2b1d2c357F56",
+      "function": null,
+      "arguments": null,
+      "rpc": "https://bsc-dataseed2.binance.org",
+      "transaction": {
+        "type": "0x00",
+        "from": "0x08fa296ca8d0c9cb34ace38ae9cf49b751dc8aec",
+        "to": "0x8ffa6ba3d61f5d43baeed0cbc2ef2b1d2c357f56",
+        "gas": "0x11198",
+        "value": "0x0",
+        "data": "0x095ea7b30000000000000000000000007b8a01b39d58278b5de7e48c8449c9f4f517061300000000000000000000000000000000000000000000003635c9adc5dea00000",
+        "nonce": "0x134"
+      },
+      "additionalContracts": []
+    },
+    {
+      "hash": "0x69230b6233dbb51fca9f92b20d4202986bc397594ca2b6210f6590586810947d",
+      "transactionType": "CALL",
+      "contractName": null,
+      "contractAddress": "0xaA186cE898E96566da51007C602510e37d8173Ef",
+      "function": null,
+      "arguments": null,
+      "rpc": "https://bsc-dataseed2.binance.org",
+      "transaction": {
+        "type": "0x00",
+        "from": "0x08fa296ca8d0c9cb34ace38ae9cf49b751dc8aec",
+        "to": "0xaa186ce898e96566da51007c602510e37d8173ef",
+        "gas": "0x111d6",
+        "value": "0x0",
+        "data": "0x095ea7b30000000000000000000000007b8a01b39d58278b5de7e48c8449c9f4f51706130000000000000000000000000000000000000000000000002d96cebd264bd400",
+        "nonce": "0x135"
+      },
+      "additionalContracts": []
+    },
+    {
+      "hash": "0x6203d09418089504a85be3cf78e3f87d149021c5d8848053ef14e58aa95c90ca",
+      "transactionType": "CALL",
+      "contractName": null,
+      "contractAddress": "0x7b8A01B39D58278b5DE7e48c8449c9f4F5170613",
+      "function": null,
+      "arguments": null,
+      "rpc": "https://bsc-dataseed2.binance.org",
+      "transaction": {
+        "type": "0x00",
+        "from": "0x08fa296ca8d0c9cb34ace38ae9cf49b751dc8aec",
+        "to": "0x7b8a01b39d58278b5de7e48c8449c9f4f5170613",
+        "gas": "0x17a919",
+        "value": "0x0",
+        "data": "0x883164560000000000000000000000008ffa6ba3d61f5d43baeed0cbc2ef2b1d2c357f56000000000000000000000000aa186ce898e96566da51007c602510e37d8173ef0000000000000000000000000000000000000000000000000000000000000bb8000000000000000000000000000000000000000000000000000000000000003c00000000000000000000000000000000000000000000000000000000000000b400000000000000000000000000000000000000000000003635c9adc5dea000000000000000000000000000000000000000000000000000002d96cebd264bd4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008fa296ca8d0c9cb34ace38ae9cf49b751dc8aec00000000000000000000000000000000000000000000000000000000643f8d92",
+        "nonce": "0x136"
+      },
+      "additionalContracts": []
+    },
+    {
+      "hash": "0xdcb732bd2f55f6edacc901e4d541fdd8436336560fd31e2b2e4a47a8b9fc7914",
+      "transactionType": "CALL",
+      "contractName": null,
+      "contractAddress": "0xcfE82d8C44DFe6ba289306b7AF8397F37F47960D",
+      "function": null,
+      "arguments": null,
+      "rpc": "https://bsc-dataseed2.binance.org",
+      "transaction": {
+        "type": "0x00",
+        "from": "0x08fa296ca8d0c9cb34ace38ae9cf49b751dc8aec",
+        "to": "0xcfe82d8c44dfe6ba289306b7af8397f37f47960d",
+        "gas": "0x1fc8e",
+        "value": "0x0",
+        "data": "0x095ea7b3000000000000000000000000b95f7b1ae9083d118e443e0da3be758f0b90736f00000000000000000000000000000000000000000000003635c9adc5dea00000",
+        "nonce": "0x137"
+      },
+      "additionalContracts": []
+    },
+    {
+      "hash": "0x58ffd36fb5ca4ad2df2e0b2e3fb09af749edb92396bccfe4a692a9d9181de433",
+      "transactionType": "CALL",
+      "contractName": null,
+      "contractAddress": "0xB95F7b1AE9083d118E443e0DA3be758f0b90736f",
+      "function": null,
+      "arguments": null,
+      "rpc": "https://bsc-dataseed2.binance.org",
+      "transaction": {
+        "type": "0x00",
+        "from": "0x08fa296ca8d0c9cb34ace38ae9cf49b751dc8aec",
+        "to": "0xb95f7b1ae9083d118e443e0da3be758f0b90736f",
+        "gas": "0x28acb4",
+        "value": "0x0",
+        "data": "0x90aefd3900000000000000000000000008fa296ca8d0c9cb34ace38ae9cf49b751dc8aec00000000000000000000000008fa296ca8d0c9cb34ace38ae9cf49b751dc8aec00000000000000000000000000000000000000000000003635c9adc5dea0000000000000000000000000000000000000000000000000003635c9adc5dea0000000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000000",
+        "nonce": "0x138"
+      },
+      "additionalContracts": []
+    },
+    {
+      "hash": "0x3ffed9002373ab7e1870d2a7476a985b003796614113cb62426a74f02c82a9dc",
+      "transactionType": "CALL",
+      "contractName": null,
+      "contractAddress": "0x8FFA6ba3D61F5d43BAEeD0CbC2ef2b1d2c357F56",
+      "function": null,
+      "arguments": null,
+      "rpc": "https://bsc-dataseed2.binance.org",
+      "transaction": {
+        "type": "0x00",
+        "from": "0x08fa296ca8d0c9cb34ace38ae9cf49b751dc8aec",
+        "to": "0x8ffa6ba3d61f5d43baeed0cbc2ef2b1d2c357f56",
+        "gas": "0x12ea5",
+        "value": "0x0",
+        "data": "0x095ea7b30000000000000000000000007b8a01b39d58278b5de7e48c8449c9f4f517061300000000000000000000000000000000000000000000003635c9adc5dea00000",
+        "nonce": "0x139"
+      },
+      "additionalContracts": []
+    },
+    {
+      "hash": "0x960999b6dda87615163d171d95db1fff5e55ebab4e8978d9556c8b28c028fe82",
+      "transactionType": "CALL",
+      "contractName": null,
+      "contractAddress": "0xaA186cE898E96566da51007C602510e37d8173Ef",
+      "function": null,
+      "arguments": null,
+      "rpc": "https://bsc-dataseed2.binance.org",
+      "transaction": {
+        "type": "0x00",
+        "from": "0x08fa296ca8d0c9cb34ace38ae9cf49b751dc8aec",
+        "to": "0xaa186ce898e96566da51007c602510e37d8173ef",
+        "gas": "0x1e052",
+        "value": "0x0",
+        "data": "0x095ea7b30000000000000000000000007b8a01b39d58278b5de7e48c8449c9f4f51706130000000000000000000000000000000000000000000000002d96cebd264bd400",
+        "nonce": "0x13a"
+      },
+      "additionalContracts": []
+    },
+    {
+      "hash": "0x7d8411b060a0aff0971f640b10e5f9357dc11e9348d3a5ca0916cb0a466cbea6",
+      "transactionType": "CALL",
+      "contractName": null,
+      "contractAddress": "0x7b8A01B39D58278b5DE7e48c8449c9f4F5170613",
+      "function": null,
+      "arguments": null,
+      "rpc": "https://bsc-dataseed2.binance.org",
+      "transaction": {
+        "type": "0x00",
+        "from": "0x08fa296ca8d0c9cb34ace38ae9cf49b751dc8aec",
+        "to": "0x7b8a01b39d58278b5de7e48c8449c9f4f5170613",
+        "gas": "0x100583",
+        "value": "0x0",
+        "data": "0x883164560000000000000000000000008ffa6ba3d61f5d43baeed0cbc2ef2b1d2c357f56000000000000000000000000aa186ce898e96566da51007c602510e37d8173ef0000000000000000000000000000000000000000000000000000000000000bb8000000000000000000000000000000000000000000000000000000000000003c000000000000000000000000000000000000000000000000000000000000016800000000000000000000000000000000000000000000003635c9adc5dea000000000000000000000000000000000000000000000000000002d96cebd264bd4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008fa296ca8d0c9cb34ace38ae9cf49b751dc8aec00000000000000000000000000000000000000000000000000000000643f8d92",
+        "nonce": "0x13b"
+      },
+      "additionalContracts": []
+    },
+    {
+      "hash": "0x30d681f1065ea75cec05abdc7d28b9abf9f2e8d12350cdaf87889889c296574d",
+      "transactionType": "CALL",
+      "contractName": null,
+      "contractAddress": "0xcfE82d8C44DFe6ba289306b7AF8397F37F47960D",
+      "function": null,
+      "arguments": null,
+      "rpc": "https://bsc-dataseed2.binance.org",
+      "transaction": {
+        "type": "0x00",
+        "from": "0x08fa296ca8d0c9cb34ace38ae9cf49b751dc8aec",
+        "to": "0xcfe82d8c44dfe6ba289306b7af8397f37f47960d",
+        "gas": "0x1fc8e",
+        "value": "0x0",
+        "data": "0x095ea7b3000000000000000000000000b95f7b1ae9083d118e443e0da3be758f0b90736f00000000000000000000000000000000000000000000003635c9adc5dea00000",
+        "nonce": "0x13c"
+      },
+      "additionalContracts": []
+    },
+    {
+      "hash": "0x7298dedf03c9c9785460e04c766289384807b2e0bf8a9c1f483780638f42cc7f",
+      "transactionType": "CALL",
+      "contractName": null,
+      "contractAddress": "0xB95F7b1AE9083d118E443e0DA3be758f0b90736f",
+      "function": null,
+      "arguments": null,
+      "rpc": "https://bsc-dataseed2.binance.org",
+      "transaction": {
+        "type": "0x00",
+        "from": "0x08fa296ca8d0c9cb34ace38ae9cf49b751dc8aec",
+        "to": "0xb95f7b1ae9083d118e443e0da3be758f0b90736f",
+        "gas": "0x2749d7",
+        "value": "0x0",
+        "data": "0x90aefd3900000000000000000000000008fa296ca8d0c9cb34ace38ae9cf49b751dc8aec00000000000000000000000008fa296ca8d0c9cb34ace38ae9cf49b751dc8aec00000000000000000000000000000000000000000000003635c9adc5dea0000000000000000000000000000000000000000000000000003635c9adc5dea0000000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000000",
+        "nonce": "0x13d"
+      },
+      "additionalContracts": []
+    },
+    {
+      "hash": "0x412283f11f24374863a8c69004fa65bd1465d1dc65263dc693482cccbaadbea3",
+      "transactionType": "CALL",
+      "contractName": null,
+      "contractAddress": "0x8FFA6ba3D61F5d43BAEeD0CbC2ef2b1d2c357F56",
+      "function": null,
+      "arguments": null,
+      "rpc": "https://bsc-dataseed2.binance.org",
+      "transaction": {
+        "type": "0x00",
+        "from": "0x08fa296ca8d0c9cb34ace38ae9cf49b751dc8aec",
+        "to": "0x8ffa6ba3d61f5d43baeed0cbc2ef2b1d2c357f56",
+        "gas": "0x12ea5",
+        "value": "0x0",
+        "data": "0x095ea7b30000000000000000000000007b8a01b39d58278b5de7e48c8449c9f4f517061300000000000000000000000000000000000000000000003635c9adc5dea00000",
+        "nonce": "0x13e"
+      },
+      "additionalContracts": []
+    },
+    {
+      "hash": "0x6c97c70a64c2ec3c6ad8c5ab41102c0b299e52b7e01bb9199e54ec33661441db",
+      "transactionType": "CALL",
+      "contractName": null,
+      "contractAddress": "0xaA186cE898E96566da51007C602510e37d8173Ef",
+      "function": null,
+      "arguments": null,
+      "rpc": "https://bsc-dataseed2.binance.org",
+      "transaction": {
+        "type": "0x00",
+        "from": "0x08fa296ca8d0c9cb34ace38ae9cf49b751dc8aec",
+        "to": "0xaa186ce898e96566da51007c602510e37d8173ef",
+        "gas": "0x1e052",
+        "value": "0x0",
+        "data": "0x095ea7b30000000000000000000000007b8a01b39d58278b5de7e48c8449c9f4f51706130000000000000000000000000000000000000000000000002d96cebd264bd400",
+        "nonce": "0x13f"
+      },
+      "additionalContracts": []
+    },
+    {
+      "hash": "0x40c27159e24e4fd67769422bfa554e58b6398ebfcc89ec51632b838c527c8470",
+      "transactionType": "CALL",
+      "contractName": null,
+      "contractAddress": "0x7b8A01B39D58278b5DE7e48c8449c9f4F5170613",
+      "function": null,
+      "arguments": null,
+      "rpc": "https://bsc-dataseed2.binance.org",
+      "transaction": {
+        "type": "0x00",
+        "from": "0x08fa296ca8d0c9cb34ace38ae9cf49b751dc8aec",
+        "to": "0x7b8a01b39d58278b5de7e48c8449c9f4f5170613",
+        "gas": "0x100621",
+        "value": "0x0",
+        "data": "0x883164560000000000000000000000008ffa6ba3d61f5d43baeed0cbc2ef2b1d2c357f56000000000000000000000000aa186ce898e96566da51007c602510e37d8173ef0000000000000000000000000000000000000000000000000000000000000bb8000000000000000000000000000000000000000000000000000000000000003c0000000000000000000000000000000000000000000000000000000000001b3000000000000000000000000000000000000000000000003635c9adc5dea000000000000000000000000000000000000000000000000000002d96cebd264bd4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008fa296ca8d0c9cb34ace38ae9cf49b751dc8aec00000000000000000000000000000000000000000000000000000000643f8d92",
+        "nonce": "0x140"
+      },
+      "additionalContracts": []
+    },
+    {
+      "hash": "0x2847622dd65bcc1d6bcf54ef6d88a55c6c00efd75e319398a3a854496d2048f5",
+      "transactionType": "CALL",
+      "contractName": null,
+      "contractAddress": "0xB95F7b1AE9083d118E443e0DA3be758f0b90736f",
+      "function": null,
+      "arguments": null,
+      "rpc": "https://bsc-dataseed2.binance.org",
+      "transaction": {
+        "type": "0x00",
+        "from": "0x08fa296ca8d0c9cb34ace38ae9cf49b751dc8aec",
+        "to": "0xb95f7b1ae9083d118e443e0da3be758f0b90736f",
+        "gas": "0x993e5",
+        "value": "0x0",
+        "data": "0xbf7f42b1ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000000000000000000000000000000000000010dd90273c3ce200000000000",
+        "nonce": "0x141"
+      },
+      "additionalContracts": []
+    }
+  ],
+  "receipts": [],
+  "libraries": [],
+  "pending": [
+    "0xfa3f73e3e59745b95b0ce5731efda6264d3806a0b1522c417a809e3657b244ba",
+    "0xb26bb53bb14f0e6226490b52f3ff9b39294e37489bfe48a6e0f26aba653837b1",
+    "0x7b814b763b03633bc24bf4cdd32d0d28d001d54ac02528362e173195abd3bb44",
+    "0x5524c81d47a5c6b47754877679ede009ec810539352824ebfd2e4c4d048fd721",
+    "0x69230b6233dbb51fca9f92b20d4202986bc397594ca2b6210f6590586810947d",
+    "0x6203d09418089504a85be3cf78e3f87d149021c5d8848053ef14e58aa95c90ca",
+    "0xdcb732bd2f55f6edacc901e4d541fdd8436336560fd31e2b2e4a47a8b9fc7914",
+    "0x58ffd36fb5ca4ad2df2e0b2e3fb09af749edb92396bccfe4a692a9d9181de433",
+    "0x3ffed9002373ab7e1870d2a7476a985b003796614113cb62426a74f02c82a9dc",
+    "0x960999b6dda87615163d171d95db1fff5e55ebab4e8978d9556c8b28c028fe82",
+    "0x7d8411b060a0aff0971f640b10e5f9357dc11e9348d3a5ca0916cb0a466cbea6",
+    "0x30d681f1065ea75cec05abdc7d28b9abf9f2e8d12350cdaf87889889c296574d",
+    "0x7298dedf03c9c9785460e04c766289384807b2e0bf8a9c1f483780638f42cc7f",
+    "0x412283f11f24374863a8c69004fa65bd1465d1dc65263dc693482cccbaadbea3",
+    "0x6c97c70a64c2ec3c6ad8c5ab41102c0b299e52b7e01bb9199e54ec33661441db",
+    "0x40c27159e24e4fd67769422bfa554e58b6398ebfcc89ec51632b838c527c8470",
+    "0x2847622dd65bcc1d6bcf54ef6d88a55c6c00efd75e319398a3a854496d2048f5"
+  ],
+  "path": "/Users/marcell/projects/dlx/dlx-contracts/broadcast/AddFakeGLPLiquidity.s.sol/56/run-latest.json",
+  "returns": {},
+  "timestamp": 1681876633,
+  "chain": 56,
+  "multi": false,
+  "commit": "3204e81"
+}

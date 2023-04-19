@@ -102,18 +102,32 @@ contract UniswapV3LiquidityPool is ILiquidityPool {
         IERC20(tokenIn).safeApprove(address(router), 0);
         IERC20(tokenIn).safeApprove(address(router), amountIn);
 
+        console.log("Create params");
+
         ISwapRouter.ExactInputSingleParams memory params =
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: tokenIn,
                 tokenOut: tokenIn == token0 ? token1 : token0,
                 fee: fee,
                 recipient: recipient,
-                deadline: block.timestamp + 1,
+                deadline: block.timestamp + 10,
                 amountIn: amountIn,
                 amountOutMinimum: amountOutMinimum,
                 sqrtPriceLimitX96: sqrtPriceLimitX96 });
 
+        console.log("Do swap", address(router));
+        console.log("- tokenIn", address(tokenIn));
+        console.log("- tokenOut", tokenIn == token0 ? token1 : token0);
+        console.log("- fee", fee);
+        console.log("- recipient", recipient);
+        console.log("- deadline", block.timestamp + 10);
+        console.log("- amountIn", amountIn);
+        console.log("- amountOutMinimum", amountOutMinimum);
+        console.log("- sqrtPriceLimitX96", sqrtPriceLimitX96);
+
         uint256 amountOut = router.exactInputSingle(params);
+        console.log("Swap done");
+
         return amountOut;
     }
 }

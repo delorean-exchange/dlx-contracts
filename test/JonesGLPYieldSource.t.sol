@@ -60,6 +60,40 @@ contract JonesGLPYieldSourceTest is BaseTest {
         vm.stopPrank();
     }
 
+    function testJonesGLPMisc_2() public {
+        vm.selectFork(arbitrumForkJonesGLP2);
+        console.log("testJonesGLPMisc_2");
+
+        address user = 0x9bb98140F36553dB71fe4a570aC0b1401BC61B4F;
+
+        JonesGLPYieldSource source = new JonesGLPYieldSource();
+        source.setOwner(user);
+
+        vm.startPrank(user);
+
+        {
+            uint256 cl = source.router().glpRewardTracker().claimable(user);
+            console.log("cl", cl);
+            (uint256 a, uint256 b, uint256 c) = source.router().claimRewards();
+            console.log("abc", a, b, c);
+        }
+
+        source.router().compoundGlpRewards(1e18);
+
+        console.log("==");
+        vm.warp(block.timestamp + 0xf00000);
+        vm.roll(block.number + 0xf00000);
+
+        {
+            uint256 cl = source.router().glpRewardTracker().claimable(user);
+            console.log("cl", cl);
+            (uint256 a, uint256 b, uint256 c) = source.router().claimRewards();
+            console.log("abc", a, b, c);
+        }
+
+        vm.stopPrank();
+    }
+
     function disabled_testJonesGLPMisc() public {
         vm.selectFork(arbitrumForkJonesGLP);
         console.log("testJonesGLPYieldSource");

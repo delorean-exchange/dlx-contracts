@@ -46,13 +46,13 @@ contract DeployGLPMarket is BaseScript {
             (token0, token1) = (yieldToken, npvToken);
         }
 
-        manager = INonfungiblePositionManager(arbitrumNonfungiblePositionManager);
-        uniswapV3Pool = IUniswapV3Pool(IUniswapV3Factory(arbitrumUniswapV3Factory).getPool(token0, token1, 3000));
+        manager = INonfungiblePositionManager(nonfungiblePositionManager);
+        uniswapV3Pool = IUniswapV3Pool(IUniswapV3Factory(uniswapV3Factory).getPool(token0, token1, 3000));
         if (address(uniswapV3Pool) == address(0)) {
-            uniswapV3Pool = IUniswapV3Pool(IUniswapV3Factory(arbitrumUniswapV3Factory).createPool(token0, token1, 3000));
+            uniswapV3Pool = IUniswapV3Pool(IUniswapV3Factory(uniswapV3Factory).createPool(token0, token1, 3000));
             IUniswapV3Pool(uniswapV3Pool).initialize(initialPrice);
         }
-        pool = new UniswapV3LiquidityPool(address(uniswapV3Pool), arbitrumSwapRouter, arbitrumQuoterV2);
+        pool = new UniswapV3LiquidityPool(address(uniswapV3Pool), swapRouter, quoterV2);
         return address(pool);
     }
 
@@ -87,6 +87,12 @@ contract DeployGLPMarket is BaseScript {
         npvSwap = new NPVSwap(address(slice), address(pool));
 
         vm.stopBroadcast();
+
+        console.log("Slice:      ", address(slice));
+        console.log("NPV token:  ", npvToken);
+        console.log("NPV token:  ", address(slice.npvToken()));
+        console.log("Yield token:", yieldToken);
+        console.log("Gen token:  ", address(source.generatorToken()));
 
         {
             string memory objName = "deploy";

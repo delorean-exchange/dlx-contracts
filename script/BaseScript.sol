@@ -21,10 +21,24 @@ import { YieldData } from "../src/data/YieldData.sol";
 contract BaseScript is Script {
     using stdJson for string;
 
+    // Uniswap / Arbitrum
     address public arbitrumUniswapV3Factory = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
     address public arbitrumNonfungiblePositionManager = 0xC36442b4a4522E871399CD717aBDD847Ab11FE88;
     address public arbitrumSwapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
     address public arbitrumQuoterV2 = 0x61fFE014bA17989E743c5F6cB21bF9697530B21e;
+
+    // Uniswap / BSC
+    address public bscUniswapV3Factory = 0xdB1d10011AD0Ff90774D0C6Bb92e5C5c8b4461F7;
+    address public bscNonfungiblePositionManager = 0x7b8A01B39D58278b5DE7e48c8449c9f4F5170613;
+    address public bscSwapRouter = 0xB971eF87ede563556b2ED4b1C0b0019111Dd85d2;
+    address public bscQuoterV2 = 0x78D78E420Da98ad378D7799bE8f4AF69033EB077;
+
+    // Uniswap
+    address public uniswapV3Factory;
+    address public nonfungiblePositionManager;
+    address public swapRouter;
+    address public quoterV2;
+
     address public arbitrumWeth = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1;
     address public stakedGLP = 0x5402B5F40310bDED796c7D0F3FF6683f5C0cFfdf;
     address public tracker = 0x4e971a87900b931fF39d1Aad67697F49835400b6;
@@ -89,7 +103,10 @@ contract BaseScript is Script {
                 (tickLower, tickUpper) = (-tickUpper, -tickLower);
             }
 
-            manager = INonfungiblePositionManager(arbitrumNonfungiblePositionManager);
+            console.log("Add liq token0", token0);
+            console.log("Add liq token1", token1);
+
+            manager = INonfungiblePositionManager(nonfungiblePositionManager);
             INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams({
                 token0: token0,
                 token1: token1,
@@ -116,16 +133,46 @@ contract BaseScript is Script {
             pk = vm.envUint("ARBITRUM_PRIVATE_KEY");
             deployerAddress = vm.envAddress("ARBITRUM_DEPLOYER_ADDRESS");
             devAddress = vm.envAddress("ARBITRUM_DEV_ADDRESS");
+
+            uniswapV3Factory = arbitrumUniswapV3Factory;
+            nonfungiblePositionManager = arbitrumNonfungiblePositionManager;
+            swapRouter = arbitrumSwapRouter;
+            quoterV2 = arbitrumQuoterV2;
         } else if (eq(vm.envString("NETWORK"), "polygon")) {
             console.log("Using Polygon mainnet private key");
             pk = vm.envUint("POLYGON_PRIVATE_KEY");
             deployerAddress = vm.envAddress("POLYGON_DEPLOYER_ADDRESS");
             devAddress = vm.envAddress("POLYGON_DEV_ADDRESS");
+        } else if (eq(vm.envString("NETWORK"), "bsc")) {
+            console.log("Using Bsc mainnet private key");
+            pk = vm.envUint("BSC_PRIVATE_KEY");
+            deployerAddress = vm.envAddress("BSC_DEPLOYER_ADDRESS");
+            devAddress = vm.envAddress("BSC_DEV_ADDRESS");
+
+            uniswapV3Factory = bscUniswapV3Factory;
+            nonfungiblePositionManager = bscNonfungiblePositionManager;
+            swapRouter = bscSwapRouter;
+            quoterV2 = bscQuoterV2;
         } else {
             console.log("Using localhost private key");
-            pk = vm.envUint("LOCALHOST_PRIVATE_KEY");
-            deployerAddress = vm.envAddress("LOCALHOST_DEPLOYER_ADDRESS");
-            devAddress = vm.envAddress("LOCALHOST_DEV_ADDRESS");
+
+            pk = vm.envUint("BSC_PRIVATE_KEY");
+            deployerAddress = vm.envAddress("BSC_DEPLOYER_ADDRESS");
+            devAddress = vm.envAddress("BSC_DEV_ADDRESS");
+
+            /* pk = vm.envUint("LOCALHOST_PRIVATE_KEY"); */
+            /* deployerAddress = vm.envAddress("LOCALHOST_DEPLOYER_ADDRESS"); */
+            /* devAddress = vm.envAddress("LOCALHOST_DEV_ADDRESS"); */
+
+            uniswapV3Factory = bscUniswapV3Factory;
+            nonfungiblePositionManager = bscNonfungiblePositionManager;
+            swapRouter = bscSwapRouter;
+            quoterV2 = bscQuoterV2;
+
+            /* uniswapV3Factory = arbitrumUniswapV3Factory; */
+            /* nonfungiblePositionManager = arbitrumNonfungiblePositionManager; */
+            /* swapRouter = arbitrumSwapRouter; */
+            /* quoterV2 = arbitrumQuoterV2; */
         }
     }
 }
