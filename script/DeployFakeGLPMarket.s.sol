@@ -14,6 +14,8 @@ import { FakeToken } from "../test/helpers/FakeToken.sol";
 import { FakeYieldSource } from "../test/helpers/FakeYieldSource.sol";
 import { FakeYieldSourceWETH } from "../test/helpers/FakeYieldSourceWETH.sol";
 import { UniswapV3LiquidityPool } from "../src/liquidity/UniswapV3LiquidityPool.sol";
+import { UniswapV3LiquidityPool02 } from "../src/liquidity/UniswapV3LiquidityPool02.sol";
+import { ILiquidityPool } from "../src/interfaces/ILiquidityPool.sol";
 import { IUniswapV3Pool } from "../src/interfaces/uniswap/IUniswapV3Pool.sol";
 import { INonfungiblePositionManager } from "../src/interfaces/uniswap/INonfungiblePositionManager.sol";
 import { IUniswapV3Factory } from "../src/interfaces/uniswap/IUniswapV3Factory.sol";
@@ -32,7 +34,7 @@ contract DeployGLPMarket is BaseScript {
         init();
     }
 
-    function initUniswapV3Pool() public returns (address) {
+    function initUniswapV3Pool() public returns (address, address) {
         // Initial price is 0.99 ETH/npvETH
         uint160 initialPrice;
         address token0;
@@ -52,8 +54,9 @@ contract DeployGLPMarket is BaseScript {
             uniswapV3Pool = IUniswapV3Pool(IUniswapV3Factory(uniswapV3Factory).createPool(token0, token1, 3000));
             IUniswapV3Pool(uniswapV3Pool).initialize(initialPrice);
         }
-        pool = new UniswapV3LiquidityPool(address(uniswapV3Pool), swapRouter, quoterV2);
-        return address(pool);
+        pool = newUniswapV3LiquidityPool(address(uniswapV3Pool));
+
+        return (address(uniswapV3Pool), address(pool));
     }
 
     function run() public {
@@ -82,7 +85,10 @@ contract DeployGLPMarket is BaseScript {
         dataDebt.setWriter(address(slice));
         dataCredit.setWriter(address(slice));
 
-        pool = UniswapV3LiquidityPool(initUniswapV3Pool());
+        address uniswapV3Pool;
+        address poolAddress;
+        (uniswapV3Pool, poolAddress) = initUniswapV3Pool();
+        pool = ILiquidityPool(poolAddress);
 
         npvSwap = new NPVSwap(address(slice), address(pool));
 
@@ -103,6 +109,7 @@ contract DeployGLPMarket is BaseScript {
             json = vm.serializeAddress(objName, "address_npvSwap", address(npvSwap));
             json = vm.serializeAddress(objName, "address_npvToken", address(npvToken));
             json = vm.serializeAddress(objName, "address_pool", address(pool));
+            json = vm.serializeAddress(objName, "address_uniswapV3Pool", address(uniswapV3Pool));
             json = vm.serializeAddress(objName, "address_slice", address(slice));
             json = vm.serializeAddress(objName, "address_yieldSource", address(source));
 
@@ -112,6 +119,7 @@ contract DeployGLPMarket is BaseScript {
             json = vm.serializeString(objName, "contractName_npvSwap", "NPVSwap");
             json = vm.serializeString(objName, "contractName_npvToken", "NPVToken");
             json = vm.serializeString(objName, "contractName_pool", "UniswapV3LiquidityPool");
+            json = vm.serializeString(objName, "contractName_uniswapV3Pool", "IUniswapV3Pool");
             json = vm.serializeString(objName, "contractName_slice", "YieldSlice");
             json = vm.serializeString(objName, "contractName_yieldSource", "FakeYieldSource");
 

@@ -739,7 +739,7 @@
   "pending": [],
   "path": "/Users/marcell/projects/dlx/dlx-contracts/broadcast/DeployFakeGLPMarket.s.sol/56/run-latest.json",
   "returns": {},
-  "timestamp": 1682033665,
+  "timestamp": 1682033606,
   "chain": 56,
   "multi": false,
   "commit": "17dfcd3"

@@ -7,22 +7,22 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { ILiquidityPool } from "../interfaces/ILiquidityPool.sol";
-import { ISwapRouter } from "../interfaces/uniswap/ISwapRouter.sol";
+import { ISwapRouter02 } from "../interfaces/uniswap/ISwapRouter02.sol";
 import { IQuoterV2 } from "../interfaces/uniswap/IQuoterV2.sol";
 import { IUniswapV3Factory } from "../interfaces/uniswap/IUniswapV3Factory.sol";
 import { IUniswapV3Pool } from "../interfaces/uniswap/IUniswapV3Pool.sol";
 
 /// @notice Wrapped interface to a Uniswap V3 liquidity pool.
-contract UniswapV3LiquidityPool is ILiquidityPool {
+contract UniswapV3LiquidityPool02 is ILiquidityPool {
     using SafeERC20 for IERC20;
 
     uint24 public immutable fee;
 
     IUniswapV3Pool public immutable pool;
-    ISwapRouter public immutable router;
+    ISwapRouter02 public immutable router;
     IQuoterV2 public immutable quoter;
 
-    /// @notice Create a UniswapV3LiquidityPool.
+    /// @notice Create a UniswapV3LiquidityPool02.
     /// @param pool_ The Uniswap pool.
     /// @param router_ The Uniswap swap router.
     /// @param quoter_ The Uniswap swap quoter.
@@ -30,7 +30,7 @@ contract UniswapV3LiquidityPool is ILiquidityPool {
                 address router_,
                 address quoter_) {
         pool = IUniswapV3Pool(pool_);
-        router = ISwapRouter(router_);
+        router = ISwapRouter02(router_);
         quoter = IQuoterV2(quoter_);
 
         token0 = pool.token0();
@@ -102,13 +102,12 @@ contract UniswapV3LiquidityPool is ILiquidityPool {
         IERC20(tokenIn).safeApprove(address(router), 0);
         IERC20(tokenIn).safeApprove(address(router), amountIn);
 
-        ISwapRouter.ExactInputSingleParams memory params =
-            ISwapRouter.ExactInputSingleParams({
+        ISwapRouter02.ExactInputSingleParams memory params =
+            ISwapRouter02.ExactInputSingleParams({
                 tokenIn: tokenIn,
                 tokenOut: tokenIn == token0 ? token1 : token0,
                 fee: fee,
                 recipient: recipient,
-                deadline: block.timestamp + 10,
                 amountIn: amountIn,
                 amountOutMinimum: amountOutMinimum,
                 sqrtPriceLimitX96: sqrtPriceLimitX96 });

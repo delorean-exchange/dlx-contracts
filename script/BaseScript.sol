@@ -8,6 +8,8 @@ import "forge-std/StdJson.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { UniswapV3LiquidityPool } from "../src/liquidity/UniswapV3LiquidityPool.sol";
+import { UniswapV3LiquidityPool02 } from "../src/liquidity/UniswapV3LiquidityPool02.sol";
+import { ILiquidityPool } from "../src/interfaces/ILiquidityPool.sol";
 import { IUniswapV3Pool } from "../src/interfaces/uniswap/IUniswapV3Pool.sol";
 import { INonfungiblePositionManager } from "../src/interfaces/uniswap/INonfungiblePositionManager.sol";
 import { IUniswapV3Factory } from "../src/interfaces/uniswap/IUniswapV3Factory.sol";
@@ -52,7 +54,7 @@ contract BaseScript is Script {
     YieldData public dataCredit;
     Discounter public discounter;
 
-    UniswapV3LiquidityPool public pool;
+    ILiquidityPool public pool;
     IUniswapV3Pool public uniswapV3Pool;
     INonfungiblePositionManager public manager;
 
@@ -62,6 +64,14 @@ contract BaseScript is Script {
 
     function eq(string memory str1, string memory str2) public pure returns (bool) {
         return keccak256(abi.encodePacked(str1)) == keccak256(abi.encodePacked(str2));
+    }
+
+    function newUniswapV3LiquidityPool(address uniswapV3Pool) public returns (ILiquidityPool) {
+        if (swapRouter == bscSwapRouter) {
+            return new UniswapV3LiquidityPool02(address(uniswapV3Pool), swapRouter, quoterV2);
+        } else {
+            return new UniswapV3LiquidityPool(address(uniswapV3Pool), swapRouter, quoterV2);
+        }
     }
 
     function addLiquidity(NPVSwap npvSwap,
@@ -128,51 +138,51 @@ contract BaseScript is Script {
     }
 
     function init() public {
+
         if (eq(vm.envString("NETWORK"), "arbitrum")) {
             console.log("Using Arbitrum mainnet private key");
             pk = vm.envUint("ARBITRUM_PRIVATE_KEY");
             deployerAddress = vm.envAddress("ARBITRUM_DEPLOYER_ADDRESS");
             devAddress = vm.envAddress("ARBITRUM_DEV_ADDRESS");
-
             uniswapV3Factory = arbitrumUniswapV3Factory;
             nonfungiblePositionManager = arbitrumNonfungiblePositionManager;
             swapRouter = arbitrumSwapRouter;
             quoterV2 = arbitrumQuoterV2;
+
         } else if (eq(vm.envString("NETWORK"), "polygon")) {
             console.log("Using Polygon mainnet private key");
             pk = vm.envUint("POLYGON_PRIVATE_KEY");
             deployerAddress = vm.envAddress("POLYGON_DEPLOYER_ADDRESS");
             devAddress = vm.envAddress("POLYGON_DEV_ADDRESS");
+
         } else if (eq(vm.envString("NETWORK"), "bsc")) {
             console.log("Using Bsc mainnet private key");
             pk = vm.envUint("BSC_PRIVATE_KEY");
             deployerAddress = vm.envAddress("BSC_DEPLOYER_ADDRESS");
             devAddress = vm.envAddress("BSC_DEV_ADDRESS");
-
             uniswapV3Factory = bscUniswapV3Factory;
             nonfungiblePositionManager = bscNonfungiblePositionManager;
             swapRouter = bscSwapRouter;
             quoterV2 = bscQuoterV2;
+
         } else {
             console.log("Using localhost private key");
-
-            pk = vm.envUint("BSC_PRIVATE_KEY");
-            deployerAddress = vm.envAddress("BSC_DEPLOYER_ADDRESS");
-            devAddress = vm.envAddress("BSC_DEV_ADDRESS");
 
             /* pk = vm.envUint("LOCALHOST_PRIVATE_KEY"); */
             /* deployerAddress = vm.envAddress("LOCALHOST_DEPLOYER_ADDRESS"); */
             /* devAddress = vm.envAddress("LOCALHOST_DEV_ADDRESS"); */
-
-            uniswapV3Factory = bscUniswapV3Factory;
-            nonfungiblePositionManager = bscNonfungiblePositionManager;
-            swapRouter = bscSwapRouter;
-            quoterV2 = bscQuoterV2;
-
             /* uniswapV3Factory = arbitrumUniswapV3Factory; */
             /* nonfungiblePositionManager = arbitrumNonfungiblePositionManager; */
             /* swapRouter = arbitrumSwapRouter; */
             /* quoterV2 = arbitrumQuoterV2; */
+
+            pk = vm.envUint("BSC_PRIVATE_KEY");
+            deployerAddress = vm.envAddress("BSC_DEPLOYER_ADDRESS");
+            devAddress = vm.envAddress("BSC_DEV_ADDRESS");
+            uniswapV3Factory = bscUniswapV3Factory;
+            nonfungiblePositionManager = bscNonfungiblePositionManager;
+            swapRouter = bscSwapRouter;
+            quoterV2 = bscQuoterV2;
         }
     }
 }

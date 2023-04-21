@@ -18,31 +18,32 @@ import { NPVSwap } from "../src/core/NPVSwap.sol";
 import { YieldSlice } from "../src/core/YieldSlice.sol";
 import { ISwapRouter } from  "../src/interfaces/uniswap/ISwapRouter.sol";
 
-import { SwapRouter } from "@v3-per/contracts/SwapRouter.sol";
 
 contract Scratch is BaseScript {
     using stdJson for string;
+
+    function setUp() public {
+        init();
+    }
 
     function run() public {
         console.log("Scratch");
         ISwapRouter router = ISwapRouter(0xB971eF87ede563556b2ED4b1C0b0019111Dd85d2);
 
-        IUniswapV3Factory factory = IUniswapV3Factory(bscUniswapV3Factory);
-        IUniswapV3Pool uniswapV3Pool = IUniswapV3Pool(factory.getPool(0xA447FD3Bb893F32D2C38a1F38C60BA5294DDC137,
-                                                                      0xB3829ce1AAFbef4d95c7A68EfBC0879F58cFd4A2,
-                                                                      3000));
 
-        string memory filename = "./json/config.localhost.json";
+        string memory filename = "./json/config.bsc.json";
         string memory config = vm.readFile(filename);
         FakeYieldSource source = FakeYieldSource(vm.parseJsonAddress(config, ".fakeglp_yieldSource.address"));
         YieldSlice slice = YieldSlice(vm.parseJsonAddress(config, ".fakeglp_slice.address"));
         NPVSwap npvSwap = NPVSwap(vm.parseJsonAddress(config, ".fakeglp_npvSwap.address"));
 
-        source.mintBoth(address(this), 1000e18);
-        source.generatorToken().approve(address(npvSwap), 10e18);
-        npvSwap.lockForNPV(address(this), address(this), 10e18, 1e18, new bytes(0));
 
-        IERC20 ti = IERC20(0xA447FD3Bb893F32D2C38a1F38C60BA5294DDC137);
+        IUniswapV3Factory factory = IUniswapV3Factory(bscUniswapV3Factory);
+        IUniswapV3Pool uniswapV3Pool = IUniswapV3Pool(factory.getPool(address(slice.npvToken()),
+                                                                      address(source.yieldToken()),
+                                                                      3000));
+
+        IERC20 ti = IERC20(slice.npvToken());
         console.log("bal 1", ti.balanceOf(address(this)));
         console.log("bal 2", source.generatorToken().balanceOf(address(this)));
         console.log("slice ", address(slice));
@@ -50,25 +51,31 @@ contract Scratch is BaseScript {
         console.log("source gt", address(source.generatorToken()));
         console.log("source yt", address(source.yieldToken()));
         console.log("slice npv", address(slice.npvToken()));
-
         console.log("uniswapV3Pool", uniswapV3Pool.liquidity());
 
         uint256 amount = 1000;
+
+        vm.startBroadcast(pk);
+
+        source.mintBoth(deployerAddress, 1000e18);
+        source.generatorToken().approve(address(npvSwap), 10e18);
+        npvSwap.lockForNPV(deployerAddress, deployerAddress, 10e18, 1e18, new bytes(0));
+
         ISwapRouter.ExactInputSingleParams memory params =
             ISwapRouter.ExactInputSingleParams({
-                tokenIn: 0xA447FD3Bb893F32D2C38a1F38C60BA5294DDC137,
-                tokenOut: 0xB3829ce1AAFbef4d95c7A68EfBC0879F58cFd4A2,
+                tokenIn: address(slice.npvToken()),
+                tokenOut: address(source.yieldToken()),
                 fee: 3000,
-                recipient: address(this),
-                deadline: block.timestamp + 100000000000000,
+                recipient: deployerAddress,
+                deadline: block.timestamp + 10000,
                 amountIn: amount,
                 amountOutMinimum: 0,
                 sqrtPriceLimitX96: 0 });
 
-        console.log("Made params");
-        IERC20(0xA447FD3Bb893F32D2C38a1F38C60BA5294DDC137).approve(address(router), amount);
-        uint256 amountOut = router.exactInputSingle(params);
-        console.log("Swap done");
+        IERC20(address(slice.npvToken())).approve(address(router), amount);
+        router.exactInputSingle(params);
+
+        vm.stopBroadcast();
         
     }
 

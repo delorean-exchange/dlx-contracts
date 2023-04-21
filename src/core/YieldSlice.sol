@@ -50,7 +50,7 @@ contract YieldSlice is ReentrancyGuard {
     // Debt fees are a percent of the difference between nominal yield
     // sold, and the net present value. This results in low borrowing
     // cost for short term debt.
-    uint256 public constant MAX_DEBT_FEE = 50_0;
+    uint256 public constant MAX_DEBT_FEE_RATIO = 200_0;
 
     // -- Credit fees -- //
     // Credit fees are are simple percent of the NPV tokens being purchased.
@@ -218,7 +218,7 @@ contract YieldSlice is ReentrancyGuard {
     /// @notice Set the fee ratio othe debt side.
     /// @param debtFee_ The new debt fee ratio.
     function setDebtFee(uint256 debtFee_) external onlyGov {
-        require(debtFee_ <= MAX_DEBT_FEE, "YS: max debt fee");
+        require(debtFee_ <= MAX_DEBT_FEE_RATIO, "YS: max debt fee");
         debtFee = debtFee_;
     }
 
