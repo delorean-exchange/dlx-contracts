@@ -52,9 +52,9 @@ contract JonesGLPYieldSourceTest is BaseTest {
         source.deposit(1, false);
 
         uint256 pending = source.amountPending();
-        uint256 before = source.weth().balanceOf(address(source));
+        uint256 before = source.weth().balanceOf(user);
         source.harvest();
-        uint256 delta = source.weth().balanceOf(address(source)) - before;
+        uint256 delta = source.weth().balanceOf(user) - before;
         assertEq(delta, pending);
 
         vm.stopPrank();
