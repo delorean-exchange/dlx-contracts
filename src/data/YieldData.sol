@@ -33,12 +33,14 @@ contract YieldData is Ownable {
     /// @param interval_ Minimum size in seconds of each epoch.
     constructor(uint128 interval_) {
         interval = interval_;
+        writer = address(0);
     }
 
     /// @notice Set the writer.
     /// @param writer_ The new writer.
     function setWriter(address writer_) external onlyOwner {
         require(writer_ != address(0), "YD: zero address");
+        require(writer == address(0), "YD: only set once");
         writer = writer_;
     }
 

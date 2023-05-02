@@ -15,18 +15,26 @@ contract YieldDataTest is BaseTest {
         user0 = createUser(0);
         data = new YieldData(20);
         data.setWriter(user0);
-        vm.startPrank(user0);
     }
 
     function testSimple() public {
+        vm.startPrank(user0);
         data.record(10e18, 0);
         vm.roll(block.number + 20);
         vm.warp(block.timestamp + 20);
         data.record(10e18, 5000);
         assertEq(data.yieldPerTokenPerSecond(uint32(block.timestamp) - 20, uint32(block.timestamp), 0, 0), 25);
+        vm.stopPrank();
+    }
+
+    function testSetWriterOnce() public {
+        vm.expectRevert("YD: only set once");
+        data.setWriter(createUser(1));
+        vm.stopPrank();
     }
 
     function testSplitEpoch() public {
+        vm.startPrank(user0);
         data.record(10e18, 0);
         vm.warp(block.timestamp + 1);
         data.record(20e18, 20000);
@@ -34,9 +42,11 @@ contract YieldDataTest is BaseTest {
         data.record(20e18, 280000);
 
         assertEq(data.yieldPerTokenPerSecond(uint32(block.timestamp) - 8, uint32(block.timestamp), 0, 0), 1875);
+        vm.stopPrank();
     }
 
     function testMultipleEpochs() public {
+        vm.startPrank(user0);
         data.record(10e18, 0);
         vm.warp(block.timestamp + 20);
         data.record(10e18, 5000);
@@ -53,9 +63,11 @@ contract YieldDataTest is BaseTest {
         assertEq(data.yieldPerTokenPerSecond(uint32(block.timestamp) - 60, uint32(block.timestamp) - 20, 0, 0), (25 + 50) >> 1);
         assertEq(data.yieldPerTokenPerSecond(uint32(block.timestamp) - 50, uint32(block.timestamp) - 20, 0, 0), 41);
         assertEq(data.yieldPerTokenPerSecond(uint32(block.timestamp) - 50, uint32(block.timestamp) - 10, 0, 0), 81);
+        vm.stopPrank();
     }
 
     function testManyDifferentEpochs() public {
+        vm.startPrank(user0);
         data.record(10e18, 0);
         uint32 startBlockNumber = uint32(block.timestamp);
         for (uint256 i = 0; i < 100; i++) {
@@ -68,9 +80,11 @@ contract YieldDataTest is BaseTest {
         assertEq(data.yieldPerTokenPerSecond(startBlockNumber + 40, startBlockNumber + 60, 0, 0), 25);
         assertEq(data.yieldPerTokenPerSecond(startBlockNumber + 1800, startBlockNumber + 1820, 0, 0), 905);
         assertEq(data.yieldPerTokenPerSecond(startBlockNumber + 200, startBlockNumber + 1820, 0, 0), 505);
+        vm.stopPrank();
     }
 
     function testValidateStartAndEnd() public {
+        vm.startPrank(user0);
         data.record(10e18, 0);
         uint32 startBlockNumber = uint32(block.timestamp);
         for (uint256 i = 0; i < 100; i++) {
@@ -80,5 +94,6 @@ contract YieldDataTest is BaseTest {
 
         vm.expectRevert("YD: start must precede end");
         data.yieldPerTokenPerSecond(startBlockNumber + 20, startBlockNumber, 0, 0);
+        vm.stopPrank();
     }
 }
