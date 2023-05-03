@@ -471,7 +471,7 @@ contract YieldSlice is ReentrancyGuard {
         uint256 numDays = ((block.timestamp - uint256(slice.blockTimestamp))
                            / discounter.DISCOUNT_PERIOD());
 
-        uint256 shiftedNPV = discounter.shiftNPVForward(slice.npvCredit - npvGen, numDays);
+        uint256 shiftedNPV = discounter.shiftNPV(slice.npvCredit - npvGen, numDays);
 
         // Checkpoint what we can claim as pending, and set claimed to zero
         // as it is now relative to the new timestamp.
@@ -517,7 +517,7 @@ contract YieldSlice is ReentrancyGuard {
         // relative to the current timestamp.
         uint256 numDays = ((block.timestamp - uint256(unalloc.blockTimestamp))
                            / discounter.DISCOUNT_PERIOD());
-        unalloc.npvCredit = discounter.shiftNPVForward(unalloc.npvCredit, numDays);
+        unalloc.npvCredit = discounter.shiftNPV(unalloc.npvCredit, numDays);
 
         // Compute the proportional share of vested, pending yield that will go to
         // the new slice.
