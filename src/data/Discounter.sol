@@ -86,18 +86,6 @@ contract Discounter is IDiscounter, Ownable {
         return acc;
     }
 
-    /// @notice Compute value of nominal payment shifted backward some days, relative to a starting amount of NPV.
-    /// @param npv Starting NPV of the nominal payment we will receive.
-    /// @param numDays Number of days in the future to delay that nominal payment.
-    /// @return NPV of that nominal payment after the delay.
-    function shiftNPV(uint256 npv, uint256 numDays) external override view returns (uint256) {
-        uint256 acc = npv;
-        for (uint256 i = 0; i < numDays; i++) {
-            acc = acc * (RATE_PRECISION - rate) / RATE_PRECISION;
-        }
-        return acc;
-    }
-
     /// @notice Compute value of nominal payment shifted forward some days, relative to a starting amount of NPV.
     /// @param npv Starting NPV of the nominal payment we will receive.
     /// @param numDays Number of days in the future to delay that nominal payment.

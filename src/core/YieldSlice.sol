@@ -471,7 +471,6 @@ contract YieldSlice is ReentrancyGuard {
         uint256 numDays = ((block.timestamp - uint256(slice.blockTimestamp))
                            / discounter.DISCOUNT_PERIOD());
 
-        // TODO: regression test for shiftNPV()
         uint256 shiftedNPV = discounter.shiftNPVForward(slice.npvCredit - npvGen, numDays);
 
         // Checkpoint what we can claim as pending, and set claimed to zero
