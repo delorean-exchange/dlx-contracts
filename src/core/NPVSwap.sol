@@ -14,6 +14,29 @@ import { ILiquidityPool } from "../interfaces/ILiquidityPool.sol";
 contract NPVSwap {
     using SafeERC20 for IERC20;
 
+    event LockForNPV(uint256 indexed id,
+                     address indexed owner,
+                     address indexed recipient,
+                     uint256 tokens,
+                     uint256 yield);
+
+    event SwapNPVForSlice(uint256 indexed id,
+                          address indexed recipient,
+                          uint256 npv);
+
+    event LockForYield(uint256 indexed id,
+                       address indexed owner,
+                       uint256 tokens,
+                       uint256 yield,
+                       uint256 amountOut);
+
+    event SwapForSlice(uint256 indexed id,
+                       address indexed recipient,
+                       uint256 yield,
+                       uint256 npv);
+
+    event MintAndPayWithYield(uint256 indexed id, uint256 paid);
+
     NPVToken public immutable npvToken;
     YieldSlice public immutable slice;
     ILiquidityPool public immutable pool;
@@ -110,6 +133,8 @@ contract NPVSwap {
 
         uint256 id = slice.debtSlice(owner, recipient, tokens, yield, memo);
 
+        emit LockForNPV(id, owner, recipient, tokens, yield);
+
         return id;
     }
 
@@ -125,6 +150,8 @@ contract NPVSwap {
         IERC20(slice.npvToken()).safeApprove(address(slice), npv);
 
         uint256 id = slice.creditSlice(npv, recipient, memo);
+
+        emit SwapNPVForSlice(id, recipient, npv);
 
         return id;
     }
@@ -183,6 +210,8 @@ contract NPVSwap {
                                 uint128(amountOutMin),
                                 sqrtPriceLimitX96);
 
+        emit LockForYield(id, owner, tokens, yield, out);
+
         return (id, out);
     }
 
@@ -212,6 +241,8 @@ contract NPVSwap {
         IERC20(slice.npvToken()).safeApprove(address(slice), out);
         uint256 id = slice.creditSlice(out, recipient, memo);
 
+        emit SwapForSlice(id, recipient, yield, out);
+
         return id;
     }
 
@@ -234,6 +265,8 @@ contract NPVSwap {
         if (paid != amount) {
             IERC20(slice.npvToken()).safeTransfer(msg.sender, amount - paid);
         }
+
+        emit MintAndPayWithYield(id, paid);
     }
 
 }

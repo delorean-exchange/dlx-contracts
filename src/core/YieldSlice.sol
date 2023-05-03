@@ -17,43 +17,53 @@ import { NPVToken } from "../tokens/NPVToken.sol";
 contract YieldSlice is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    event NewDebtSlice(address indexed owner,
-                       uint256 indexed id,
-                       uint256 tokens,
-                       uint256 yield,
-                       uint256 npv,
-                       uint256 fees);
+    event SliceDebt(address indexed owner,
+                    uint256 indexed id,
+                    uint256 tokens,
+                    uint256 yield,
+                    uint256 npv,
+                    uint256 fees);
 
-    event NewCreditSlice(address indexed owner,
-                         uint256 indexed id,
-                         uint256 npv,
-                         uint256 fees);
+    event SliceCredit(address indexed owner,
+                      uint256 indexed id,
+                      uint256 npv,
+                      uint256 fees);
 
     event UnlockDebtSlice(address indexed owner,
                           uint256 indexed id);
 
-    event PayDebt(uint256 indexed id,
-                  uint256 amount);
+    event PayDebt(uint256 indexed id, uint256 amount);
 
     event ReceiveNPV(address indexed recipient,
                      uint256 indexed id,
                      uint256 amount);
 
-    event Claimed(uint256 indexed id,
-                  uint256 amount);
+    event Claimed(uint256 indexed id, uint256 amount);
+
+    event DustLimit(uint256 dustLimit);
+    event DebtFee(uint256 debtFee);
+    event CreditFee(uint256 creditFee);
+    event Gov(address indexed gov);
+    event Treasury(address indexed treasury);
+    event Harvest(uint256 total, uint256 delta);
+    event RecordDebtData(uint256 totalTokens, uint256 cumulativeYield);
+    event RecordCreditData(uint256 totalTokens, uint256 cumulativeYield);
+    event MintFromYield(address indexed recipient, uint256 amount);
+    event TransferOwnership(uint256 indexed id, address indexed recipient);
 
     uint256 public constant FEE_DENOM = 100_0;
 
     // Max fees limit what can be set by governance. Actual fee may be lower.
 
-    // -- Debt fees -- //
-    // Debt fees are a percent of the difference between nominal yield
-    // sold, and the net present value. This results in low borrowing
-    // cost for short term debt.
-    uint256 public constant MAX_DEBT_FEE_RATIO = 200_0;
+    // -- Debt fee ratio -- //
+    // Debt fee ratio is relative to the discount rate of the transaction.
+    // For example, a debt fee ratio of 100% means that the the protocol fee
+    // is equal to the discount rate. A ratio of 50% means the protocol fee
+    // is half the discount rate.
+    uint256 public constant MAX_DEBT_FEE_RATIO = 100_0;
 
     // -- Credit fees -- //
-    // Credit fees are are simple percent of the NPV tokens being purchased.
+    // Credit fee are are simple percent of the NPV tokens being purchased.
     uint256 public constant MAX_CREDIT_FEE = 20_0;
 
     address public gov;
@@ -207,25 +217,33 @@ contract YieldSlice is ReentrancyGuard {
     /// @param gov_ The new governance address.
     function setGov(address gov_) external onlyGov {
         gov = gov_;
+
+        emit Gov(gov);
     }
 
     /// @notice Set the treasury address.
     /// @param treasury_ The new treasury address.
     function setTreasury(address treasury_) external onlyGov {
         treasury = treasury_;
+
+        emit Treasury(treasury);
     }
 
     /// @notice Set the dust limit.
     /// @param dustLimit_ The new dust limit.
     function setDustLimit(uint256 dustLimit_) external onlyGov {
         dustLimit = dustLimit_;
+
+        emit DustLimit(dustLimit);
     }
 
-    /// @notice Set the fee ratio othe debt side.
+    /// @notice Set the fee ratio on the debt side.
     /// @param debtFee_ The new debt fee ratio.
     function setDebtFee(uint256 debtFee_) external onlyGov {
         require(debtFee_ <= MAX_DEBT_FEE_RATIO, "YS: max debt fee");
         debtFee = debtFee_;
+
+        emit DebtFee(debtFee);
     }
 
     /// @notice Set the fee ratio othe credit side.
@@ -233,6 +251,8 @@ contract YieldSlice is ReentrancyGuard {
     function setCreditFee(uint256 creditFee_) external onlyGov {
         require(creditFee_ <= MAX_CREDIT_FEE, "YS: max credit fee");
         creditFee = creditFee_;
+
+        emit CreditFee(creditFee);
     }
 
     /// @notice Total number of yield generating tokens.
@@ -263,6 +283,7 @@ contract YieldSlice is ReentrancyGuard {
         if (pending == 0) return;
         yieldSource.harvest();
         harvestedYield += pending;
+        emit Harvest(harvestedYield, pending);
     }
 
     /// @notice Recrod data for yield generation rates on both debt and credit side.
@@ -271,8 +292,15 @@ contract YieldSlice is ReentrancyGuard {
     }
 
     function _recordData() private {
-        debtData.record(totalTokens(), cumulativeYield());
-        creditData.record(activeNPV, cumulativeYieldCredit());
+        uint256 debtTT = totalTokens();
+        uint256 debtCY = cumulativeYield();
+        debtData.record(debtTT, debtCY);
+
+        uint256 creditCY = cumulativeYieldCredit();
+        creditData.record(activeNPV, creditCY);
+
+        emit RecordDebtData(debtTT, debtCY);
+        emit RecordCreditData(activeNPV, creditCY);
     }
 
     /// @notice Number of locked tokens associated with a debt slice.
@@ -372,7 +400,7 @@ contract YieldSlice is ReentrancyGuard {
 
         _recordData();
 
-        emit NewDebtSlice(owner, id, amountGenerator, amountYield, npv, fees);
+        emit SliceDebt(owner, id, amountGenerator, amountYield, npv, fees);
         
         return id;
     }
@@ -389,6 +417,8 @@ contract YieldSlice is ReentrancyGuard {
         activeNPV += amount;
         cumulativePaidYield += amount;
         _recordData();
+
+        emit MintFromYield(recipient, amount);
     }
 
     /// @notice Pay off a debt slice using NPV tokens.
@@ -422,18 +452,19 @@ contract YieldSlice is ReentrancyGuard {
         isSlice(id) {
 
         if (debtSlices[id].owner != address(0)) {
-            require(recipient != debtSlices[id].owner, "YS: transfer owner");
             DebtSlice storage slice = debtSlices[id];
+            require(recipient != slice.owner, "YS: transfer owner");
             require(slice.owner == msg.sender, "YS: only debt slice owner");
             slice.owner = recipient;
         } else {
-            require(recipient != creditSlices[id].owner, "YS: transfer owner");
-            assert(creditSlices[id].owner != address(0));
             CreditSlice storage slice = creditSlices[id];
+            require(recipient != slice.owner, "YS: transfer owner");
             require(slice.owner == msg.sender, "YS: only credit slice owner");
             _claim(id, 0);
             slice.owner = recipient;
         }
+
+        emit TransferOwnership(id, recipient);
     }
 
     /// @notice Unlock the underlying tokens for a debt slice, if possible. Excess yield generated will be refunded.
@@ -557,7 +588,7 @@ contract YieldSlice is ReentrancyGuard {
             memo: memo });
         creditSlices[id] = slice;
 
-        emit NewCreditSlice(recipient, id, npv, fees);
+        emit SliceCredit(recipient, id, npv, fees);
 
         return id;
     }

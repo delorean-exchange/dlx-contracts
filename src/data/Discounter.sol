@@ -18,6 +18,9 @@ contract Discounter is IDiscounter, Ownable {
     uint256 public constant RATE_PRECISION = 10**6;
     uint256 public constant PERIOD = 10;
 
+    event Daily(uint256 daily);
+    event MaxDays(uint256 maxDays);
+
     /// @notice Create a Discounter
     /// @param daily_ Projected daily yield rate per token.
     /// @param rate_ Daily discount rate, as fraction of `RATE_PRECISION`.
@@ -33,12 +36,16 @@ contract Discounter is IDiscounter, Ownable {
     /// @param daily_ New projected daily yield rate.
     function setDaily(uint256 daily_) external onlyOwner {
         daily = daily_;
+
+        emit Daily(daily);
     }
 
     /// @notice Set the max days of projected future yield to sell.
     /// @param maxDays_ New max days of projected future yield to sell.
     function setMaxDays(uint256 maxDays_) external onlyOwner {
         maxDays = maxDays_;
+
+        emit MaxDays(maxDays);
     }
 
     /// @notice Compute the net present value of stream of future yield.

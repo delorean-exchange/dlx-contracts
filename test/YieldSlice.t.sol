@@ -74,6 +74,8 @@ contract YieldSliceTest is BaseTest {
 
         slice.unlockDebtSlice(id1);
         assertEq(generatorToken.balanceOf(alice), before);
+        assertEq(slice.totalShares(), 0);
+        assertEq(slice.tokens(id1), 0);
 
         slice.harvest();
 
@@ -85,9 +87,6 @@ contract YieldSliceTest is BaseTest {
                    "nominal should exceed sold");
         assertEq(yieldToken.balanceOf(address(slice)), 1239713207999306393);
 
-        console.log(yieldToken.balanceOf(address(slice)) + refund1);
-        console.log(yieldToken.balanceOf(address(slice)));
-        console.log(nominal1);
         assertClose(yieldToken.balanceOf(address(slice)), nominal1, 1e12);
         assertEq(npv1, 884433656000000000);
         assertEq(refund1, 18270792000693607);
@@ -183,7 +182,7 @@ contract YieldSliceTest is BaseTest {
         }
     }
 
-    function testTransferDebtSlice() public {
+    function testTransferSlice() public {
         init(10000000000);
         discounter.setMaxDays(1440);
 
@@ -227,7 +226,12 @@ contract YieldSliceTest is BaseTest {
         slice.transferOwnership(id2, degen);
         assertEq(yieldToken.balanceOf(chad), 604799989948076101);
         assertEq(yieldToken.balanceOf(degen), 0);
+        vm.expectRevert("YS: transfer owner");
+        slice.transferOwnership(id2, degen);
         vm.stopPrank();
+
+        vm.expectRevert("YS: only credit slice owner");
+        slice.transferOwnership(id2, bob);
 
         // Warp forward 400 days, transfer the credit slice again
         for (uint256 i = 0; i < 400; i += 7) {
@@ -300,6 +304,9 @@ contract YieldSliceTest is BaseTest {
         slice.payDebt(id1, npvSliced);
         slice.unlockDebtSlice(id1);
         assertEq(generatorToken.balanceOf(alice), before);
+
+        vm.expectRevert("YS: already unlocked");
+        slice.payDebt(id1, npvSliced);
 
         vm.stopPrank();
     }
@@ -804,5 +811,56 @@ contract YieldSliceTest is BaseTest {
 
         assertEq(generatorToken.balanceOf(bob), beforeBob);
         assertEq(generatorToken.balanceOf(bob), 200e18);
+    }
+
+    function testSetGov() public {
+        init();
+
+        slice.setGov(alice);
+
+        vm.expectRevert("YS: gov only");
+        slice.setGov(bob);
+
+        vm.prank(alice);
+        slice.setGov(bob);
+    }
+
+    function testSetDustLimit() public {
+        init();
+
+        vm.startPrank(alice);
+        generatorToken.approve(address(npvSwap), 200e18);
+        vm.expectRevert("YS: dust");
+        npvSwap.lockForNPV(alice, alice, 10, 1e18, new bytes(0));
+        vm.expectRevert("YS: dust");
+        npvSwap.lockForNPV(alice, alice, 11, 1e18, new bytes(0));
+        vm.stopPrank();
+
+        slice.setDustLimit(10);
+
+        vm.startPrank(alice);
+        generatorToken.approve(address(npvSwap), 200e18);
+        vm.expectRevert("YS: dust");
+        npvSwap.lockForNPV(alice, alice, 10, 1e18, new bytes(0));
+        npvSwap.lockForNPV(alice, alice, 11, 1e18, new bytes(0));
+        vm.stopPrank();
+    }
+
+    function testSetDebtFee() public {
+        init();
+
+        vm.expectRevert("YS: max debt fee");
+        slice.setDebtFee(100_1);
+
+        slice.setDebtFee(100_0);
+    }
+
+    function testSetCreditFee() public {
+        init();
+
+        vm.expectRevert("YS: max credit fee");
+        slice.setCreditFee(20_1);
+
+        slice.setCreditFee(20_0);
     }
 }
