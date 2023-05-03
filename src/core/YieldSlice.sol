@@ -158,6 +158,12 @@ contract YieldSlice is ReentrancyGuard {
         _;
     }
 
+    modifier validRecipient(address recipient) {
+        require(recipient != address(0), "YS: transfer zero");
+        require(recipient != address(this), "YS: transfer this");
+        _;
+    }
+
     /// @notice Create a YieldSlice.
     /// @param symbol Symbol for the NPV token.
     /// @param yieldSource_ An interface to interact with the underlying source of yield.
@@ -343,6 +349,7 @@ contract YieldSlice is ReentrancyGuard {
         external
         nonReentrant
         noDust(amountGenerator)
+        validRecipient(recipient)
         returns (uint256) {
 
         uint256 id = nextId++;
@@ -373,7 +380,10 @@ contract YieldSlice is ReentrancyGuard {
     /// @notice Mint NPV tokens from yield at 1:1 rate.
     /// @param recipient Recipient of the NPV tokens minted.
     /// @param amount The amount of yield tokens to exchange for NPV tokens.
-    function mintFromYield(address recipient, uint256 amount) external {
+    function mintFromYield(address recipient, uint256 amount)
+        external
+        validRecipient(recipient) {
+
         IERC20(yieldToken).safeTransferFrom(msg.sender, address(this), amount);
         npvToken.mint(recipient, amount);
         activeNPV += amount;
@@ -405,9 +415,11 @@ contract YieldSlice is ReentrancyGuard {
     /// @notice Transfer ownership of a yield slice.
     /// @param id ID of the slice to transfer.
     /// @param recipient Recipient of the transfer
-    function transferOwnership(uint256 id, address recipient) external nonReentrant isSlice(id) {
-        require(recipient != address(0), "YS: transfer zero");
-        require(recipient != address(this), "YS: transfer this");
+    function transferOwnership(uint256 id, address recipient)
+        external
+        nonReentrant
+        validRecipient(recipient)
+        isSlice(id) {
 
         if (debtSlices[id].owner != address(0)) {
             require(recipient != debtSlices[id].owner, "YS: transfer owner");
@@ -496,6 +508,7 @@ contract YieldSlice is ReentrancyGuard {
     function creditSlice(uint256 npv, address recipient, bytes calldata memo)
         external
         nonReentrant
+        validRecipient(recipient)
         returns (uint256) {
 
         uint256 fees = _creditFees(npv);
@@ -591,9 +604,10 @@ contract YieldSlice is ReentrancyGuard {
     function receiveNPV(uint256 id,
                         address recipient,
                         uint256 amount)
-            external
-            nonReentrant
-            creditSliceOwner(id) {
+        external
+        nonReentrant
+        validRecipient(recipient)
+        creditSliceOwner(id) {
 
         CreditSlice storage slice = creditSlices[id];
         ( , uint256 npvGen, ) = generatedCredit(id);
