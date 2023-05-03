@@ -55,7 +55,6 @@ contract FakeYieldSource is IYieldSource {
 
     function callback(address who) public {
         updateHolders(who);
-        checkpointPending();
     }
 
     function setOwner(address owner_) external override {
