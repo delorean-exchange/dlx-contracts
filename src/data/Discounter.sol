@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "forge-std/console.sol";
+
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 import { IDiscounter } from "../interfaces/IDiscounter.sol";
@@ -84,7 +86,7 @@ contract Discounter is IDiscounter, Ownable {
         return acc;
     }
 
-    /// @notice Compute value of nominal payment shifted by some days, relative to a starting amount of NPV.
+    /// @notice Compute value of nominal payment shifted backward some days, relative to a starting amount of NPV.
     /// @param npv Starting NPV of the nominal payment we will receive.
     /// @param numDays Number of days in the future to delay that nominal payment.
     /// @return NPV of that nominal payment after the delay.
@@ -92,6 +94,18 @@ contract Discounter is IDiscounter, Ownable {
         uint256 acc = npv;
         for (uint256 i = 0; i < numDays; i++) {
             acc = acc * (RATE_PRECISION - rate) / RATE_PRECISION;
+        }
+        return acc;
+    }
+
+    /// @notice Compute value of nominal payment shifted forward some days, relative to a starting amount of NPV.
+    /// @param npv Starting NPV of the nominal payment we will receive.
+    /// @param numDays Number of days in the future to delay that nominal payment.
+    /// @return NPV of that nominal payment after the delay.
+    function shiftNPVForward(uint256 npv, uint256 numDays) external override view returns (uint256) {
+        uint256 acc = npv;
+        for (uint256 i = 0; i < numDays; i++) {
+            acc = acc * RATE_PRECISION / (RATE_PRECISION - rate);
         }
         return acc;
     }

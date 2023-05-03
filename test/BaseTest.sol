@@ -60,6 +60,8 @@ contract BaseTest is Test {
     address alice;
     address bob;
     address chad;
+    address degen;
+    address eve;
     address treasury;
 
     uint256 arbitrumFork;
@@ -111,7 +113,9 @@ contract BaseTest is Test {
         alice = createUser(0);
         bob = createUser(1);
         chad = createUser(2);
-        treasury = createUser(3);
+        degen = createUser(3);
+        eve = createUser(4);
+        treasury = createUser(5);
 
         source.setOwner(address(slice));
         dataDebt.setWriter(address(slice));

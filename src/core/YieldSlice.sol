@@ -406,11 +406,16 @@ contract YieldSlice is ReentrancyGuard {
     /// @param id ID of the slice to transfer.
     /// @param recipient Recipient of the transfer
     function transferOwnership(uint256 id, address recipient) external nonReentrant isSlice(id) {
+        require(recipient != address(0), "YS: transfer zero");
+        require(recipient != address(this), "YS: transfer this");
+
         if (debtSlices[id].owner != address(0)) {
+            require(recipient != debtSlices[id].owner, "YS: transfer owner");
             DebtSlice storage slice = debtSlices[id];
             require(slice.owner == msg.sender, "YS: only debt slice owner");
             slice.owner = recipient;
         } else {
+            require(recipient != creditSlices[id].owner, "YS: transfer owner");
             assert(creditSlices[id].owner != address(0));
             CreditSlice storage slice = creditSlices[id];
             require(slice.owner == msg.sender, "YS: only credit slice owner");
@@ -462,9 +467,12 @@ contract YieldSlice is ReentrancyGuard {
         // forward to the current timestamp, subtracting the already generated
         // NPV to this point.
         ( , uint256 npvGen, uint256 claimable) = generatedCredit(id);
+
         uint256 numDays = ((block.timestamp - uint256(slice.blockTimestamp))
                            / discounter.DISCOUNT_PERIOD());
-        uint256 shiftedNPV = discounter.shiftNPV(slice.npvCredit - npvGen, numDays);
+
+        // TODO: regression test for shiftNPV()
+        uint256 shiftedNPV = discounter.shiftNPVForward(slice.npvCredit - npvGen, numDays);
 
         // Checkpoint what we can claim as pending, and set claimed to zero
         // as it is now relative to the new timestamp.
@@ -472,7 +480,7 @@ contract YieldSlice is ReentrancyGuard {
         slice.pending = claimable;
         slice.claimed = 0;
 
-        if (deltaNPV > 0) {
+        if (deltaNPV >= 0) {
             slice.npvCredit = shiftedNPV + uint256(deltaNPV);
             slice.npvTokens += uint256(deltaNPV);
         } else {
@@ -486,23 +494,51 @@ contract YieldSlice is ReentrancyGuard {
     /// @param recipient Recipient of the credit slice.
     /// @param memo Optional memo data to associate with the yield slice.
     /// @return ID of the credit slice.
-    function creditSlice(uint256 npv, address recipient, bytes calldata memo) external returns (uint256) {
+    function creditSlice(uint256 npv, address recipient, bytes calldata memo)
+        external
+        nonReentrant
+        returns (uint256) {
+
         uint256 fees = _creditFees(npv);
         IERC20(npvToken).safeTransferFrom(msg.sender, address(this), npv);
         IERC20(npvToken).safeTransfer(treasury, fees);
 
-        // Checkpoint the unallocated NPV slice, and transfer proportional
-        // amount of pending yield to the new position.
-        _modifyCreditPosition(unallocId, -int256(npv - fees));
         CreditSlice storage unalloc = creditSlices[unallocId];
-        uint256 pendingShare = unalloc.pending * (npv - fees) / (unalloc.npvTokens + npv - fees);
+
+        // Compute the unallocated slice's generated NPV and claimable amounts,
+        // relative to the original timestamp. Record this as pending yield, and
+        // update the remaining NPV, if any.
+        {
+            (, uint256 npvGen, uint256 claimable) = generatedCredit(unallocId);
+            unalloc.npvCredit -= npvGen;
+            unalloc.pending = claimable;
+        }
+
+        // Shift the unallocated slice's remaining NPV credit such that it becomes
+        // relative to the current timestamp.
+        uint256 numDays = ((block.timestamp - uint256(unalloc.blockTimestamp))
+                           / discounter.DISCOUNT_PERIOD());
+        unalloc.npvCredit = discounter.shiftNPVForward(unalloc.npvCredit, numDays);
+
+        // Compute the proportional share of vested, pending yield that will go to
+        // the new slice.
+        uint256 pendingShare = unalloc.pending * (npv - fees) / unalloc.npvTokens;
+
+        // Compute the proportional share of remaining NPV credit that will go to the
+        // new slice.
+        uint256 npvCredit = unalloc.npvCredit * (npv - fees) / unalloc.npvTokens;
+
+        // Update the unallocated slice
+        unalloc.blockTimestamp = uint128(block.timestamp);
         unalloc.pending -= pendingShare;
+        unalloc.npvCredit -= npvCredit;
+        unalloc.npvTokens -= npv;
 
         uint256 id = nextId++;
         CreditSlice memory slice = CreditSlice({
             owner: recipient,
             blockTimestamp: uint128(block.timestamp),
-            npvCredit: npv - fees,
+            npvCredit: npvCredit,
             npvTokens: npv - fees,
             pending: pendingShare,
             claimed: 0,
@@ -570,6 +606,7 @@ contract YieldSlice is ReentrancyGuard {
 
         npvToken.transfer(recipient, amount);
         _modifyCreditPosition(id, -int256(amount));
+        _modifyCreditPosition(unallocId, int256(amount));
 
         emit ReceiveNPV(recipient, id, amount);
     }
