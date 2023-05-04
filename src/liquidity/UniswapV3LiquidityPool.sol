@@ -9,7 +9,6 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { ILiquidityPool } from "../interfaces/ILiquidityPool.sol";
 import { ISwapRouter } from "../interfaces/uniswap/ISwapRouter.sol";
 import { IQuoterV2 } from "../interfaces/uniswap/IQuoterV2.sol";
-import { IUniswapV3Factory } from "../interfaces/uniswap/IUniswapV3Factory.sol";
 import { IUniswapV3Pool } from "../interfaces/uniswap/IUniswapV3Pool.sol";
 
 /// @notice Wrapped interface to a Uniswap V3 liquidity pool.
