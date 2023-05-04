@@ -21,3 +21,8 @@ python/
 Makefile
 
 BUGS
+
+*.html
+*.css
+*.png
+lcov.info

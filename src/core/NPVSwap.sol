@@ -255,6 +255,7 @@ contract NPVSwap {
     /// @param amount The amount of yield tokens to exchange for NPV tokens.
     function mintAndPayWithYield(uint256 id, uint256 amount) public {
 
+        amount = _min(amount, slice.remaining(id));
         slice.yieldToken().safeTransferFrom(msg.sender, address(this), amount);
         slice.yieldToken().safeApprove(address(slice), 0);
         slice.yieldToken().safeApprove(address(slice), amount);
@@ -262,11 +263,11 @@ contract NPVSwap {
         IERC20(slice.npvToken()).safeApprove(address(slice), 0);
         IERC20(slice.npvToken()).safeApprove(address(slice), amount);
         uint256 paid = slice.payDebt(id, amount);
-        if (paid != amount) {
-            IERC20(slice.npvToken()).safeTransfer(msg.sender, amount - paid);
-        }
 
         emit MintAndPayWithYield(id, paid);
     }
 
+    function _min(uint256 x1, uint256 x2) private pure returns (uint256) {
+        return x1 < x2 ? x1 : x2;
+    }
 }

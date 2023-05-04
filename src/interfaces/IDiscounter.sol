@@ -10,5 +10,5 @@ interface IDiscounter {
     function discounted(uint256 generator, uint256 yield) external view returns (uint256);
     function pv(uint256 numDays, uint256 nominal) external view returns (uint256);
     function nominal(uint256 numDays, uint256 pv) external view returns (uint256);
-    function shiftNPV(uint256 npv, uint256 numDays) external view returns (uint256);
+    function shiftNPV(uint256 numDays, uint256 npv) external view returns (uint256);
 }

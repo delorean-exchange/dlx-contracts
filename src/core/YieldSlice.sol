@@ -425,7 +425,11 @@ contract YieldSlice is ReentrancyGuard {
     /// @param id ID of the debt slice to pay.
     /// @param amount Amount of NPV tokens to pay off.
     /// @return Actual amouhnt of NPV tokens used to pay off.
-    function payDebt(uint256 id, uint256 amount) external nonReentrant isDebtSlice(id) returns (uint256) {
+    function payDebt(uint256 id, uint256 amount)
+        external
+        nonReentrant
+        isDebtSlice(id) returns (uint256) {
+
         DebtSlice storage slice = debtSlices[id];
         require(slice.unlockedBlockTimestamp == 0, "YS: already unlocked");
 
@@ -514,7 +518,7 @@ contract YieldSlice is ReentrancyGuard {
         uint256 numDays = ((block.timestamp - uint256(slice.blockTimestamp))
                            / discounter.DISCOUNT_PERIOD());
 
-        uint256 shiftedNPV = discounter.shiftNPV(slice.npvCredit - npvGen, numDays);
+        uint256 shiftedNPV = discounter.shiftNPV(numDays, slice.npvCredit - npvGen);
 
         // Checkpoint what we can claim as pending, and set claimed to zero
         // as it is now relative to the new timestamp.
@@ -561,7 +565,7 @@ contract YieldSlice is ReentrancyGuard {
         // relative to the current timestamp.
         uint256 numDays = ((block.timestamp - uint256(unalloc.blockTimestamp))
                            / discounter.DISCOUNT_PERIOD());
-        unalloc.npvCredit = discounter.shiftNPV(unalloc.npvCredit, numDays);
+        unalloc.npvCredit = discounter.shiftNPV(numDays, unalloc.npvCredit);
 
         // Compute the proportional share of vested, pending yield that will go to
         // the new slice.

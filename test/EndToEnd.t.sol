@@ -125,9 +125,16 @@ contract EndToEndTest is BaseTest {
         assertEq(preview, 612862441028507418);
         assertClose(preview, 6e17, 1e17);
 
-        (uint256 quote ,) = npvSwap.previewSwapNPVForYieldOut(612862441028507418, 0);
-        assertEq(quote, 657008058000000000);
-        assertEq(quote, npvSwap.previewLockForNPV(200e18, 1e18));
+        {
+            (uint256 quote ,) = npvSwap.previewSwapNPVForYield(657008058000000000, 0);
+            assertEq(quote, 612862441028507418);
+        }
+
+        {
+            (uint256 quote ,) = npvSwap.previewSwapNPVForYieldOut(612862441028507418, 0);
+            assertEq(quote, 657008058000000000);
+            assertEq(quote, npvSwap.previewLockForNPV(200e18, 1e18));
+        }
 
         (uint256 id1 , uint256 amount) = npvSwap.lockForYield(bob, 200e18, 1e18, preview, 0, new bytes(0));
         (address owner , , , , , , ) = npvSwap.slice().debtSlices(id1);
@@ -310,6 +317,36 @@ contract EndToEndTest is BaseTest {
         slice.unlockDebtSlice(id1);
 
         assertEq(generatorToken.balanceOf(bob), 200e18);
+
+        vm.stopPrank();
+    }
+
+
+    function testPayOffWithYieldExtraAmount() public {
+        testAliceAddLiquidity();
+
+        // Bob locks and swaps generator tokens for upfront payment
+        vm.startPrank(bob);
+
+        source.mintGenerator(bob, 200e18);
+        generatorToken.approve(address(npvSwap), 200e18);
+        uint256 id1 = npvSwap.slice().nextId();
+        npvSwap.lockForYield(bob, 200e18, 1e18, 0, 0, new bytes(0));
+
+        uint256 remainingNPV = npvSwap.slice().remaining(id1);
+
+        source.mintYield(bob, 1000000e18);
+
+        // Pay part of it
+        uint256 amount = remainingNPV + 10;
+        yieldToken.approve(address(npvSwap), amount);
+        uint256 before = yieldToken.balanceOf(bob);
+        npvSwap.mintAndPayWithYield(id1, amount);
+
+        slice.unlockDebtSlice(id1);
+
+        assertEq(generatorToken.balanceOf(bob), 200e18);
+        assertEq(yieldToken.balanceOf(bob), before - remainingNPV);
 
         vm.stopPrank();
     }

@@ -72,10 +72,15 @@ contract YieldSliceTest is BaseTest {
             slice.recordData();
         }
 
+        assertEq(slice.tokens(id1), 200e18);
+
         slice.unlockDebtSlice(id1);
         assertEq(generatorToken.balanceOf(alice), before);
         assertEq(slice.totalShares(), 0);
         assertEq(slice.tokens(id1), 0);
+
+        vm.expectRevert("YS: already unlocked");
+        slice.unlockDebtSlice(id1);
 
         slice.harvest();
 
@@ -210,6 +215,9 @@ contract YieldSliceTest is BaseTest {
 
         vm.stopPrank();
 
+        vm.expectRevert("YS: only debt slice owner");
+        slice.transferOwnership(id1, alice);
+
         // Warp forward 700 days, about halfway through generating the sold yield
         for (uint256 i = 0; i < 700; i += 7) {
             slice.recordData();
@@ -278,6 +286,17 @@ contract YieldSliceTest is BaseTest {
                  1239712578268556711);
     }
 
+    function testTransferSliceReverts() public {
+        vm.expectRevert();
+        slice.transferOwnership(3333333, alice);
+        
+        vm.expectRevert();
+        slice.transferOwnership(3333333, address(0));
+
+        vm.expectRevert();
+        slice.transferOwnership(3333333, address(slice));
+    }
+
     function testUnlockWithNPVTokens() public {
         init();
 
@@ -307,6 +326,9 @@ contract YieldSliceTest is BaseTest {
 
         vm.expectRevert("YS: already unlocked");
         slice.payDebt(id1, npvSliced);
+
+        vm.expectRevert("YS: no such debt slice");
+        slice.payDebt(33333, npvSliced);
 
         vm.stopPrank();
     }
@@ -555,8 +577,15 @@ contract YieldSliceTest is BaseTest {
         }
         vm.warp(block.timestamp + 0x8000);
 
+        {
+            uint256 beforeLimitClaim = yieldToken.balanceOf(bob);
+            slice.claim(id2, 100);
+            assertEq(yieldToken.balanceOf(bob) - beforeLimitClaim, 100);
+        }
         slice.claim(id2, 0);
         uint256 afterVal2 = yieldToken.balanceOf(bob);
+        assertEq(afterVal2 - before2, 311700895455364638);
+        slice.claim(id2, 0);
         assertEq(afterVal2 - before2, 311700895455364638);
 
         vm.warp(block.timestamp + 0xf0000);
@@ -705,6 +734,36 @@ contract YieldSliceTest is BaseTest {
         vm.stopPrank();
     }
 
+    function testReceiveNPVFullAmount() public  {
+        init();
+
+        vm.startPrank(alice);
+        uint256 before1 = generatorToken.balanceOf(alice);
+        generatorToken.approve(address(npvSwap), 200e18);
+        uint256 id1 = npvSwap.lockForNPV(alice, alice, 200e18, 1e18, new bytes(0));
+        uint256 afterVal1 = generatorToken.balanceOf(alice);
+        assertEq(before1 - afterVal1, 200e18);
+        vm.warp(block.timestamp + 0x2000);
+        npvToken.transfer(bob, 5e17);
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        npvToken.approve(address(npvSwap), 5e17);
+        uint256 id2 = npvSwap.swapNPVForSlice(bob, 5e17, new bytes(0));
+        vm.warp(block.timestamp + 0x8000);
+        slice.claim(id2, 0);
+
+        assertEq(npvToken.balanceOf(bob), 0);
+
+        vm.expectRevert("YS: insufficient NPV");
+        slice.receiveNPV(id2, bob, 100e17);
+
+        slice.receiveNPV(id2, bob, 0);
+        assertEq(npvToken.balanceOf(bob), 188299104544635361);
+
+        vm.stopPrank();
+    }
+
     function testComputePVAndNominal() public {
         init();
 
@@ -825,8 +884,24 @@ contract YieldSliceTest is BaseTest {
         slice.setGov(bob);
     }
 
+    function testSetTreasury() public {
+        init();
+
+        vm.startPrank(alice);
+        vm.expectRevert("YS: gov only");
+        slice.setTreasury(bob);
+        vm.stopPrank();
+
+        slice.setTreasury(bob);
+    }
+
     function testSetDustLimit() public {
         init();
+
+        vm.startPrank(alice);
+        vm.expectRevert("YS: gov only");
+        slice.setDustLimit(10);
+        vm.stopPrank();
 
         vm.startPrank(alice);
         generatorToken.approve(address(npvSwap), 200e18);
@@ -849,6 +924,11 @@ contract YieldSliceTest is BaseTest {
     function testSetDebtFee() public {
         init();
 
+        vm.startPrank(alice);
+        vm.expectRevert("YS: gov only");
+        slice.setDebtFee(1);
+        vm.stopPrank();
+
         vm.expectRevert("YS: max debt fee");
         slice.setDebtFee(100_1);
 
@@ -857,6 +937,11 @@ contract YieldSliceTest is BaseTest {
 
     function testSetCreditFee() public {
         init();
+
+        vm.startPrank(alice);
+        vm.expectRevert("YS: gov only");
+        slice.setCreditFee(1);
+        vm.stopPrank();
 
         vm.expectRevert("YS: max credit fee");
         slice.setCreditFee(20_1);
