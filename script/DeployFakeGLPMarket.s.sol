@@ -14,7 +14,6 @@ import { FakeToken } from "../test/helpers/FakeToken.sol";
 import { FakeYieldSource } from "../test/helpers/FakeYieldSource.sol";
 import { FakeYieldSourceWETH } from "../test/helpers/FakeYieldSourceWETH.sol";
 import { UniswapV3LiquidityPool } from "../src/liquidity/UniswapV3LiquidityPool.sol";
-import { UniswapV3LiquidityPool02 } from "../src/liquidity/UniswapV3LiquidityPool02.sol";
 import { ILiquidityPool } from "../src/interfaces/ILiquidityPool.sol";
 import { IUniswapV3Pool } from "../src/interfaces/uniswap/IUniswapV3Pool.sol";
 import { INonfungiblePositionManager } from "../src/interfaces/uniswap/INonfungiblePositionManager.sol";

@@ -8,7 +8,6 @@ import "forge-std/StdJson.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { UniswapV3LiquidityPool } from "../src/liquidity/UniswapV3LiquidityPool.sol";
-import { UniswapV3LiquidityPool02 } from "../src/liquidity/UniswapV3LiquidityPool02.sol";
 import { ILiquidityPool } from "../src/interfaces/ILiquidityPool.sol";
 import { IUniswapV3Pool } from "../src/interfaces/uniswap/IUniswapV3Pool.sol";
 import { INonfungiblePositionManager } from "../src/interfaces/uniswap/INonfungiblePositionManager.sol";
@@ -68,7 +67,8 @@ contract BaseScript is Script {
 
     function newUniswapV3LiquidityPool(address uniswapV3Pool) public returns (ILiquidityPool) {
         if (swapRouter == bscSwapRouter) {
-            return new UniswapV3LiquidityPool02(address(uniswapV3Pool), swapRouter, quoterV2);
+            /* return new UniswapV3LiquidityPool02(address(uniswapV3Pool), swapRouter, quoterV2); */
+            assert(false);
         } else {
             return new UniswapV3LiquidityPool(address(uniswapV3Pool), swapRouter, quoterV2);
         }
