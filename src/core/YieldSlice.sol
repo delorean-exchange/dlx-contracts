@@ -7,7 +7,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-import { IYieldSlice } from "../interfaces/IYieldSlice.sol";
 import { IYieldSource } from "../interfaces/IYieldSource.sol";
 import { IDiscounter } from "../interfaces/IDiscounter.sol";
 import { YieldData } from "../data/YieldData.sol";
@@ -73,9 +72,9 @@ contract YieldSlice is ReentrancyGuard {
     // debt slice, but hasn't been purchased using a credit slice. When a
     // credit slice purchase takes place, the receiver of that purhcase gets
     // a proportional share of the claimable yield from this slice.
-    uint256 public constant unallocId = 1;
+    uint256 public constant UNALLOC_ID = 1;
 
-    uint256 public nextId = unallocId + 1;
+    uint256 public nextId = UNALLOC_ID + 1;
     uint256 public totalShares;
     uint256 public harvestedYield;
     uint256 public dustLimit;
@@ -111,6 +110,8 @@ contract YieldSlice is ReentrancyGuard {
 
     struct CreditSlice {
         address owner;
+
+        uint128 createdTimestamp;
 
         // The slice is entitled to `npvCredit` amount of yield, discounted
         // relative to `blockTimestamp`.
@@ -199,8 +200,9 @@ contract YieldSlice is ReentrancyGuard {
         debtData = YieldData(debtData_);
         creditData = YieldData(creditData_);
 
-        creditSlices[unallocId] = CreditSlice({
+        creditSlices[UNALLOC_ID] = CreditSlice({
             owner: address(this),
+            createdTimestamp: uint128(block.timestamp),
             blockTimestamp: uint128(block.timestamp),
             npvCredit: 0,
             npvTokens: 0,
@@ -350,7 +352,6 @@ contract YieldSlice is ReentrancyGuard {
         yieldSource.deposit(deltaGenerator, false);
 
         // Update NPV debt for the slice
-        assert(slice.npvDebt == 0);
         (uint256 npv, uint256 fees) = _previewDebtSlice(deltaGenerator, deltaYield);
         slice.npvDebt = npv;
         slice.blockTimestamp = uint128(block.timestamp);
@@ -396,7 +397,7 @@ contract YieldSlice is ReentrancyGuard {
         npvToken.mint(treasury, fees);
         activeNPV += npv;
 
-        _modifyCreditPosition(unallocId, int256(npv - fees));
+        _modifyCreditPosition(UNALLOC_ID, int256(npv - fees));
 
         _recordData();
 
@@ -479,6 +480,7 @@ contract YieldSlice is ReentrancyGuard {
 
         (uint256 nominalGen, uint256 npvGen, uint256 refund) = generatedDebt(id);
 
+        console.log("debt?", npvGen, slice.npvDebt);
         require(npvGen >= slice.npvDebt, "YS: npv debt");
 
         if (refund > 0) {
@@ -505,6 +507,10 @@ contract YieldSlice is ReentrancyGuard {
         return _creditFees(npv);
     }
 
+    /// @notice Modify a credit slice's NPV values.
+    /// @dev Here be dragons: Pay careful attention to which timestamp the NPV values reference.
+    /// @param id The credit slice to modify.
+    /// @param deltaNPV Change in NPV tokens, relative to the creation timestamp of the slice.
     function _modifyCreditPosition(uint256 id, int256 deltaNPV) internal isCreditSlice(id) {
         if (deltaNPV == 0) return;
         CreditSlice storage slice = creditSlices[id];
@@ -515,10 +521,10 @@ contract YieldSlice is ReentrancyGuard {
         // NPV to this point.
         ( , uint256 npvGen, uint256 claimable) = generatedCredit(id);
 
-        uint256 numDays = ((block.timestamp - uint256(slice.blockTimestamp))
-                           / discounter.DISCOUNT_PERIOD());
+        uint256 daysFromTimestamp = ((block.timestamp - uint256(slice.blockTimestamp))
+                                     / discounter.DISCOUNT_PERIOD());
 
-        uint256 shiftedNPV = discounter.shiftNPV(numDays, slice.npvCredit - npvGen);
+        uint256 shiftedNPV = discounter.shiftNPV(daysFromTimestamp, slice.npvCredit - npvGen);
 
         // Checkpoint what we can claim as pending, and set claimed to zero
         // as it is now relative to the new timestamp.
@@ -526,11 +532,19 @@ contract YieldSlice is ReentrancyGuard {
         slice.pending = claimable;
         slice.claimed = 0;
 
+        uint256 daysFromCreation = ((block.timestamp - uint256(slice.createdTimestamp))
+                                    / discounter.DISCOUNT_PERIOD());
+
+        // Update npvCredit and npvTokens. Carefully track which timestamp they are
+        // relative to. The npvCredit field is the slice's entitled NPV relative to
+        // slice.blockTimestamp. The npvTokens field is the slice's locked NPV tokens,
+        // and can be used to compute their entitled NPV relative to the creation
+        // timestamp.
         if (deltaNPV >= 0) {
-            slice.npvCredit = shiftedNPV + uint256(deltaNPV);
+            slice.npvCredit = shiftedNPV + discounter.shiftNPV(daysFromCreation, uint256(deltaNPV));
             slice.npvTokens += uint256(deltaNPV);
         } else {
-            slice.npvCredit = shiftedNPV - uint256(-deltaNPV);
+            slice.npvCredit = shiftedNPV - discounter.shiftNPV(daysFromCreation, uint256(-deltaNPV));
             slice.npvTokens -= uint256(-deltaNPV);
         }
     }
@@ -547,16 +561,17 @@ contract YieldSlice is ReentrancyGuard {
         returns (uint256) {
 
         uint256 fees = _creditFees(npv);
+
         IERC20(npvToken).safeTransferFrom(msg.sender, address(this), npv);
         IERC20(npvToken).safeTransfer(treasury, fees);
 
-        CreditSlice storage unalloc = creditSlices[unallocId];
+        CreditSlice storage unalloc = creditSlices[UNALLOC_ID];
 
         // Compute the unallocated slice's generated NPV and claimable amounts,
         // relative to the original timestamp. Record this as pending yield, and
         // update the remaining NPV, if any.
         {
-            (, uint256 npvGen, uint256 claimable) = generatedCredit(unallocId);
+            (, uint256 npvGen, uint256 claimable) = generatedCredit(UNALLOC_ID);
             unalloc.npvCredit -= npvGen;
             unalloc.pending = claimable;
         }
@@ -584,6 +599,7 @@ contract YieldSlice is ReentrancyGuard {
         uint256 id = nextId++;
         CreditSlice memory slice = CreditSlice({
             owner: recipient,
+            createdTimestamp: uint128(block.timestamp),
             blockTimestamp: uint128(block.timestamp),
             npvCredit: npvCredit,
             npvTokens: npv - fees,
@@ -632,6 +648,23 @@ contract YieldSlice is ReentrancyGuard {
         return _claim(id, limit);
     }
 
+    function withdrawableNPV(uint256 id)
+        public
+        view
+        isCreditSlice(id)
+        returns (uint256) {
+
+        CreditSlice storage slice = creditSlices[id];
+
+        // Compute the NPV credit available relative to slice's timestamp,
+        // and shift that value backwards such that it is becomes relative
+        // to the creation timestamp.
+        uint256 daysFromCreation = ((block.timestamp - uint256(slice.createdTimestamp))
+                                    / discounter.DISCOUNT_PERIOD());
+        ( , uint256 npvGen, ) = generatedCredit(id);
+        return discounter.shiftNPVBackward(daysFromCreation, slice.npvCredit - npvGen);
+    }
+
     /// @notice Withdraw NPV tokens from a credit slice, if possible.
     /// @param id ID of the credit slice.
     /// @param recipient Recipient of the NPV tokens.
@@ -644,17 +677,17 @@ contract YieldSlice is ReentrancyGuard {
         validRecipient(recipient)
         creditSliceOwner(id) {
 
-        CreditSlice storage slice = creditSlices[id];
-        ( , uint256 npvGen, ) = generatedCredit(id);
-        uint256 available = slice.npvCredit - npvGen;
+        uint256 available = withdrawableNPV(id);
+
         if (amount == 0) {
             amount = available;
         }
+
         require(amount <= available, "YS: insufficient NPV");
 
         npvToken.transfer(recipient, amount);
         _modifyCreditPosition(id, -int256(amount));
-        _modifyCreditPosition(unallocId, int256(amount));
+        _modifyCreditPosition(UNALLOC_ID, int256(amount));
 
         emit ReceiveNPV(recipient, id, amount);
     }

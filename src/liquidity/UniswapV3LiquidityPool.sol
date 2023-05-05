@@ -28,6 +28,11 @@ contract UniswapV3LiquidityPool is ILiquidityPool {
     constructor(address pool_,
                 address router_,
                 address quoter_) {
+
+        require(pool_ != address(0));
+        require(router_ != address(0));
+        require(quoter_ != address(0));
+
         pool = IUniswapV3Pool(pool_);
         router = ISwapRouter(router_);
         quoter = IQuoterV2(quoter_);
@@ -46,8 +51,6 @@ contract UniswapV3LiquidityPool is ILiquidityPool {
     /// @return New price after the swap.
     function previewSwap(address tokenIn, uint128 amountIn, uint128 sqrtPriceLimitX96)
         external override returns (uint256, uint256) {
-
-        require(address(pool) != address(0), "ULP: no pool");
 
         IQuoterV2.QuoteExactInputSingleParams memory params = IQuoterV2.QuoteExactInputSingleParams({
             tokenIn: tokenIn,
@@ -94,10 +97,7 @@ contract UniswapV3LiquidityPool is ILiquidityPool {
                   uint128 sqrtPriceLimitX96)
         external override returns (uint256) {
 
-        require(address(pool) != address(0), "ULP: no pool");
-
         IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
-        assert(IERC20(tokenIn).balanceOf(address(this)) >= amountIn);
         IERC20(tokenIn).safeApprove(address(router), 0);
         IERC20(tokenIn).safeApprove(address(router), amountIn);
 

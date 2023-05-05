@@ -16,8 +16,11 @@ contract YieldDataTest is BaseTest {
         data = new YieldData(20);
         data.setWriter(user0);
     }
+    
+    function testSimpleData() public {
+        assertEq(data.yieldPerTokenPerSecond(1, 1, 0, 0), 0);
+        assertEq(data.yieldPerTokenPerSecond(uint128(block.timestamp), uint128(block.timestamp) + 1, 0, 0), 0);
 
-    function testSimple() public {
         vm.startPrank(user0);
         data.record(10e18, 0);
         vm.roll(block.number + 20);
@@ -25,12 +28,45 @@ contract YieldDataTest is BaseTest {
         data.record(10e18, 5000);
         assertEq(data.yieldPerTokenPerSecond(uint32(block.timestamp) - 20, uint32(block.timestamp), 0, 0), 25);
         vm.stopPrank();
+
+        assertEq(data.isEmpty(), false);
+
+        YieldData.Epoch memory current = data.current();
+        assertEq(current.tokens, 10e18);
+        assertEq(current.yield, 5000);
+        assertEq(current.yieldPerToken, 0);
+        assertEq(current.blockTimestamp, 21);
+        assertEq(current.epochSeconds, 0);
     }
 
-    function testSetWriterOnce() public {
+    function testSetWriterChecks() public {
         vm.expectRevert("YD: only set once");
         data.setWriter(createUser(1));
         vm.stopPrank();
+
+        vm.expectRevert("YD: only writer");
+        data.record(1, 2);
+
+        vm.expectRevert("YD: zero address");
+        data.setWriter(address(0));
+    }
+
+    function testDataChecks() public {
+        assertEq(data.isEmpty(), true);
+
+        vm.warp(3);
+
+        vm.expectRevert("YD: no epochs");
+        data.yieldPerTokenPerSecond(1, 3, 0, 0);
+
+        vm.expectRevert("YD: end must be in the past or current");
+        data.yieldPerTokenPerSecond(1, 10, 0, 0);
+
+        vm.expectRevert("YD: start must be in the past");
+        data.yieldPerTokenPerSecond(4, 5, 0, 0);
+
+        vm.expectRevert("YD: start must precede end");
+        data.yieldPerTokenPerSecond(5, 4, 0, 0);
     }
 
     function testSplitEpoch() public {

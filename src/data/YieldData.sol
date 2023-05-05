@@ -108,8 +108,10 @@ contract YieldData is Ownable {
         }
     }
 
-    function _find(uint128 blockTimestamp) internal view returns (uint256) {
-        require(epochs.length > 0, "no epochs");
+    function _find(uint128 blockTimestamp) internal view returns (uint256 result) {
+        require(epochs.length > 0, "YD: no epochs");
+
+        result = epochIndex;
         if (blockTimestamp >= epochs[epochIndex].blockTimestamp) return epochIndex;
         if (blockTimestamp <= epochs[0].blockTimestamp) return 0;
 
@@ -130,8 +132,6 @@ contract YieldData is Ownable {
             }
             i = (start + end) / 2;
         }
-
-        return epochIndex;
     }
 
     /// @notice Compute the yield per token per second for a time range. The first and final epoch in the time range are prorated, and therefore the resulting value is an approximation.
@@ -145,8 +145,8 @@ contract YieldData is Ownable {
         if (start == uint128(block.timestamp)) return 0;
 
         require(start < end, "YD: start must precede end");
-        require(end <= uint128(block.timestamp), "YD: end must be in the past or current");
         require(start < uint128(block.timestamp), "YD: start must be in the past");
+        require(end <= uint128(block.timestamp), "YD: end must be in the past or current");
 
         uint256 index = _find(start);
         uint256 yieldPerToken;
@@ -160,9 +160,7 @@ contract YieldData is Ownable {
         while (true) {
             if (index > maxIndex) break;
             Epoch memory epoch;
-            if (epochPush.blockTimestamp != 0 && index == maxIndex) {
-                epoch = epochPush;
-            } else if (epochSet.blockTimestamp != 0 && index == epochIndex) {
+            if (epochSet.blockTimestamp != 0 && index == epochIndex) {
                 epoch = epochSet;
             } else {
                 epoch = epochs[index];
@@ -172,7 +170,6 @@ contract YieldData is Ownable {
 
             uint256 epochSeconds = epoch.epochSeconds;
             if (epochSeconds == 0) break;
-            if (end < epoch.blockTimestamp) break;
 
             if (start > epoch.blockTimestamp) {
                 epochSeconds -= start - epoch.blockTimestamp;
@@ -188,8 +185,6 @@ contract YieldData is Ownable {
 
             if (end < epoch.blockTimestamp + epoch.epochSeconds) break;
         }
-
-        if (numSeconds == 0) return 0;
 
         return yieldPerToken / numSeconds;
     }

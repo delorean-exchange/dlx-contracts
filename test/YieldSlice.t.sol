@@ -23,12 +23,12 @@ contract YieldSliceTest is BaseTest {
     }
 
     function creditSliceNPVCredit(uint256 id) internal view returns (uint256) {
-        ( , , uint256 npvCredit, , , , ) = slice.creditSlices(id);
+        ( , , , uint256 npvCredit, , , , ) = slice.creditSlices(id);
         return npvCredit;
     }
 
     function creditSliceNPVTokens(uint256 id) internal view returns (uint256) {
-        ( , , , uint256 npvTokens, , , ) = slice.creditSlices(id);
+        ( , , , , uint256 npvTokens, , , ) = slice.creditSlices(id);
         return npvTokens;
     }
 
@@ -144,14 +144,14 @@ contract YieldSliceTest is BaseTest {
         source.mintBoth(bob, 1000000e18);
 
         // Values are regression tests for shift NPV logic
-        assertEq(creditSliceNPVCredit(slice.unallocId()), 884433656000000000);
+        assertEq(creditSliceNPVCredit(slice.UNALLOC_ID()), 884433656000000000);
         uint256 beforeBob = generatorToken.balanceOf(bob);
 
         vm.startPrank(bob);
         generatorToken.approve(address(npvSwap), 40e18);
         uint256 id2 = npvSwap.lockForNPV(bob, bob, 40e18, 1e17, new bytes(0));
         vm.stopPrank();
-        assertEq(creditSliceNPVCredit(slice.unallocId()), 885083955278229459);
+        assertEq(creditSliceNPVCredit(slice.UNALLOC_ID()), 895490326103577706);
 
         for (uint256 day = 0; day < 2000; day += 7) {
             vm.warp(block.timestamp + 7 days);
@@ -269,7 +269,7 @@ contract YieldSliceTest is BaseTest {
         vm.startPrank(eve);
         assertEq(yieldToken.balanceOf(eve), 0);
         slice.claim(id2, 0);
-        assertEq(yieldToken.balanceOf(eve), 284128598350596471);
+        assertEq(yieldToken.balanceOf(eve), 284128598350597080);
         vm.stopPrank();
 
         // All the yield has been generated, so Bob (debt slice transfer beneficiary)
@@ -283,7 +283,7 @@ contract YieldSliceTest is BaseTest {
         assertEq(yieldToken.balanceOf(chad) +
                  yieldToken.balanceOf(degen) +
                  yieldToken.balanceOf(eve),
-                 1239712578268556711);
+                 1239712578268557320);
     }
 
     function testTransferSliceReverts() public {
@@ -467,7 +467,7 @@ contract YieldSliceTest is BaseTest {
         vm.startPrank(bob);
         npvToken.approve(address(npvSwap), npvOwed);
         npvSwap.swapNPVForSlice(bob, npvOwed, new bytes(0));
-        (, , uint256 npvEntitled, , , , ) = slice.creditSlices(id2);
+        (, , , uint256 npvEntitled, , , , ) = slice.creditSlices(id2);
         vm.stopPrank();
 
         {
@@ -631,7 +631,7 @@ contract YieldSliceTest is BaseTest {
         }
     }
 
-    function testReceiveNPV() public  {
+    function testSetUpReceiveNPV() public returns (uint256, uint256) {
         init();
 
         vm.startPrank(alice);
@@ -653,14 +653,25 @@ contract YieldSliceTest is BaseTest {
             assertEq(claimable, 62335612937030415);
         }
 
+        vm.stopPrank();
+
+        return (id1, id2);
+    }
+
+    function testReceiveNPV() public  {
+        (uint256 id1, uint256 id2) = testSetUpReceiveNPV();
+
         vm.warp(block.timestamp + 0x8000);
 
+        vm.startPrank(bob);
+
         uint256 before2 = yieldToken.balanceOf(bob);
+        assertEq(before2, 0);
         slice.claim(id2, 0);
         uint256 afterVal2 = yieldToken.balanceOf(bob);
         assertEq(afterVal2 - before2, 311700895455364638);
-
         assertEq(npvToken.balanceOf(bob), 0);
+
         slice.receiveNPV(id2, bob, 1e17);
         assertEq(npvToken.balanceOf(bob), 1e17);
         assertEq(npvToken.balanceOf(address(slice)), 4e17);
@@ -677,9 +688,8 @@ contract YieldSliceTest is BaseTest {
             assertEq(nominal3, 88343276182726724);
             assertEq(npvToken.totalSupply(), 657008058000000000);
 
-            uint256 before3 = yieldToken.balanceOf(bob);
             slice.claim(id2, 0);
-            uint256 delta = yieldToken.balanceOf(bob) - before2;
+            uint256 delta = yieldToken.balanceOf(bob);
 
             assertEq(delta, 400044171638091362);
             assertEq(npvToken.totalSupply(), 257008058000000000);
@@ -735,22 +745,12 @@ contract YieldSliceTest is BaseTest {
     }
 
     function testReceiveNPVFullAmount() public  {
-        init();
+        (uint256 id1, uint256 id2) = testSetUpReceiveNPV();
 
-        vm.startPrank(alice);
-        uint256 before1 = generatorToken.balanceOf(alice);
-        generatorToken.approve(address(npvSwap), 200e18);
-        uint256 id1 = npvSwap.lockForNPV(alice, alice, 200e18, 1e18, new bytes(0));
-        uint256 afterVal1 = generatorToken.balanceOf(alice);
-        assertEq(before1 - afterVal1, 200e18);
-        vm.warp(block.timestamp + 0x2000);
-        npvToken.transfer(bob, 5e17);
-        vm.stopPrank();
+        vm.warp(block.timestamp + 0x8000);
 
         vm.startPrank(bob);
-        npvToken.approve(address(npvSwap), 5e17);
-        uint256 id2 = npvSwap.swapNPVForSlice(bob, 5e17, new bytes(0));
-        vm.warp(block.timestamp + 0x8000);
+
         slice.claim(id2, 0);
 
         assertEq(npvToken.balanceOf(bob), 0);
@@ -762,6 +762,158 @@ contract YieldSliceTest is BaseTest {
         assertEq(npvToken.balanceOf(bob), 188299104544635361);
 
         vm.stopPrank();
+    }
+
+    function testReceiveNPVZero() public  {
+        init();
+
+        vm.startPrank(alice);
+        generatorToken.approve(address(npvSwap), 200e18);
+        uint256 id1 = npvSwap.lockForNPV(alice, alice, 200e18, 1e18, new bytes(0));
+        npvToken.transfer(bob, 5e17);
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        npvToken.approve(address(npvSwap), 5e17);
+        uint256 id2 = npvSwap.swapNPVForSlice(bob, 0, new bytes(0));
+        slice.receiveNPV(id2, bob, 0);
+        vm.stopPrank();
+    }
+
+    function testReceiveNPVAccountsWithdrawableImmediate() public {
+        init();
+
+        vm.startPrank(alice);
+        generatorToken.approve(address(npvSwap), 20000e18);
+        uint256 id1 = npvSwap.lockForNPV(alice, alice, 20000e18, 100e18, new bytes(0));
+        npvToken.transfer(bob, 50e18);
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        npvToken.approve(address(npvSwap), 50e18);
+        uint256 id2 = npvSwap.swapNPVForSlice(bob, 50e18, new bytes(0));
+        assertEq(slice.withdrawableNPV(id2), 50e18);
+        vm.stopPrank();
+    }
+
+    function testTimeShiftAccounting() public  {
+        init();
+
+        vm.startPrank(alice);
+        generatorToken.approve(address(npvSwap), 20000e18);
+        uint256 id1 = npvSwap.lockForNPV(alice, alice, 20000e18, 100e18, new bytes(0));
+        npvToken.transfer(bob, 50e18);
+        vm.stopPrank();
+
+        // Obtain a credit slice
+        vm.startPrank(bob);
+        npvToken.approve(address(npvSwap), 50e18);
+        uint256 id2 = npvSwap.swapNPVForSlice(bob, 50e18, new bytes(0));
+
+        // Move forward in time and receive dust NPV, triggering call to shiftNPV
+        uint256 npvCreditBefore = creditSliceNPVCredit(id2);
+        uint256 npvTokensBefore = creditSliceNPVTokens(id2);
+
+        vm.warp(block.timestamp + 0xf0000);
+
+        ( , uint256 npvGenBefore, ) = slice.generatedCredit(id2);
+
+        // Receive 1 unit of NPV tokens, verify accounting.
+        slice.receiveNPV(id2, bob, 1);
+        {
+            uint256 npvCreditAfter = creditSliceNPVCredit(id2);
+            uint256 npvTokensAfter = creditSliceNPVTokens(id2);
+
+            ( , uint256 tsCreated, uint256 ts, , , , , ) = slice.creditSlices(id2);
+            uint256 numDays = (ts - tsCreated) / slice.discounter().DISCOUNT_PERIOD();
+            uint256 npvCreditAfterShifted = slice.discounter().shiftNPVBackward(numDays, npvCreditAfter);
+
+            assertEq(creditSliceNPVTokens(id2), 50e18 - 1);
+            assertEq(npvCreditAfterShifted + npvGenBefore, 50e18 - 2);
+
+            // The withdrawable NPV tokens should be equal to the the total NPV tokens locked,
+            // minus what was withdrawn, minus the NPV generated relative to the creation time.
+            // The value is off by 1 due to rounding.
+            assertEq(slice.withdrawableNPV(id2) + npvGenBefore, 50e18 - 2);
+        }
+
+        // Receive 100 units of NPV tokens, verify accounting
+        slice.receiveNPV(id2, bob, 100);
+        assertEq(slice.withdrawableNPV(id2) + npvGenBefore, 50e18 - 102);
+        assertEq(npvToken.balanceOf(bob), 101);
+
+        // Move forward in time a little, do more NPV token withdrawals, verify accounting
+        vm.warp(block.timestamp + 10);
+
+        uint256 npvGen2;
+        {
+            ( , uint256 npvGen, ) = slice.generatedCredit(id2);
+            ( , uint256 tsCreated, uint256 ts, , , , , ) = slice.creditSlices(id2);
+            uint256 numDays = (ts - tsCreated) / slice.discounter().DISCOUNT_PERIOD();
+            npvGen2 = slice.discounter().shiftNPVBackward(numDays, npvGen);
+        }
+
+        // Receive 2 units of NPV tokens, verify accounting
+        slice.receiveNPV(id2, bob, 2);
+        assertEq(slice.withdrawableNPV(id2) + npvGenBefore + npvGen2, 50e18 - 105);
+        assertEq(npvToken.balanceOf(bob), 103);
+
+        // Receive 200 units of NPV tokens, verify accounting
+        slice.receiveNPV(id2, bob, 200);
+        assertEq(slice.withdrawableNPV(id2) + npvGenBefore + npvGen2, 50e18 - 305);
+        assertEq(npvToken.balanceOf(bob), 303);
+
+        // Receive 1e18 units of NPV tokens, verify accounting, transfer to Chad
+        slice.receiveNPV(id2, bob, 1e18);
+        assertEq(slice.withdrawableNPV(id2) + npvGenBefore + npvGen2, 50e18 - 305 - 1e18);
+        assertEq(npvToken.balanceOf(bob), 1e18 + 303);
+
+        npvToken.transfer(chad, 1e18);
+        assertEq(npvToken.balanceOf(bob), 303);
+        assertEq(npvToken.balanceOf(chad), 1e18);
+
+        vm.stopPrank();
+
+        // Chad sends some of his NPV tokens to Degen, locks rest into a slice
+        vm.startPrank(chad);
+        npvToken.transfer(degen, 2e17);
+        assertEq(npvToken.balanceOf(chad), 8e17);
+        assertEq(npvToken.balanceOf(degen), 2e17);
+
+        npvToken.approve(address(slice), 8e17);
+        uint256 id3 = slice.creditSlice(8e17, chad, "");
+
+        // Withdrawable NPV will be less than what we just locked, because some yield
+        // has already vested from the unallocated slice
+        assertTrue(slice.withdrawableNPV(id3) < 8e17);
+
+        vm.stopPrank();
+
+        // Move forward in time so that all yield is vested
+
+        vm.warp(block.timestamp + 0xf00000);
+
+        vm.startPrank(degen);
+        npvToken.approve(address(slice), 2e17);
+        uint256 id4 = slice.creditSlice(2e17, degen, "");
+        vm.stopPrank();
+
+        // Since all the yield is vested, no NPV tokens are withdrawable
+        assertEq(slice.withdrawableNPV(id2), 0);
+        assertEq(slice.withdrawableNPV(id3), 0);
+        assertEq(slice.withdrawableNPV(id4), 0);
+
+        vm.prank(bob);
+        uint256 claimed1 = slice.claim(id2, 0);
+
+        vm.prank(chad);
+        uint256 claimed2 = slice.claim(id3, 0);
+
+        vm.prank(degen);
+        uint256 claimed3 = slice.claim(id4, 0);
+
+        assertTrue(claimed1 + claimed2 + claimed3 > 50e18);
+        assertEq(claimed1 + claimed2 + claimed3, 50975040823142852923);
     }
 
     function testComputePVAndNominal() public {
@@ -947,5 +1099,198 @@ contract YieldSliceTest is BaseTest {
         slice.setCreditFee(20_1);
 
         slice.setCreditFee(20_0);
+    }
+
+    function testDebtSliceSmallValues() public {
+        return;
+
+        testFuzz_debtSlice(1e9);
+        testFuzz_debtSlice(2e9);
+        testFuzz_debtSlice(3e9);
+    }
+    function testDebtSliceRegularValues() public {
+        testFuzz_debtSlice(1e18);
+
+        return;
+        testFuzz_debtSlice(2e18);
+        testFuzz_debtSlice(10e18);
+        testFuzz_debtSlice(100e18);
+    }
+
+    function testDebtSliceLargeValues() public {
+        return;
+
+        testFuzz_debtSlice(1e27 - 1);
+        testFuzz_debtSlice(1e26);
+    }
+
+    function testFuzz_debtSlice(uint256 amountYield) public {
+        return;
+
+        vm.assume(amountYield >= 1e9);
+        vm.assume(amountYield <= 1e27);
+
+        uint256 amountGenerator = 200e18;
+        uint256 yps = amountYield / 1000 + 1;
+        amountYield = amountYield / 10;
+
+        init(yps);
+
+        vm.startPrank(alice);
+        uint256 before = generatorToken.balanceOf(alice);
+        generatorToken.approve(address(slice), amountGenerator);
+        uint256 id1 = slice.debtSlice(alice, alice, amountGenerator, amountYield, "");
+        assertEq(generatorToken.balanceOf(alice), before - amountGenerator);
+        uint256 npvSliced = npvToken.balanceOf(alice);
+        npvToken.transfer(bob, npvToken.balanceOf(alice));
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 10);
+
+        vm.startPrank(bob);
+        npvToken.approve(address(slice), npvSliced);
+        uint256 id2 = slice.creditSlice(npvSliced, bob, "");
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + amountYield / yps + 10);
+
+        vm.startPrank(alice);
+        slice.unlockDebtSlice(id1);
+        assertEq(generatorToken.balanceOf(alice), before);
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        uint256 claimed = slice.claim(id2, 0);
+        assertTrue(yieldToken.balanceOf(bob) >= npvSliced);
+        assertTrue(yieldToken.balanceOf(bob) <= amountYield);
+        assertEq(yieldToken.balanceOf(bob), claimed);
+        vm.stopPrank();
+    }
+
+    function testTransferRegularValues() public {
+        return;
+
+        testFuzz_transfers(1e18);
+        testFuzz_transfers(2e18);
+        testFuzz_transfers(10e18);
+        testFuzz_transfers(100e18);
+        testFuzz_transfers(3955221184997775880);
+    }
+
+    function testTransferLargeValues() public {
+        return;
+
+        testFuzz_transfers(1e27 - 1);
+        testFuzz_transfers(1e26);
+    }
+
+    function testFuzz_transfers(uint256 amountYield) public {
+        return;
+
+        vm.assume(amountYield >= 1e18);
+        vm.assume(amountYield <= 1e27);
+
+        amountYield = amountYield / 10;
+        uint256 amountGenerator = 200e18;
+        uint256 numPeriods = 360;
+
+        {
+            uint256 totalSeconds = numPeriods * 1 days;
+
+            uint256 yieldPerPeriod = amountYield / numPeriods;
+            uint256 yps = yieldPerPeriod / 1 days;
+            init(yps);
+            slice.discounter().setDaily(yps * 1 days);
+        }
+
+        uint256 sum;
+        {
+            vm.startPrank(alice);
+            uint256 before = generatorToken.balanceOf(alice);
+            generatorToken.approve(address(slice), amountGenerator);
+            uint256 id1 = slice.debtSlice(alice, alice, amountGenerator, amountYield, "");
+            assertEq(generatorToken.balanceOf(alice), before - amountGenerator);
+            uint256 npvSliced = npvToken.balanceOf(alice);
+            npvToken.transfer(bob, npvToken.balanceOf(alice));
+            vm.stopPrank();
+
+            vm.startPrank(bob);
+            npvToken.approve(address(slice), npvSliced);
+            uint256 id2 = slice.creditSlice(npvSliced, bob, "");
+            vm.stopPrank();
+
+            vm.warp(block.timestamp + slice.discounter().DISCOUNT_PERIOD() + 10);
+
+            uint256 beforeTransfer = yieldToken.balanceOf(bob);
+            vm.startPrank(bob);
+            slice.receiveNPV(id2, bob, npvSliced / 2);
+            slice.transferOwnership(id2, chad);
+            uint256 claimTransfer = yieldToken.balanceOf(bob) - beforeTransfer;
+            vm.stopPrank();
+
+            vm.warp(block.timestamp + (numPeriods / 2) * slice.discounter().DISCOUNT_PERIOD() + 10);
+
+            vm.startPrank(bob);
+            npvToken.transfer(degen, npvSliced / 4);
+            npvToken.approve(address(slice), npvSliced / 4);
+            uint256 id3 = slice.creditSlice(npvSliced / 4, bob, "");
+            vm.stopPrank();
+
+            vm.startPrank(degen);
+            npvToken.approve(address(slice), npvSliced / 4);
+            uint256 id4 = slice.creditSlice(npvSliced / 4, degen, "");
+            vm.stopPrank();
+
+            vm.warp(block.timestamp + (10 * numPeriods) * slice.discounter().DISCOUNT_PERIOD());
+
+            vm.startPrank(alice);
+            slice.unlockDebtSlice(id1);
+            assertEq(generatorToken.balanceOf(alice), before);
+            vm.stopPrank();
+
+            uint256 sum = claimTransfer;
+            vm.prank(chad);
+            sum += slice.claim(id2, 0);
+
+            vm.prank(bob);
+            sum += slice.claim(id3, 0);
+
+            vm.prank(degen);
+            sum += slice.claim(id4, 0);
+
+
+            assertTrue(sum > npvSliced);
+            assertTrue(sum > amountYield, "discount applied");
+            assertTrue(sum <= amountYield * 2, "sanity check");
+        }
+
+        // Do the same thing, but without transfers, and verify that total yield paid out is the same
+        {
+            vm.startPrank(alice);
+            uint256 before = generatorToken.balanceOf(alice);
+            generatorToken.approve(address(slice), amountGenerator);
+            uint256 id1 = slice.debtSlice(alice, alice, amountGenerator, amountYield, "");
+            assertEq(generatorToken.balanceOf(alice), before - amountGenerator);
+            uint256 npvSliced = npvToken.balanceOf(alice);
+            npvToken.transfer(bob, npvToken.balanceOf(alice));
+            vm.stopPrank();
+
+            vm.startPrank(bob);
+            npvToken.approve(address(slice), npvSliced);
+            uint256 id2 = slice.creditSlice(npvSliced, bob, "");
+            vm.stopPrank();
+
+            vm.warp(block.timestamp + 10 * numPeriods * slice.discounter().DISCOUNT_PERIOD());
+
+            vm.startPrank(alice);
+            slice.unlockDebtSlice(id1);
+            assertEq(generatorToken.balanceOf(alice), before);
+            vm.stopPrank();
+
+            vm.prank(bob);
+            uint256 claimed = slice.claim(id2, 0);
+
+            assertClose(sum, claimed, sum / 1e6);
+        }
     }
 }

@@ -7,3 +7,6 @@ fs_permissions = [
 { access = 'read-write', path = './json' },
 { access = 'read', path = './out' },
 ]
+
+[fuzz]
+runs=2

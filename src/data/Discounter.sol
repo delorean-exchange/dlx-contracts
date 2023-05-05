@@ -58,9 +58,6 @@ contract Discounter is IDiscounter, Ownable {
         for (uint256 i = 1; i < maxDays && sum < yield; i++) {
 
             uint256 nominal_ = (generator * daily) / (10**decimals);
-            if (nominal_ + sum > yield) {
-                nominal_ = yield - sum;
-            }
             uint256 pv_ = (nominal_ * top) / RATE_PRECISION;
             sum += nominal_;
             npv += pv_;
@@ -98,10 +95,18 @@ contract Discounter is IDiscounter, Ownable {
     /// @param npv Starting NPV of the nominal payment we will receive.
     /// @return NPV of that nominal payment after the delay.
     function shiftNPV(uint256 numDays, uint256 npv) external override view returns (uint256) {
-        uint256 acc = npv;
+        uint256 acc = npv * 1e9;
         for (uint256 i = 0; i < numDays; i++) {
             acc = acc * RATE_PRECISION / (RATE_PRECISION - rate);
         }
-        return acc;
+        return acc / 1e9;
+    }
+
+    function shiftNPVBackward(uint256 numDays, uint256 npv) external override view returns (uint256) {
+        uint256 acc = npv * 1e9;
+        for (uint256 i = 0; i < numDays; i++) {
+            acc = acc * (RATE_PRECISION - rate) / RATE_PRECISION;
+        }
+        return acc / 1e9;
     }
 }

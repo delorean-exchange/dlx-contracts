@@ -16,7 +16,7 @@ contract DiscounterTest is BaseTest {
         assertEq(discounter.discounted(1e18, 1e18), 3285040290000000);
         assertEq(discounter.pv(20, 1e18), 990047357802328597);
         assertEq(discounter.nominal(20, 1e18), 1010052693054768512);
-        assertEq(discounter.shiftNPV(20, 1e18), 1010052693054768512);
+        assertEq(discounter.shiftNPV(20, 1e18), 1010052693054768522);
 
         vm.prank(bob);
         vm.expectRevert();
@@ -31,7 +31,7 @@ contract DiscounterTest is BaseTest {
         assertEq(discounter.discounted(1e18, 1e18), 6570080580000000);
         assertEq(discounter.pv(20, 1e18), 990047357802328597);
         assertEq(discounter.nominal(20, 1e18), 1010052693054768512);
-        assertEq(discounter.shiftNPV(20, 1e18), 1010052693054768512);
+        assertEq(discounter.shiftNPV(20, 1e18), 1010052693054768522);
     }
 
 }

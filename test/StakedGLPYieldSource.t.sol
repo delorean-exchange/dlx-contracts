@@ -104,5 +104,9 @@ contract StakedGLPYieldSourceTest is BaseTest {
         vm.prank(bob);
         vm.expectRevert("only owner");
         glpYieldSource.harvest();
+
+        vm.prank(bob);
+        vm.expectRevert("only owner");
+        glpYieldSource.withdraw(100, false, bob);
     }
 }
