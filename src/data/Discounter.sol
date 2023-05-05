@@ -66,35 +66,12 @@ contract Discounter is IDiscounter, Ownable {
         return npv;
     }
 
-    /// @notice Compute the present value of a yield payment some days in the future.
-    /// @param numDays Number of days in the future we will receive the payment.
-    /// @param nominal_ Amount of yield to be received on that day.
-    /// @return Present value of that yield.
-    function pv(uint256 numDays, uint256 nominal_) external override view returns (uint256) {
-        uint256 acc = nominal_;
-        for (uint256 i = 0; i < numDays; i++) {
-            acc = acc * (RATE_PRECISION - rate) / RATE_PRECISION;
-        }
-        return acc;
-    }
-
-    /// @notice Compute the nominal amount for some present value of yield.
-    /// @param numDays Number of days out that the nominal amount is paid.
-    /// @param pv_ Present value of that nominal payment.
-    /// @return Nominal amount required to get that present value.
-    function nominal(uint256 numDays, uint256 pv_) external override view returns (uint256) {
-        uint256 acc = pv_;
-        for (uint256 i = 0; i < numDays; i++) {
-            acc = acc * RATE_PRECISION / (RATE_PRECISION - rate);
-        }
-        return acc;
-    }
 
     /// @notice Compute value of nominal payment shifted forward some days, relative to a starting amount of NPV.
     /// @param numDays Number of days in the future to delay that nominal payment.
     /// @param npv Starting NPV of the nominal payment we will receive.
     /// @return NPV of that nominal payment after the delay.
-    function shiftNPV(uint256 numDays, uint256 npv) external override view returns (uint256) {
+    function shiftForward(uint256 numDays, uint256 npv) external override view returns (uint256) {
         uint256 acc = npv * 1e9;
         for (uint256 i = 0; i < numDays; i++) {
             acc = acc * RATE_PRECISION / (RATE_PRECISION - rate);
@@ -102,7 +79,11 @@ contract Discounter is IDiscounter, Ownable {
         return acc / 1e9;
     }
 
-    function shiftNPVBackward(uint256 numDays, uint256 npv) external override view returns (uint256) {
+    /// @notice Compute value of nominal payment shifted backward some days, relative to a starting amount of NPV.
+    /// @param numDays Number of days in the future to delay that nominal payment.
+    /// @param npv Starting NPV of the nominal payment we will receive.
+    /// @return NPV of that nominal payment after the delay.
+    function shiftBackward(uint256 numDays, uint256 npv) external override view returns (uint256) {
         uint256 acc = npv * 1e9;
         for (uint256 i = 0; i < numDays; i++) {
             acc = acc * (RATE_PRECISION - rate) / RATE_PRECISION;

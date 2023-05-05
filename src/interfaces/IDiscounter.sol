@@ -8,8 +8,6 @@ interface IDiscounter {
     function setMaxDays(uint256 maxDays) external;
 
     function discounted(uint256 generator, uint256 yield) external view returns (uint256);
-    function pv(uint256 numDays, uint256 nominal) external view returns (uint256);
-    function nominal(uint256 numDays, uint256 pv) external view returns (uint256);
-    function shiftNPV(uint256 numDays, uint256 npv) external view returns (uint256);
-    function shiftNPVBackward(uint256 numDays, uint256 npv) external view returns (uint256);
+    function shiftForward(uint256 numDays, uint256 npv) external view returns (uint256);
+    function shiftBackward(uint256 numDays, uint256 npv) external view returns (uint256);
 }

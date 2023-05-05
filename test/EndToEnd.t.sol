@@ -97,14 +97,14 @@ contract EndToEndTest is BaseTest {
         vm.warp(block.timestamp + 0x80000);
         (uint256 nominal3, uint256 npv3, uint256 claimable3) = slice.generatedCredit(id);
         assertEq(nominal3, 723803451433147656);
-        assertEq(npv3, 722520787758532690);
+        assertEq(npv3, 722520787758532702);
         assertEq(claimable3, 723803451433147656);
 
         vm.warp(block.timestamp + 0xf0000);
         (uint256 nominal4, uint256 npv4, uint256 claimable4) = slice.generatedCredit(id);
-        assertEq(nominal4, 992332217589964033);
+        assertEq(nominal4, 992332217589964023);
         assertEq(npv4, 99e16);
-        assertEq(claimable4, 992332217589964033);
+        assertEq(claimable4, 992332217589964023);
 
         uint256 before2 = yieldToken.balanceOf(chad);
         slice.claim(id, 0);
@@ -169,17 +169,17 @@ contract EndToEndTest is BaseTest {
         vm.warp(block.timestamp + 0x80000);
         (uint256 nominal3, uint256 npv3, uint256 claimable3) = slice.generatedCredit(id);
         assertEq(nominal3, 748861421495790065);
-        assertEq(npv3, 747534352191586982);
+        assertEq(npv3, 747534352191586993);
         assertEq(claimable3, 748861421495790065);
 
         vm.warp(block.timestamp + 0xf0000);
         (uint256 nominal4, uint256 npv4, uint256 claimable4) = slice.generatedCredit(id);
-        assertEq(nominal4, 1026686614424256478);
+        assertEq(nominal4, 1026686614424256467);
 
         // NPV paid out should equal the preview
         assertEq(npv4, 1024273655801028271);
         assertEq(npv4, previewNpv);
-        assertEq(claimable4, 1026686614424256478);
+        assertEq(claimable4, 1026686614424256467);
 
         vm.stopPrank();
     }
