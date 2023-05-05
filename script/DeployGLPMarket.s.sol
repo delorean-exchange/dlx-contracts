@@ -32,7 +32,6 @@ contract DeployGLPMarket is BaseScript {
                                                                arbitrumWeth,
                                                                address(tracker));
 
-        address generatorToken = address(source.generatorToken());
         address yieldToken = address(source.yieldToken());
 
         dataDebt = new YieldData(7 days);

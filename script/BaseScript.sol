@@ -65,16 +65,17 @@ contract BaseScript is Script {
         return keccak256(abi.encodePacked(str1)) == keccak256(abi.encodePacked(str2));
     }
 
-    function newUniswapV3LiquidityPool(address uniswapV3Pool) public returns (ILiquidityPool) {
+    function newUniswapV3LiquidityPool(address uniswapV3Pool_) public returns (ILiquidityPool) {
         if (swapRouter == bscSwapRouter) {
             /* return new UniswapV3LiquidityPool02(address(uniswapV3Pool), swapRouter, quoterV2); */
             assert(false);
+            return ILiquidityPool(address(0));
         } else {
-            return new UniswapV3LiquidityPool(address(uniswapV3Pool), swapRouter, quoterV2);
+            return new UniswapV3LiquidityPool(address(uniswapV3Pool_), swapRouter, quoterV2);
         }
     }
 
-    function addLiquidity(NPVSwap npvSwap,
+    function addLiquidity(NPVSwap npvSwap_,
                           address who,
                           uint256 yieldTokenAmount,
                           uint256 generatorTokenAmount,
@@ -82,16 +83,16 @@ contract BaseScript is Script {
                           int24 tickLower,
                           int24 tickUpper) public {
 
-        npvToken = address(npvSwap.npvToken());
-        yieldToken = address(npvSwap.slice().yieldToken());
+        npvToken = address(npvSwap_.npvToken());
+        yieldToken = address(npvSwap_.slice().yieldToken());
 
         uint256 before = IERC20(npvToken).balanceOf(who);
 
         console.log("before", before);
-        console.log("GT bal", npvSwap.slice().yieldSource().generatorToken().balanceOf(deployerAddress));
+        console.log("GT bal", npvSwap_.slice().yieldSource().generatorToken().balanceOf(deployerAddress));
 
-        npvSwap.slice().yieldSource().generatorToken().approve(address(npvSwap), generatorTokenAmount);
-        npvSwap.lockForNPV(who, who, generatorTokenAmount, yieldToLock, new bytes(0));
+        npvSwap_.slice().yieldSource().generatorToken().approve(address(npvSwap_), generatorTokenAmount);
+        npvSwap_.lockForNPV(who, who, generatorTokenAmount, yieldToLock, new bytes(0));
 
         {
             uint256 npvTokenAmount = IERC20(npvToken).balanceOf(who) - before;
