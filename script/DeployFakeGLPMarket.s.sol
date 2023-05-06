@@ -71,7 +71,11 @@ contract DeployGLPMarket is BaseScript {
         yieldToken = address(source.yieldToken());
         dataDebt = new YieldData(20);
         dataCredit = new YieldData(20);
-        discounter = new Discounter(1e13, 500, 360, 18);
+        discounter = new Discounter(1e13,
+                                    500,
+                                    360,
+                                    18,
+                                    1 days);
         slice = new YieldSlice("npvETH-fGLP",
                                address(source),
                                address(dataDebt),

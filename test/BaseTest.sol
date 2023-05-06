@@ -95,19 +95,24 @@ contract BaseTest is Test {
         }
         vm.selectFork(arbitrumFork);
 
-        /* source = new FakeYieldSource(10000000000000); */
         source = new FakeYieldSource(yieldPerSecond);
         generatorToken = source.generatorToken();
         yieldToken = source.yieldToken();
         dataDebt = new YieldData(20);
         dataCredit = new YieldData(20);
-        discounter = new Discounter(1e13, 500, 360, 18);
+
+        discounter = new Discounter(1e13,
+                                    500 * 30,
+                                    360,
+                                    18,
+                                    30 days);
+
         slice = new YieldSlice("npvETH-FAKE",
                                address(source),
                                address(dataDebt),
                                address(dataCredit),
                                address(discounter),
-                               1e18);
+                               1e9);
         npvToken = slice.npvToken();
 
         alice = createUser(0);

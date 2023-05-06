@@ -58,9 +58,9 @@ contract EndToEndTest is BaseTest {
 
         source.mintGenerator(bob, 1000000e18);
         generatorToken.approve(address(npvSwap), 200e18);
-        assertEq(npvSwap.previewLockForNPV(200e18, 1e18), 657008058000000000);
+        assertEq(npvSwap.previewLockForNPV(200e18, 1e18), 653517780000000000);
         npvSwap.lockForNPV(bob, bob, 200e18, 1e18, new bytes(0));
-        assertEq(IERC20(npvToken).balanceOf(bob), 657008058000000000);
+        assertEq(IERC20(npvToken).balanceOf(bob), 653517780000000000);
 
         IERC20(npvToken).approve(address(pool), 5e17);
         uint256 before = IERC20(yieldToken).balanceOf(bob);
@@ -90,21 +90,21 @@ contract EndToEndTest is BaseTest {
 
         vm.warp(block.timestamp + 0x1000);
         (uint256 nominal2, uint256 npv2, uint256 claimable2) = slice.generatedCredit(id);
-        assertEq(nominal2, 5609520241224149);
-        assertEq(npv2, 5609520241224149);
-        assertEq(claimable2, 5609520241224149);
+        assertEq(nominal2, 5639479311486670);
+        assertEq(npv2, 5639479311486670);
+        assertEq(claimable2, 5639479311486670);
 
         vm.warp(block.timestamp + 0x80000);
         (uint256 nominal3, uint256 npv3, uint256 claimable3) = slice.generatedCredit(id);
-        assertEq(nominal3, 723803451433147656);
-        assertEq(npv3, 722520787758532702);
-        assertEq(claimable3, 723803451433147656);
+        assertEq(nominal3, 727669107946584004);
+        assertEq(npv3, 727669107946584004);
+        assertEq(claimable3, 727669107946584004);
 
         vm.warp(block.timestamp + 0xf0000);
         (uint256 nominal4, uint256 npv4, uint256 claimable4) = slice.generatedCredit(id);
-        assertEq(nominal4, 992332217589964023);
+        assertEq(nominal4, 990000000000000000);
         assertEq(npv4, 99e16);
-        assertEq(claimable4, 992332217589964023);
+        assertEq(claimable4, 990000000000000000);
 
         uint256 before2 = yieldToken.balanceOf(chad);
         slice.claim(id, 0);
@@ -122,7 +122,7 @@ contract EndToEndTest is BaseTest {
         source.mintGenerator(bob, 1000000e18);
         generatorToken.approve(address(npvSwap), 200e18);
         (uint256 preview, ) = npvSwap.previewLockForYield(200e18, 1e18, 0);
-        assertEq(preview, 612862441028507418);
+        assertEq(preview, 609815261420955817);
         assertClose(preview, 6e17, 1e17);
 
         {
@@ -131,16 +131,16 @@ contract EndToEndTest is BaseTest {
         }
 
         {
-            (uint256 quote ,) = npvSwap.previewSwapNPVForYieldOut(612862441028507418, 0);
-            assertEq(quote, 657008058000000000);
+            (uint256 quote ,) = npvSwap.previewSwapNPVForYieldOut(609815261420955817, 0);
+            assertEq(quote, 653517780000000000);
             assertEq(quote, npvSwap.previewLockForNPV(200e18, 1e18));
         }
 
         (uint256 id1 , uint256 amount) = npvSwap.lockForYield(bob, 200e18, 1e18, preview, 0, new bytes(0));
         (address owner , , , , , , ) = npvSwap.slice().debtSlices(id1);
         assertEq(owner, bob);
-        assertEq(amount, 612862441028507418);
-        assertEq(yieldToken.balanceOf(bob), 612862441028507418);
+        assertEq(amount, 609815261420955817);
+        assertEq(yieldToken.balanceOf(bob), 609815261420955817);
         assertClose(amount, 6e17, 1e17);
 
         vm.stopPrank();
@@ -149,10 +149,10 @@ contract EndToEndTest is BaseTest {
         vm.startPrank(chad);
         source.mintYield(chad, 1000000e18);
         (uint256 previewNpv, ) = npvSwap.previewSwapForSlice(1e18, 0);
-        assertEq(previewNpv, 1024273655801028271);
+        assertEq(previewNpv, 1023608343312813929);
 
         (uint256 npvOut, ) = npvSwap.previewSwapYieldForNPV(1e18, 0);
-        assertEq(npvOut, 1024273655801028271);
+        assertEq(npvOut, 1023608343312813929);
 
         (uint256 yieldIn, ) = npvSwap.previewSwapYieldForNPVOut(npvOut, 0);
         assertEq(yieldIn, 1e18);
@@ -162,60 +162,50 @@ contract EndToEndTest is BaseTest {
 
         vm.warp(block.timestamp + 0x1000);
         (uint256 nominal2, uint256 npv2, uint256 claimable2) = slice.generatedCredit(id);
-        assertEq(nominal2, 5803721014917702);
-        assertEq(npv2, 5803721014917702);
-        assertEq(claimable2, 5803721014917702);
+        assertEq(nominal2, 5830927348664403);
+        assertEq(npv2, 5830927348664403);
+        assertEq(claimable2, 5830927348664403);
 
         vm.warp(block.timestamp + 0x80000);
         (uint256 nominal3, uint256 npv3, uint256 claimable3) = slice.generatedCredit(id);
-        assertEq(nominal3, 748861421495790065);
-        assertEq(npv3, 747534352191586993);
-        assertEq(claimable3, 748861421495790065);
+        assertEq(nominal3, 752371888954662644);
+        assertEq(npv3, 752371888954662644);
+        assertEq(claimable3, 752371888954662644);
 
         vm.warp(block.timestamp + 0xf0000);
         (uint256 nominal4, uint256 npv4, uint256 claimable4) = slice.generatedCredit(id);
-        assertEq(nominal4, 1026686614424256467);
+        assertEq(nominal4, 1023608343312813929);
 
         // NPV paid out should equal the preview
-        assertEq(npv4, 1024273655801028271);
+        assertEq(npv4, 1023608343312813929);
         assertEq(npv4, previewNpv);
-        assertEq(claimable4, 1026686614424256467);
+        assertEq(claimable4, 1023608343312813929);
 
         vm.stopPrank();
     }
 
     function testNPVClaimableForExistingYield() public {
-        console.log("testNPVClaimableForExistingYield");
-
         // Add liquidity and move forward in time
         testAliceAddLiquidity();
         vm.warp(block.timestamp + 0x8000);
         slice.harvest();
-
-        console.log("YT balance:", yieldToken.balanceOf(address(slice)));
 
         // Bob purchases future yield. Some should be immediately claimable.
         vm.startPrank(bob);
         source.mintYield(bob, 1000000e18);
         IERC20(yieldToken).approve(address(npvSwap), 1e18);
         (uint256 previewNpv, ) = npvSwap.previewSwapForSlice(5e17, 0);
-        console.log("previewNpv", previewNpv);
         uint256 id = npvSwap.swapForSlice(bob, 5e17, previewNpv, 0, new bytes(0));
-        console.log("id", id);
         vm.stopPrank();
 
         {
             (uint256 nominal, uint256 npv, uint256 claimable) = slice.generatedCredit(id);
-            console.log("nominal  ", nominal);
-            console.log("npv      ", npv);
-            console.log("claimable", claimable);
-            assertEq(nominal, 23624490900579010);
+            assertEq(nominal, 23750663505775351);
             assertEq(npv, 0);
-            assertEq(claimable, 23624490900579010);
+            assertEq(claimable, 23750663505775351);
         }
 
         // Set yield rate to 0 and advance. No new yield, so claimable should stay flat.
-        console.log("---");
         slice.recordData();
         source.setYieldPerBlock(0);
         vm.warp(block.timestamp + 0xf000);
@@ -223,12 +213,9 @@ contract EndToEndTest is BaseTest {
 
         {
             (uint256 nominal, uint256 npv, uint256 claimable) = slice.generatedCredit(id);
-            console.log("nominal  ", nominal);
-            console.log("npv      ", npv);
-            console.log("claimable", claimable);
-            assertEq(nominal, 23624490900579010);
+            assertEq(nominal, 23750663505775351);
             assertEq(npv, 0);
-            assertEq(claimable, 23624490900579010);
+            assertEq(claimable, 23750663505775351);
         }
 
         // Resume yield generation
@@ -240,13 +227,10 @@ contract EndToEndTest is BaseTest {
 
         {
             (uint256 nominal, uint256 npv, uint256 claimable) = slice.generatedCredit(id);
-            console.log("nominal  ", nominal);
-            console.log("npv      ", npv);
-            console.log("claimable", claimable);
             assertTrue(npv < nominal);
-            assertEq(nominal,   26392349434071262);
-            assertEq(npv,        2767858533492252);
-            assertEq(claimable, 26392349434071262);
+            assertEq(nominal,   26533304492071533);
+            assertEq(npv,        2782640986296182);
+            assertEq(claimable, 26533304492071533);
         }
 
         // Chad purchases some future yield. Some should be immediately available.
@@ -255,13 +239,7 @@ contract EndToEndTest is BaseTest {
 
         yieldToken.approve(address(npvSwap), 5e17);
         uint256 id2 = npvSwap.swapForSlice(chad, 5e17, 0, 0, new bytes(0));
-        console.log("id2", id2);
 
-        /* console.log("npv balance", npvToken.balanceOf(chad)); */
-        /* assertEq(npvToken.balanceOf(chad), 100000000000000000000); */
-
-        console.log("previewNpv     ", previewNpv);
-        console.log("previewNpv 3e17", 3e17);
         assertEq(previewNpv, 473692461556744701);
 
         vm.stopPrank();
@@ -269,21 +247,13 @@ contract EndToEndTest is BaseTest {
         {
             (uint256 bNominal, uint256 bNpv, uint256 bClaimable) = slice.generatedCredit(id);
             (uint256 cNominal, uint256 cNpv, uint256 cClaimable) = slice.generatedCredit(id2);
-            console.log("-- BOB");
-            console.log("nominal  ", bNominal);
-            console.log("npv      ", bNpv);
-            console.log("claimable", bClaimable);
-            assertEq(bNominal, 26392349434071262);
-            assertEq(bNpv, 2767858533492252);
-            assertEq(bClaimable, 26392349434071262);
+            assertEq(bNominal, 26533304492071533);
+            assertEq(bNpv, 2782640986296182);
+            assertEq(bClaimable, 26533304492071533);
 
-            console.log("-- CHAD");
-            console.log("nominal  ", cNominal);
-            console.log("npv      ", cNpv);
-            console.log("claimable", cClaimable);
-            assertEq(cNominal, 19251746879997161);
+            assertEq(cNominal, 19354565733046043);
             assertEq(cNpv, 0);
-            assertEq(cClaimable, 19251746879997161);
+            assertEq(cClaimable, 19354565733046043);
         }
     }
 

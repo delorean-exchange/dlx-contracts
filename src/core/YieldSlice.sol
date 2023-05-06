@@ -398,7 +398,6 @@ contract YieldSlice is ReentrancyGuard {
         activeNPV += npv;
 
         _modifyCreditPosition(UNALLOC_ID, int256(npv - fees));
-
         _recordData();
 
         emit SliceDebt(owner, id, amountGenerator, amountYield, npv, fees);
@@ -520,7 +519,7 @@ contract YieldSlice is ReentrancyGuard {
         ( , uint256 npvGen, uint256 claimable) = generatedCredit(id);
 
         uint256 daysFromTimestamp = ((block.timestamp - uint256(slice.blockTimestamp))
-                                     / discounter.DISCOUNT_PERIOD());
+                                     / discounter.discountPeriod());
 
         uint256 shiftedNPV = discounter.shiftForward(daysFromTimestamp, slice.npvCredit - npvGen);
 
@@ -531,7 +530,7 @@ contract YieldSlice is ReentrancyGuard {
         slice.claimed = 0;
 
         uint256 daysFromCreation = ((block.timestamp - uint256(slice.createdTimestamp))
-                                    / discounter.DISCOUNT_PERIOD());
+                                    / discounter.discountPeriod());
 
         // Update npvCredit and npvTokens. Carefully track which timestamp they are
         // relative to. The npvCredit field is the slice's entitled NPV relative to
@@ -577,7 +576,7 @@ contract YieldSlice is ReentrancyGuard {
         // Shift the unallocated slice's remaining NPV credit such that it becomes
         // relative to the current timestamp.
         uint256 numDays = ((block.timestamp - uint256(unalloc.blockTimestamp))
-                           / discounter.DISCOUNT_PERIOD());
+                           / discounter.discountPeriod());
         unalloc.npvCredit = discounter.shiftForward(numDays, unalloc.npvCredit);
 
         // Compute the proportional share of vested, pending yield that will go to
@@ -658,7 +657,7 @@ contract YieldSlice is ReentrancyGuard {
         // and shift that value backwards such that it is becomes relative
         // to the creation timestamp.
         uint256 daysFromCreation = ((block.timestamp - uint256(slice.createdTimestamp))
-                                    / discounter.DISCOUNT_PERIOD());
+                                    / discounter.discountPeriod());
         ( , uint256 npvGen, ) = generatedCredit(id);
         return discounter.shiftBackward(daysFromCreation, slice.npvCredit - npvGen);
     }
@@ -712,16 +711,16 @@ contract YieldSlice is ReentrancyGuard {
 
         for (uint256 i = slice.blockTimestamp;
              i < last;
-             i += discounter.DISCOUNT_PERIOD()) {
+             i += discounter.discountPeriod()) {
 
-            uint256 end = _min(last - 1, i + discounter.DISCOUNT_PERIOD());
+            uint256 end = _min(last - 1, i + discounter.discountPeriod());
             uint256 yts = debtData.yieldPerTokenPerSecond(uint128(i),
                                                           uint128(end),
                                                           totalTokens(),
                                                           cumulativeYield());
 
             uint256 yield = (yts * (end - i) * slice.tokens) / debtData.PRECISION_FACTOR();
-            uint256 estimatedDays = (end - slice.blockTimestamp) / discounter.DISCOUNT_PERIOD();
+            uint256 estimatedDays = (end - slice.blockTimestamp) / discounter.discountPeriod();
             uint256 pv = discounter.shiftBackward(estimatedDays, yield);
 
             if (npv == slice.npvDebt) {
@@ -754,16 +753,16 @@ contract YieldSlice is ReentrancyGuard {
 
         for (uint256 i = slice.blockTimestamp;
              npv < slice.npvCredit && i < block.timestamp;
-             i += discounter.DISCOUNT_PERIOD()) {
+             i += discounter.discountPeriod()) {
 
-            uint256 end = _min(block.timestamp - 1, i + discounter.DISCOUNT_PERIOD());
+            uint256 end = _min(block.timestamp - 1, i + discounter.discountPeriod());
             uint256 yts = creditData.yieldPerTokenPerSecond(uint128(i),
                                                             uint128(end),
                                                             activeNPV,
                                                             cumulativeYieldCredit());
 
             uint256 yield = (yts * (end - i) * slice.npvTokens) / creditData.PRECISION_FACTOR();
-            uint256 estimatedDays = (end - slice.blockTimestamp) / discounter.DISCOUNT_PERIOD();
+            uint256 estimatedDays = (end - slice.blockTimestamp) / discounter.discountPeriod();
             uint256 pv = discounter.shiftBackward(estimatedDays, yield);
 
             if (npv + pv > slice.npvCredit) {
