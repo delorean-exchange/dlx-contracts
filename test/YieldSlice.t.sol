@@ -677,7 +677,7 @@ contract YieldSliceTest is BaseTest {
         }
     }
 
-    function testSetUpReceiveNPV() public returns (uint256, uint256) {
+    function testSetUpWithdrawNPV() public returns (uint256, uint256) {
         init();
 
         vm.startPrank(alice);
@@ -704,8 +704,8 @@ contract YieldSliceTest is BaseTest {
         return (id1, id2);
     }
 
-    function testReceiveNPV() public  {
-        (uint256 id1, uint256 id2) = testSetUpReceiveNPV();
+    function testWithdrawNPV() public  {
+        (uint256 id1, uint256 id2) = testSetUpWithdrawNPV();
 
         vm.warp(block.timestamp + 0x8000);
 
@@ -718,7 +718,7 @@ contract YieldSliceTest is BaseTest {
         assertEq(afterVal2 - before2, 313365613403807531);
         assertEq(npvToken.balanceOf(bob), 0);
 
-        slice.receiveNPV(id2, bob, 1e17);
+        slice.withdrawNPV(id2, bob, 1e17);
         assertEq(npvToken.balanceOf(bob), 1e17);
         assertEq(npvToken.balanceOf(address(slice)), 4e17);
 
@@ -790,8 +790,8 @@ contract YieldSliceTest is BaseTest {
         vm.stopPrank();
     }
 
-    function testReceiveNPVFullAmount() public  {
-        (, uint256 id2) = testSetUpReceiveNPV();
+    function testWithdrawNPVFullAmount() public  {
+        (, uint256 id2) = testSetUpWithdrawNPV();
 
         vm.warp(block.timestamp + 0x8000);
 
@@ -802,15 +802,15 @@ contract YieldSliceTest is BaseTest {
         assertEq(npvToken.balanceOf(bob), 0);
 
         vm.expectRevert("YS: insufficient NPV");
-        slice.receiveNPV(id2, bob, 100e17);
+        slice.withdrawNPV(id2, bob, 100e17);
 
-        slice.receiveNPV(id2, bob, 0);
+        slice.withdrawNPV(id2, bob, 0);
         assertEq(npvToken.balanceOf(bob), 186634386596192468);
 
         vm.stopPrank();
     }
 
-    function testReceiveNPVZero() public  {
+    function testWithdrawNPVZero() public  {
         init();
 
         vm.startPrank(alice);
@@ -822,11 +822,11 @@ contract YieldSliceTest is BaseTest {
         vm.startPrank(bob);
         npvToken.approve(address(npvSwap), 5e17);
         uint256 id2 = npvSwap.swapNPVForSlice(bob, 0, new bytes(0));
-        slice.receiveNPV(id2, bob, 0);
+        slice.withdrawNPV(id2, bob, 0);
         vm.stopPrank();
     }
 
-    function testReceiveNPVAccountsWithdrawableImmediate() public {
+    function testWithdrawNPVAccountsWithdrawableImmediate() public {
         init();
 
         vm.startPrank(alice);
@@ -862,7 +862,7 @@ contract YieldSliceTest is BaseTest {
         ( , uint256 npvGenBefore, ) = slice.generatedCredit(id2);
 
         // Receive 1 unit of NPV tokens, verify accounting.
-        slice.receiveNPV(id2, bob, 1);
+        slice.withdrawNPV(id2, bob, 1);
         {
             uint256 npvCreditAfter = creditSliceNPVCredit(id2);
 
@@ -878,8 +878,8 @@ contract YieldSliceTest is BaseTest {
             assertEq(slice.withdrawableNPV(id2) + npvGenBefore, 50e18 - 1);
         }
 
-        // Receive 100 units of NPV tokens, verify accounting
-        slice.receiveNPV(id2, bob, 100);
+        // Withdraw 100 units of NPV tokens, verify accounting
+        slice.withdrawNPV(id2, bob, 100);
         assertEq(slice.withdrawableNPV(id2) + npvGenBefore, 50e18 - 101);
         assertEq(npvToken.balanceOf(bob), 101);
 
@@ -894,18 +894,18 @@ contract YieldSliceTest is BaseTest {
             npvGen2 = slice.discounter().shiftBackward(numDays, npvGen);
         }
 
-        // Receive 2 units of NPV tokens, verify accounting
-        slice.receiveNPV(id2, bob, 2);
+        // Withdraw 2 units of NPV tokens, verify accounting
+        slice.withdrawNPV(id2, bob, 2);
         assertEq(slice.withdrawableNPV(id2) + npvGenBefore + npvGen2, 50e18 - 103);
         assertEq(npvToken.balanceOf(bob), 103);
 
-        // Receive 200 units of NPV tokens, verify accounting
-        slice.receiveNPV(id2, bob, 200);
+        // Withdraw 200 units of NPV tokens, verify accounting
+        slice.withdrawNPV(id2, bob, 200);
         assertEq(slice.withdrawableNPV(id2) + npvGenBefore + npvGen2, 50e18 - 303);
         assertEq(npvToken.balanceOf(bob), 303);
 
-        // Receive 1e18 units of NPV tokens, verify accounting, transfer to Chad
-        slice.receiveNPV(id2, bob, 1e18);
+        // Withdraw 1e18 units of NPV tokens, verify accounting, transfer to Chad
+        slice.withdrawNPV(id2, bob, 1e18);
         assertEq(slice.withdrawableNPV(id2) + npvGenBefore + npvGen2, 50e18 - 303 - 1e18);
         assertEq(npvToken.balanceOf(bob), 1e18 + 303);
 
@@ -1254,7 +1254,7 @@ contract YieldSliceTest is BaseTest {
 
             uint256 beforeTransfer = yieldToken.balanceOf(bob);
             vm.startPrank(bob);
-            slice.receiveNPV(id2, bob, npvSliced / 2);
+            slice.withdrawNPV(id2, bob, npvSliced / 2);
             slice.transferOwnership(id2, chad);
             uint256 claimTransfer = yieldToken.balanceOf(bob) - beforeTransfer;
             vm.stopPrank();

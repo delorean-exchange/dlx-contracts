@@ -33,7 +33,7 @@ contract YieldSlice is ReentrancyGuard {
 
     event PayDebt(uint256 indexed id, uint256 amount);
 
-    event ReceiveNPV(address indexed recipient,
+    event WithdrawNPV(address indexed recipient,
                      uint256 indexed id,
                      uint256 amount);
 
@@ -666,9 +666,9 @@ contract YieldSlice is ReentrancyGuard {
     /// @param id ID of the credit slice.
     /// @param recipient Recipient of the NPV tokens.
     /// @param amount Amount of NPV to withdraw.
-    function receiveNPV(uint256 id,
-                        address recipient,
-                        uint256 amount)
+    function withdrawNPV(uint256 id,
+                         address recipient,
+                         uint256 amount)
         external
         nonReentrant
         validRecipient(recipient)
@@ -686,7 +686,7 @@ contract YieldSlice is ReentrancyGuard {
         _modifyCreditPosition(id, -int256(amount));
         _modifyCreditPosition(UNALLOC_ID, int256(amount));
 
-        emit ReceiveNPV(recipient, id, amount);
+        emit WithdrawNPV(recipient, id, amount);
     }
 
     /// @notice Amount of NPV debt remaining for debt slice.
