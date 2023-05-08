@@ -17,7 +17,8 @@ contract Discounter is IDiscounter, Ownable {
     uint256 public maxDays;
 
     uint256 public immutable discountPeriod;
-
+    
+    uint256 public immutable PERIOD;
     uint256 public constant RATE_PRECISION = 1_000_000;
     uint256 public constant MAX_DAYS_LIMIT = 8 * 360; // 8 years
 
@@ -46,6 +47,7 @@ contract Discounter is IDiscounter, Ownable {
         rate = rate_;
 
         discountPeriod = discountPeriod_;
+        PERIOD = discountPeriod_;
 
         setMaxDays(maxDays_);
     }

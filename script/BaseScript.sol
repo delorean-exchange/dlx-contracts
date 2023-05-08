@@ -139,7 +139,6 @@ contract BaseScript is Script {
     }
 
     function init() public {
-
         if (eq(vm.envString("NETWORK"), "arbitrum")) {
             console.log("Using Arbitrum mainnet private key");
             pk = vm.envUint("ARBITRUM_PRIVATE_KEY");
@@ -169,21 +168,21 @@ contract BaseScript is Script {
         } else {
             console.log("Using localhost private key");
 
-            /* pk = vm.envUint("LOCALHOST_PRIVATE_KEY"); */
-            /* deployerAddress = vm.envAddress("LOCALHOST_DEPLOYER_ADDRESS"); */
-            /* devAddress = vm.envAddress("LOCALHOST_DEV_ADDRESS"); */
-            /* uniswapV3Factory = arbitrumUniswapV3Factory; */
-            /* nonfungiblePositionManager = arbitrumNonfungiblePositionManager; */
-            /* swapRouter = arbitrumSwapRouter; */
-            /* quoterV2 = arbitrumQuoterV2; */
+            pk = vm.envUint("LOCALHOST_PRIVATE_KEY");
+            deployerAddress = vm.envAddress("LOCALHOST_DEPLOYER_ADDRESS");
+            devAddress = vm.envAddress("LOCALHOST_DEV_ADDRESS");
+            uniswapV3Factory = arbitrumUniswapV3Factory;
+            nonfungiblePositionManager = arbitrumNonfungiblePositionManager;
+            swapRouter = arbitrumSwapRouter;
+            quoterV2 = arbitrumQuoterV2;
 
-            pk = vm.envUint("BSC_PRIVATE_KEY");
-            deployerAddress = vm.envAddress("BSC_DEPLOYER_ADDRESS");
-            devAddress = vm.envAddress("BSC_DEV_ADDRESS");
-            uniswapV3Factory = bscUniswapV3Factory;
-            nonfungiblePositionManager = bscNonfungiblePositionManager;
-            swapRouter = bscSwapRouter;
-            quoterV2 = bscQuoterV2;
+            /* pk = vm.envUint("BSC_PRIVATE_KEY"); */
+            /* deployerAddress = vm.envAddress("BSC_DEPLOYER_ADDRESS"); */
+            /* devAddress = vm.envAddress("BSC_DEV_ADDRESS"); */
+            /* uniswapV3Factory = bscUniswapV3Factory; */
+            /* nonfungiblePositionManager = bscNonfungiblePositionManager; */
+            /* swapRouter = bscSwapRouter; */
+            /* quoterV2 = bscQuoterV2; */
         }
     }
 }
