@@ -10,3 +10,6 @@ fs_permissions = [
 
 [fuzz]
 runs=2
+
+[etherscan]
+arbitrum = { key = "I3IKFP5UESHAVK5B4WKAYY772BCNPICE15" }
