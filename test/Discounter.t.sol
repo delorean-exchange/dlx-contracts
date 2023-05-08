@@ -7,6 +7,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { BaseTest } from "./BaseTest.sol";
 import { NPVToken } from "../src/tokens/NPVToken.sol";
+import { Discounter } from "../src/data/Discounter.sol";
 
 contract DiscounterTest is BaseTest {
 
@@ -40,6 +41,15 @@ contract DiscounterTest is BaseTest {
 
         vm.expectRevert("DS: max days limit");
         discounter.setMaxDays(8 * 360 + 1);
+
+        discounter = new Discounter(1e13,
+                                    500 * 30,
+                                    1,
+                                    18,
+                                    1 days);
+
+        vm.expectRevert("DS: discount periods limit");
+        discounter.setMaxDays(8 * 360);
     }
 
     function testSingleEpochOverflow() public {

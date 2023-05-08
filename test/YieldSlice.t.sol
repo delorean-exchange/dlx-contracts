@@ -1324,4 +1324,156 @@ contract YieldSliceTest is BaseTest {
             assertClose(sum, claimed, sum / 1e6);
         }
     }
+
+    function testRolloverSetup() public returns (uint256) {
+        init(10000000000);
+        discounter.setMaxDays(1440);
+
+        vm.startPrank(alice);
+
+        uint256 id1 = slice.nextId();
+
+        uint256 before = generatorToken.balanceOf(alice);
+        generatorToken.approve(address(npvSwap), 200e18);
+        npvSwap.lockForNPV(alice, alice, 200e18, 1e18, new bytes(0));
+        uint256 afterVal = generatorToken.balanceOf(alice);
+        assertEq(before - afterVal, 200e18);
+
+        assertEq(discounter.discounted(200e18, 1e18), 877248880000000000);
+        assertEq(npvToken.balanceOf(alice), 877248880000000000);
+        assertEq(debtSliceNPVDebt(id1), 877248880000000000);
+
+        vm.expectRevert("YS: npv debt");
+        slice.unlockDebtSlice(id1);
+
+        for (uint256 day = 0; day < 100; day += 7) {
+            vm.warp(block.timestamp + 7 days);
+            slice.recordData();
+        }
+        vm.expectRevert("YS: npv debt");
+        slice.unlockDebtSlice(id1);
+
+        for (uint256 day = 0; day < 100; day += 7) {
+            vm.warp(block.timestamp + 7 days);
+            slice.recordData();
+        }
+        vm.expectRevert("YS: npv debt");
+        slice.unlockDebtSlice(id1);
+
+        (uint256 remainingNPV1,
+         uint256 incrementalNPV1,
+         uint256 incrementalFees1) = slice.previewRollover(id1, 1e18);
+
+        for (uint256 day = 0; day < 100; day += 7) {
+            vm.warp(block.timestamp + 7 days);
+            slice.recordData();
+        }
+
+        (uint256 remainingNPV2,
+         uint256 incrementalNPV2,
+         uint256 incrementalFees2) = slice.previewRollover(id1, 1e18);
+
+        assertTrue(remainingNPV2 < remainingNPV1);
+        assertTrue(incrementalNPV2 > incrementalNPV1);
+
+        console.log("--");
+        console.log("incrementalNPV1 ", incrementalNPV1);
+        console.log("incrementalFees1", incrementalFees1);
+        console.log("--");
+        console.log("incrementalNPV2 ", incrementalNPV2);
+        console.log("incrementalFees2", incrementalFees2);
+
+        vm.stopPrank();
+
+        return id1;
+    }
+
+    function testRolloverAtEnd() public {
+        uint256 id1 = testRolloverSetup();
+
+        vm.warp(block.timestamp + 1440 days);
+
+        // Rollover after all NPV debt is paid should be same value as minting a new slice
+        (uint256 npv, ) = slice.previewDebtSlice(200e18, 1e18);
+        (uint256 remainingNPV,
+         uint256 incrementalNPV,
+         ) = slice.previewRollover(id1, 1e18);
+        assertEq(npv, 877248880000000000);
+        assertEq(remainingNPV, 0);
+        assertEq(incrementalNPV, 0);
+
+        vm.startPrank(alice);
+
+        vm.expectRevert("YS: cannot rollover");
+        slice.rollover(id1, 1e18);
+
+        vm.stopPrank();
+    }
+
+    function testRolloverRateChanges() public {
+        uint256 id1 = testRolloverSetup();
+
+        discounter.setDaily(1);
+        
+        vm.startPrank(alice);
+
+        vm.expectRevert("YS: cannot rollover");
+        slice.rollover(id1, 1e18);
+
+        vm.stopPrank();
+    }
+
+    function testRolloverSuccess() public {
+        uint256 id1 = testRolloverSetup();
+
+        vm.warp(block.timestamp + 200 days);
+
+        // All the debt isn't paid, so the rollover should be smaller than a new slice
+        (uint256 npv, ) = slice.previewDebtSlice(200e18, 1e18);
+        (uint256 remainingNPV,
+         uint256 incrementalNPV,
+         ) = slice.previewRollover(id1, 1e18);
+        assertTrue(remainingNPV < npv);
+        assertTrue(remainingNPV < 877248880000000000);
+        assertTrue(incrementalNPV < npv);
+        assertTrue(incrementalNPV < 877248880000000000);
+
+        // Roll it over!
+
+        vm.expectRevert("YS: only owner");
+        slice.rollover(id1, 1e18);
+
+        vm.startPrank(alice);
+
+        uint256 debtBefore = slice.remaining(id1);
+        uint256 balanceBefore = npvToken.balanceOf(alice);
+        uint256 numDays = 515 days / discounter.discountPeriod();
+        debtBefore = discounter.shiftForward(numDays, debtBefore);
+
+        slice.rollover(id1, 1e18);
+
+        uint256 debtAfter = slice.remaining(id1);
+        uint256 balanceAfter = npvToken.balanceOf(alice);
+
+        assertEq(debtAfter - debtBefore, incrementalNPV);
+        assertEq(balanceAfter - balanceBefore, incrementalNPV);
+
+        vm.warp(block.timestamp + 925 days);
+
+        // This would have succeeded without the rollover
+        vm.expectRevert("YS: npv debt");
+        slice.unlockDebtSlice(id1);
+
+        vm.warp(block.timestamp + 1000 days);
+
+        uint256 generatorBefore = generatorToken.balanceOf(address(alice));
+        slice.unlockDebtSlice(id1);
+        assertEq(generatorToken.balanceOf(address(alice)) - generatorBefore, 200e18);
+
+        (, , uint256 claimable) = slice.generatedCredit(slice.UNALLOC_ID());
+        assertTrue(claimable > 2 * npv);
+        assertEq(claimable, 1844134318548995502);
+
+        vm.stopPrank();
+    }
 }

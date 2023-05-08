@@ -28,6 +28,12 @@ contract YieldSlice is ReentrancyGuard {
                       uint256 npv,
                       uint256 fees);
 
+    event RolloverDebt(address indexed owner,
+                       uint256 indexed id,
+                       uint256 yield,
+                       uint256 npv,
+                       uint256 fees);
+
     event UnlockDebtSlice(address indexed owner,
                           uint256 indexed id);
 
@@ -327,6 +333,45 @@ contract YieldSlice is ReentrancyGuard {
         return _previewDebtSlice(tokens_, yield);
     }
 
+    function _previewRollover(uint256 id, uint256 yield) internal view returns (uint256, uint256, uint256) {
+        DebtSlice storage slice = debtSlices[id];
+        ( , uint256 npvGen, ) = generatedDebt(id);
+
+        // Block rollovers for paid slices, to avoid refund accounting. User
+        // can unlock and lock into a new slice instead.
+        if (npvGen >= slice.npvDebt) return (0, 0, 0);
+
+        // Compute preview as if it were a brand new debt slice.
+        (uint256 npv, uint256 fees) = _previewDebtSlice(slice.tokens, yield);
+
+        // Compute NPV debt remaining, relative to the current timestamp
+        uint256 daysFromTimestamp = ((block.timestamp - uint256(slice.blockTimestamp))
+                                     / discounter.discountPeriod());
+        uint256 remainingShifted = discounter.shiftForward(daysFromTimestamp, slice.npvDebt - npvGen);
+
+        // If remaining NPV debt burden exceeds what we can mint, then we can't rollover
+        console.log("remainingShifted", remainingShifted);
+        console.log("npv             ", npv);
+        if (remainingShifted > npv) return (0, 0, 0);
+
+        uint256 incrementalNPV = npv - remainingShifted;
+        uint256 incrementalFees = fees * incrementalNPV / npv;
+
+        return (remainingShifted,
+                incrementalNPV,
+                incrementalFees);
+    }
+
+    /// @notice Compute the result of a debt slice rollover.
+    /// @param id Id of the debt slice to rollover.
+    /// @param yield Amount of future yield to lock, as if we were locking it relative to today.
+    /// @return uint256 Amount of NPV debt, relative to the current timestamp, before the rollover.
+    /// @return uint256 Amount of incremental NPV tokens minted to recipient.
+    /// @return uint256 Amount of incremental NPV tokens going to fees.
+    function previewRollover(uint256 id, uint256 yield) public view returns (uint256, uint256, uint256) {
+        return _previewRollover(id, yield);
+    }
+
     function _modifyDebtPosition(uint256 id, uint256 deltaGenerator, uint256 deltaYield)
         internal
         isDebtSlice(id)
@@ -397,12 +442,41 @@ contract YieldSlice is ReentrancyGuard {
         npvToken.mint(treasury, fees);
         activeNPV += npv;
 
-        _modifyCreditPosition(UNALLOC_ID, int256(npv - fees));
+        _modifyCreditPosition(UNALLOC_ID, int256(npv));
         _recordData();
 
         emit SliceDebt(owner, id, amountGenerator, amountYield, npv, fees);
         
         return id;
+    }
+
+    function rollover(uint256 id, uint256 amountYield)
+        external
+        nonReentrant
+        debtSliceOwner(id) {
+
+        (uint256 remainingNPV,
+         uint256 incrementalNPV,
+         uint256 incrementalFees) = _previewRollover(id, amountYield);
+        require(incrementalNPV > 0, "YS: cannot rollover");
+
+        DebtSlice storage slice = debtSlices[id];
+
+        slice.blockTimestamp = uint128(block.timestamp);
+        slice.npvDebt = remainingNPV + incrementalNPV;
+        
+        npvToken.mint(slice.owner, incrementalNPV - incrementalFees);
+        npvToken.mint(treasury, incrementalFees);
+        activeNPV += incrementalNPV;
+
+        _modifyCreditPosition(UNALLOC_ID, int256(incrementalNPV));
+        _recordData();
+
+        emit RolloverDebt(slice.owner,
+                          id,
+                          amountYield,
+                          remainingNPV + incrementalNPV,
+                          incrementalFees);
     }
 
     /// @notice Mint NPV tokens from yield at 1:1 rate.
@@ -487,7 +561,7 @@ contract YieldSlice is ReentrancyGuard {
             IERC20(yieldToken).safeTransfer(slice.owner, _min(balance, refund));
         }
 
-        uint256 amount = _min(yieldSource.amountGenerator(), slice.tokens);
+        uint256 amount = _min(yieldSource.amountGenerator(), tokens(id));
         yieldSource.withdraw(amount, false, slice.owner);
         activeNPV -= slice.npvDebt;
         totalShares -= slice.shares;
