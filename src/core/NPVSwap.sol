@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "forge-std/console.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -176,7 +174,6 @@ contract NPVSwap {
         public returns (uint256, uint256) {
 
         uint256 previewNPV = previewLockForNPV(tokens, yield);
-        console.log("previewNPV", previewNPV);
         return pool.previewSwap(address(npvToken), uint128(previewNPV), sqrtPriceLimitX96);
     }
 
@@ -207,8 +204,6 @@ contract NPVSwap {
                           bytes calldata memo) public returns (uint256, uint256) {
 
         uint256 npv = previewLockForNPV(tokens, yield);
-
-        console.log("lockForYield npv", npv);
 
         uint256 id = lockForNPV(owner, address(this), tokens, yield, memo);
 
@@ -269,7 +264,6 @@ contract NPVSwap {
                                      uint128 sqrtPriceLimitX96) public returns (uint256, uint256) {
 
         (, uint256 npv, ) = slice.previewRollover(id, yield);
-        console.log("preview", npv);
         return pool.previewSwap(address(npvToken), uint128(npv), sqrtPriceLimitX96);
     }
 
