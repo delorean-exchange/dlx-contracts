@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "forge-std/console.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./BaseTest.sol";
@@ -242,7 +241,6 @@ contract YieldSliceTest is BaseTest {
 
         vm.startPrank(alice);
         uint256 id1 = slice.nextId();
-        uint256 before = generatorToken.balanceOf(alice);
         generatorToken.approve(address(npvSwap), 200e18);
         npvSwap.lockForNPV(alice, alice, 200e18, 1e18, new bytes(0));
 
@@ -288,9 +286,9 @@ contract YieldSliceTest is BaseTest {
 
         vm.expectRevert("YS: invalid id");
         slice.transferOwnership(999, alice);
-        vm.expectRevert("YS: transfer zero");
+        vm.expectRevert("YS: zero address");
         slice.transferOwnership(id1, address(0));
-        vm.expectRevert("YS: transfer this");
+        vm.expectRevert("YS: this address");
         slice.transferOwnership(id1, address(slice));
         vm.expectRevert("YS: transfer owner");
         slice.transferOwnership(id1, alice);
@@ -872,11 +870,11 @@ contract YieldSliceTest is BaseTest {
 
         vm.startPrank(bob);
         npvToken.approve(address(npvSwap), 50e18);
-        uint256 id2 = npvSwap.swapNPVForSlice(bob, 50e18, new bytes(0));
+        npvSwap.swapNPVForSlice(bob, 50e18, new bytes(0));
         vm.stopPrank();
 
         vm.expectRevert("YS: no such credit slice");
-        slice.withdrawableNPV(id2);
+        slice.withdrawableNPV(999);
     }
 
     function testWithdrawNPVAccountsWithdrawableImmediate() public {
@@ -1123,7 +1121,7 @@ contract YieldSliceTest is BaseTest {
 
         slice.setGov(alice);
 
-        vm.expectRevert("YS: gov only");
+        vm.expectRevert("YS: only gov");
         slice.setGov(bob);
 
         vm.prank(alice);
@@ -1134,7 +1132,7 @@ contract YieldSliceTest is BaseTest {
         init();
 
         vm.startPrank(alice);
-        vm.expectRevert("YS: gov only");
+        vm.expectRevert("YS: only gov");
         slice.setTreasury(bob);
         vm.stopPrank();
 
@@ -1145,7 +1143,7 @@ contract YieldSliceTest is BaseTest {
         init();
 
         vm.startPrank(alice);
-        vm.expectRevert("YS: gov only");
+        vm.expectRevert("YS: only gov");
         slice.setDustLimit(10);
         vm.stopPrank();
 
@@ -1171,7 +1169,7 @@ contract YieldSliceTest is BaseTest {
         init();
 
         vm.startPrank(alice);
-        vm.expectRevert("YS: gov only");
+        vm.expectRevert("YS: only gov");
         slice.setDebtFee(1);
         vm.stopPrank();
 
@@ -1185,7 +1183,7 @@ contract YieldSliceTest is BaseTest {
         init();
 
         vm.startPrank(alice);
-        vm.expectRevert("YS: gov only");
+        vm.expectRevert("YS: only gov");
         slice.setCreditFee(1);
         vm.stopPrank();
 
@@ -1413,7 +1411,7 @@ contract YieldSliceTest is BaseTest {
 
         (uint256 remainingNPV1,
          uint256 incrementalNPV1,
-         uint256 incrementalFees1) = slice.previewRollover(id1, 1e18);
+         ) = slice.previewRollover(id1, 1e18);
 
         for (uint256 day = 0; day < 100; day += 7) {
             vm.warp(block.timestamp + 7 days);
@@ -1422,17 +1420,10 @@ contract YieldSliceTest is BaseTest {
 
         (uint256 remainingNPV2,
          uint256 incrementalNPV2,
-         uint256 incrementalFees2) = slice.previewRollover(id1, 1e18);
+         ) = slice.previewRollover(id1, 1e18);
 
         assertTrue(remainingNPV2 < remainingNPV1);
         assertTrue(incrementalNPV2 > incrementalNPV1);
-
-        console.log("--");
-        console.log("incrementalNPV1 ", incrementalNPV1);
-        console.log("incrementalFees1", incrementalFees1);
-        console.log("--");
-        console.log("incrementalNPV2 ", incrementalNPV2);
-        console.log("incrementalFees2", incrementalFees2);
 
         vm.stopPrank();
 
@@ -1741,5 +1732,35 @@ contract YieldSliceTest is BaseTest {
             assertClose(deltaAlice, 2 * deltaChad, deltaChad / 10);
             assertClose(deltaAlice + deltaBob + deltaChad, sumYieldAmounts, sumYieldAmounts / 1000);
         }
+    }
+
+    function testMintFromYield() public {
+        init();
+
+        vm.startPrank(alice);
+
+        yieldToken.approve(address(slice), 1e18);
+
+        uint256 balanceBefore = slice.npvToken().balanceOf(alice);
+        uint256 activeBefore = slice.activeNPV();
+        uint256 cumYieldBefore = slice.cumulativePaidYield();
+
+        slice.mintFromYield(address(alice), 1e18);
+
+        uint256 balanceDelta = slice.npvToken().balanceOf(alice) - balanceBefore;
+        uint256 activeDelta = slice.activeNPV() - activeBefore;
+        uint256 cumYieldDelta = slice.cumulativePaidYield() - cumYieldBefore;
+
+        assertEq(balanceDelta, 1e18);
+        assertEq(activeDelta, 1e18);
+        assertEq(cumYieldDelta, 1e18);
+
+        vm.expectRevert("YS: zero address");
+        slice.mintFromYield(address(0), 1e18);
+
+        vm.expectRevert("YS: this address");
+        slice.mintFromYield(address(slice), 1e18);
+
+        vm.stopPrank();
     }
 }

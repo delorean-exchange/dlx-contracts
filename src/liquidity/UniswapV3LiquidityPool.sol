@@ -19,6 +19,12 @@ contract UniswapV3LiquidityPool is ILiquidityPool {
     ISwapRouter public immutable router;
     IQuoterV2 public immutable quoter;
 
+    modifier validAddress(address who) {
+        require(who != address(0), "ULP: zero address");
+        require(who != address(this), "ULP: this address");
+        _;
+    }
+
     /// @notice Create a UniswapV3LiquidityPool.
     /// @param pool_ The Uniswap pool.
     /// @param router_ The Uniswap swap router.
@@ -93,9 +99,10 @@ contract UniswapV3LiquidityPool is ILiquidityPool {
                   uint128 amountIn,
                   uint128 amountOutMinimum,
                   uint128 sqrtPriceLimitX96)
-        external override returns (uint256) {
-
-        require(recipient != address(0), "zero address");
+        external
+        validAddress(recipient)
+        override
+        returns (uint256) {
 
         IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
         IERC20(tokenIn).safeApprove(address(router), 0);

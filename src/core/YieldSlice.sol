@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "forge-std/console.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -184,8 +182,8 @@ contract YieldSlice is ReentrancyGuard {
     }
 
     modifier validAddress(address recipient) {
-        require(recipient != address(0), "YS: transfer zero");
-        require(recipient != address(this), "YS: transfer this");
+        require(recipient != address(0), "YS: zero address");
+        require(recipient != address(this), "YS: this address");
         _;
     }
 

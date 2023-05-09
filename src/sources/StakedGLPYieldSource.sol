@@ -16,14 +16,25 @@ contract StakedGLPYieldSource is IYieldSource {
     IGLPRewardTracker public immutable tracker;
     address public owner;
 
+    modifier validAddress(address who) {
+        require(who != address(0), "SGYS: zero address");
+        require(who != address(this), "SGYS: this address");
+        _;
+    }
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "SGYS: only owner");
+        _;
+    }
+
     /// @notice Create a StakedGLPYieldSource.
     /// @param stglp_ Address of sGLP.
     /// @param weth_ Address fo WETH.
     /// @param tracker_ Address of the GLP rewards tracker.
-    constructor(address stglp_, address weth_, address tracker_) {
-        require(stglp_ != address(0), "SGYS: zero address stglp");
-        require(weth_ != address(0), "SGYS: zero address weth");
-        require(tracker_ != address(0), "SGYS: zero address tracker");
+    constructor(address stglp_, address weth_, address tracker_)
+        validAddress(stglp_)
+        validAddress(weth_)
+        validAddress(tracker_) {
 
         owner = msg.sender;
         generatorToken = IERC20(stglp_);
@@ -33,17 +44,14 @@ contract StakedGLPYieldSource is IYieldSource {
 
     /// @notice Set a new owner.
     /// @param owner_ The new owner.
-    function setOwner(address owner_) external override {
-        require(msg.sender == owner, "only owner");
-        require(owner != address(0), "zero address");
+    function setOwner(address owner_) external onlyOwner validAddress(owner_) override {
         owner = owner_;
     }
 
     /// @notice Deposit sGLP.
     /// @param amount Amount of sGLP to deposit.
     /// @param claim If true, harvest yield.
-    function deposit(uint256 amount, bool claim) external override {
-        require(msg.sender == owner, "only owner");
+    function deposit(uint256 amount, bool claim) external onlyOwner override {
         generatorToken.safeTransferFrom(msg.sender, address(this), amount);
 
         if (claim) _harvest();
@@ -53,9 +61,7 @@ contract StakedGLPYieldSource is IYieldSource {
     /// @param amount Amount of sGLP to withdraw.
     /// @param claim If true, harvest yield.
     /// @param to Recipient of the withdrawal.
-    function withdraw(uint256 amount, bool claim, address to) external override {
-        require(msg.sender == owner, "only owner");
-
+    function withdraw(uint256 amount, bool claim, address to) external onlyOwner override {
         uint256 balance = generatorToken.balanceOf(address(this));
         if (amount > balance) {
             amount = balance;
@@ -76,8 +82,7 @@ contract StakedGLPYieldSource is IYieldSource {
         yieldToken.safeTransfer(owner, amount);
     }
 
-    function harvest() external override {
-        require(msg.sender == owner, "only owner");
+    function harvest() external onlyOwner override {
         _harvest();
     }
 

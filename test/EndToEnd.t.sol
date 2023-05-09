@@ -10,6 +10,8 @@ import "../src/interfaces/uniswap/ISwapRouter.sol";
 import "../src/interfaces/uniswap/IUniswapV3Pool.sol";
 import "../src/interfaces/uniswap/INonfungiblePositionManager.sol";
 
+import { ILiquidityPool } from "../src/interfaces/ILiquidityPool.sol";
+
 import "../src/interfaces/uniswap/IQuoterV2.sol";
 
 contract EndToEndTest is BaseTest {
@@ -298,6 +300,7 @@ contract EndToEndTest is BaseTest {
         source.mintGenerator(bob, 200e18);
         generatorToken.approve(address(npvSwap), 200e18);
         uint256 id1 = npvSwap.slice().nextId();
+
         npvSwap.lockForYield(bob, 200e18, 1e18, 0, 0, new bytes(0));
 
         uint256 remainingNPV = npvSwap.slice().remaining(id1);
@@ -362,5 +365,15 @@ contract EndToEndTest is BaseTest {
         assertEq(actualOut2, 302868417388127250);
 
         vm.stopPrank();
+    }
+
+    function testSwapRequire() public {
+        setUpAliceAddLiquidity(1e18);
+
+        ILiquidityPool pool = ILiquidityPool(npvSwap.pool());
+        vm.expectRevert("ULP: zero address");
+        pool.swap(address(0), address(yieldToken), 100, 0, 0);
+        vm.expectRevert("ULP: this address");
+        pool.swap(address(pool), address(yieldToken), 100, 0, 0);
     }
 }

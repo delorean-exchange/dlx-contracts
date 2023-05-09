@@ -91,22 +91,25 @@ contract StakedGLPYieldSourceTest is BaseTest {
         glpYieldSource = new StakedGLPYieldSource(address(glp), arbitrumWeth, address(tracker));
 
         vm.prank(alice);
-        vm.expectRevert("only owner");
+        vm.expectRevert("SGYS: only owner");
         glpYieldSource.setOwner(bob);
+
+        vm.expectRevert("SGYS: zero address");
+        glpYieldSource.setOwner(address(0));
 
         glpYieldSource.setOwner(alice);
         assertEq(glpYieldSource.owner(), alice);
 
         vm.prank(bob);
-        vm.expectRevert("only owner");
+        vm.expectRevert("SGYS: only owner");
         glpYieldSource.deposit(100, false);
 
         vm.prank(bob);
-        vm.expectRevert("only owner");
+        vm.expectRevert("SGYS: only owner");
         glpYieldSource.harvest();
 
         vm.prank(bob);
-        vm.expectRevert("only owner");
+        vm.expectRevert("SGYS: only owner");
         glpYieldSource.withdraw(100, false, bob);
     }
 }
