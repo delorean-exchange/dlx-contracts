@@ -18,16 +18,16 @@ contract EndToEndTest is BaseTest {
         init();
     }
 
-    function testAliceAddLiquidity() public {
+    function setUpAliceAddLiquidity(uint256 amount) public {
         // Alice: Get some NPV tokens so we can add liquidity
         vm.startPrank(alice);
         generatorToken.approve(address(npvSwap), 2000e18);
         npvSwap.lockForNPV(alice, alice, 2000e18, 10e18, new bytes(0));
 
-        uint256 token0Amount = 1e18;
-        uint256 token1Amount = 1e18;
-        source.mintGenerator(alice, 1e18);
-        source.mintYield(alice, 1e18);
+        uint256 token0Amount = amount;
+        uint256 token1Amount = amount;
+        source.mintGenerator(alice, amount);
+        source.mintYield(alice, amount);
 
         INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams({
             token0: uniswapV3Pool.token0(),
@@ -42,16 +42,14 @@ contract EndToEndTest is BaseTest {
             recipient: alice,
             deadline: block.timestamp + 1 });
 
-        assertEq(uniswapV3Pool.liquidity(), 0);
         IERC20(params.token0).approve(address(manager), token0Amount);
         IERC20(params.token1).approve(address(manager), token1Amount);
         manager.mint(params);
-        assertEq(uniswapV3Pool.liquidity(), 9518707090837465627);
         vm.stopPrank();
     }
 
     function testSwapWithUniswapLiquidityPool() public {
-        testAliceAddLiquidity();
+        setUpAliceAddLiquidity(1e18);
 
         // Bob: Lock some future yield, and swap it for ETH
         vm.startPrank(bob);
@@ -114,7 +112,7 @@ contract EndToEndTest is BaseTest {
     }
 
     function testSwapWithDirectFunctions() public {
-        testAliceAddLiquidity();
+        setUpAliceAddLiquidity(1e18);
 
         // Bob locks and swaps generator tokens for upfront payment
         vm.startPrank(bob);
@@ -186,7 +184,7 @@ contract EndToEndTest is BaseTest {
 
     function testNPVClaimableForExistingYield() public {
         // Add liquidity and move forward in time
-        testAliceAddLiquidity();
+        setUpAliceAddLiquidity(1e18);
         vm.warp(block.timestamp + 0x8000);
         slice.harvest();
 
@@ -219,7 +217,6 @@ contract EndToEndTest is BaseTest {
         }
 
         // Resume yield generation
-        console.log("---");
         slice.recordData();
         source.setYieldPerBlock(10000000000000);
         vm.warp(block.timestamp + 0xf00);
@@ -258,7 +255,7 @@ contract EndToEndTest is BaseTest {
     }
 
     function testPayOffWithYield() public {
-        testAliceAddLiquidity();
+        setUpAliceAddLiquidity(1e18);
 
         // Bob locks and swaps generator tokens for upfront payment
         vm.startPrank(bob);
@@ -293,7 +290,7 @@ contract EndToEndTest is BaseTest {
 
 
     function testPayOffWithYieldExtraAmount() public {
-        testAliceAddLiquidity();
+        setUpAliceAddLiquidity(1e18);
 
         // Bob locks and swaps generator tokens for upfront payment
         vm.startPrank(bob);
@@ -317,6 +314,52 @@ contract EndToEndTest is BaseTest {
 
         assertEq(generatorToken.balanceOf(bob), 200e18);
         assertEq(yieldToken.balanceOf(bob), before - remainingNPV);
+
+        vm.stopPrank();
+    }
+
+    function testRolloverForYield() public {
+        setUpAliceAddLiquidity(5e18);
+
+        // Bob locks and swaps generator tokens for upfront payment
+        vm.startPrank(bob);
+
+        source.mintGenerator(bob, 1000000e18);
+        generatorToken.approve(address(npvSwap), 200e18);
+
+        (uint256 id1 , uint256 amount) = npvSwap.lockForYield(bob, 200e18, 5e17, 0, 0, new bytes(0));
+        assertEq(amount, 460271076128352010);
+        assertEq(yieldToken.balanceOf(bob), 460271076128352010);
+
+        (uint256 yieldOut, ) = npvSwap.previewRolloverForYield(id1, 1e18, 0);
+        assertTrue(yieldOut < amount, "further in future less valuable");
+        assertEq(yieldOut, 182486772273195556);
+
+        // Rollover with no time passing
+        uint256 before = yieldToken.balanceOf(bob);
+        slice.approveRollover(id1, address(npvSwap));
+        uint256 actualOut = npvSwap.rolloverForYield(id1, bob, 1e18, 0, 0);
+        assertEq(actualOut, yieldOut);
+        uint256 delta = yieldToken.balanceOf(bob) - before;
+        assertEq(actualOut, delta);
+
+        // Rollover after some time has passed
+        vm.warp(block.timestamp + 4 days);
+
+        (uint256 yieldOut2, ) = npvSwap.previewRolloverForYield(id1, 1e18, 0);
+        assertEq(yieldOut2, 302868417388127250);
+
+        slice.approveRollover(id1, address(0));
+
+        vm.expectRevert("YS: only owner or approved");
+        npvSwap.rolloverForYield(id1, bob, 1e18, 0, 0);
+
+        uint256 before2 = yieldToken.balanceOf(bob);
+        slice.approveRollover(id1, address(npvSwap));
+        uint256 actualOut2 = npvSwap.rolloverForYield(id1, bob, 1e18, 0, 0);
+        uint256 delta2 = yieldToken.balanceOf(bob) - before2;
+        assertEq(actualOut2, delta2);
+        assertEq(actualOut2, 302868417388127250);
 
         vm.stopPrank();
     }

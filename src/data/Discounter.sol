@@ -89,10 +89,11 @@ contract Discounter is IDiscounter, Ownable {
 
 
     /// @notice Compute value of nominal payment shifted forward some days, relative to a starting amount of NPV.
-    /// @param numPeriods Number of periods in the future to delay that nominal payment.
+    /// @param numSeconds Number of seconds in the future to delay that nominal payment.
     /// @param npv Starting NPV of the nominal payment we will receive.
     /// @return NPV of that nominal payment after the delay.
-    function shiftForward(uint256 numPeriods, uint256 npv) external override view returns (uint256) {
+    function shiftForward(uint256 numSeconds, uint256 npv) external override view returns (uint256) {
+        uint256 numPeriods = numSeconds / discountPeriod;
         uint256 acc = npv * 1e9;
         for (uint256 i = 0; i < numPeriods; i++) {
             acc = acc * RATE_PRECISION / (RATE_PRECISION - rate);
@@ -101,10 +102,11 @@ contract Discounter is IDiscounter, Ownable {
     }
 
     /// @notice Compute value of nominal payment shifted backward some days, relative to a starting amount of NPV.
-    /// @param numPeriods Number of periods in the future to delay that nominal payment.
+    /// @param numSeconds Number of seconds in the future to delay that nominal payment.
     /// @param npv Starting NPV of the nominal payment we will receive.
     /// @return NPV of that nominal payment after the delay.
-    function shiftBackward(uint256 numPeriods, uint256 npv) external override view returns (uint256) {
+    function shiftBackward(uint256 numSeconds, uint256 npv) external override view returns (uint256) {
+        uint256 numPeriods = numSeconds / discountPeriod;
         uint256 acc = npv * 1e9;
         for (uint256 i = 0; i < numPeriods; i++) {
             acc = acc * (RATE_PRECISION - rate) / RATE_PRECISION;

@@ -35,6 +35,12 @@ contract NPVSwap {
                        uint256 yield,
                        uint256 npv);
 
+    event RolloverForYield(uint256 indexed id,
+                           address indexed recipient,
+                           uint256 yield,
+                           uint256 npv,
+                           uint256 amountOut);
+
     event MintAndPayWithYield(uint256 indexed id, uint256 paid);
 
     NPVToken public immutable npvToken;
@@ -72,7 +78,7 @@ contract NPVSwap {
     /// @param yieldIn The amount of yield tokens input.
     /// @param sqrtPriceLimitX96 Price limit in sqrtX96 format.
     function previewSwapYieldForNPV(uint256 yieldIn, uint128 sqrtPriceLimitX96)
-        public returns (uint256, uint256) {
+        external returns (uint256, uint256) {
 
         return pool.previewSwap(address(slice.yieldToken()),
                                 uint128(yieldIn),
@@ -84,7 +90,7 @@ contract NPVSwap {
     /// @param npvOut The amount of NPV tokens desired as output.
     /// @param sqrtPriceLimitX96 Price limit in sqrtX96 format.
     function previewSwapYieldForNPVOut(uint256 npvOut, uint128 sqrtPriceLimitX96)
-        public returns (uint256, uint256) {
+        external returns (uint256, uint256) {
 
         return pool.previewSwapOut(address(slice.yieldToken()),
                                    uint128(npvOut),
@@ -96,7 +102,7 @@ contract NPVSwap {
     /// @param npvIn The amount of NPV tokens input.
     /// @param sqrtPriceLimitX96 Price limit in sqrtX96 format.
     function previewSwapNPVForYield(uint256 npvIn, uint128 sqrtPriceLimitX96)
-        public returns (uint256, uint256) {
+        external returns (uint256, uint256) {
 
         return pool.previewSwap(address(npvToken),
                                 uint128(npvIn),
@@ -161,7 +167,7 @@ contract NPVSwap {
     // ---- High level: Transacting in generator and yield tokens ---- //
     // --------------------------------------------------------------- //
 
-    /// @notice Compute the result of a swap from locking yield into upfront yield.
+    /// @notice Compute the result of a swap from locking future yield into upfront yield.
     /// @dev Not a view, and should not be used on-chain, due to underlying Uniswap v3 behavior.
     /// @param tokens The number of yield generating tokens to be locked.
     /// @param yield The amount of yield to be commited into the slice.
@@ -170,6 +176,7 @@ contract NPVSwap {
         public returns (uint256, uint256) {
 
         uint256 previewNPV = previewLockForNPV(tokens, yield);
+        console.log("previewNPV", previewNPV);
         return pool.previewSwap(address(npvToken), uint128(previewNPV), sqrtPriceLimitX96);
     }
 
@@ -200,6 +207,9 @@ contract NPVSwap {
                           bytes calldata memo) public returns (uint256, uint256) {
 
         uint256 npv = previewLockForNPV(tokens, yield);
+
+        console.log("lockForYield npv", npv);
+
         uint256 id = lockForNPV(owner, address(this), tokens, yield, memo);
 
         IERC20(npvToken).safeApprove(address(pool), 0);
@@ -244,6 +254,46 @@ contract NPVSwap {
         emit SwapForSlice(id, recipient, yield, out);
 
         return id;
+    }
+
+    // -------------------------------------------------------------- //
+    // ---- Rollover: Receive additional yield from a debt slice ---- //
+    // -------------------------------------------------------------- //
+    /// @notice Compute the result of a rollover locking more future yield into upfront yield.
+    /// @dev Not a view, and should not be used on-chain, due to underlying Uniswap v3 behavior.
+    /// @param id The debt slice to rollover.
+    /// @param yield The amount of yield to be commited into the slice.
+    /// @param sqrtPriceLimitX96 Price limit in sqrtX96 format.
+    function previewRolloverForYield(uint256 id,
+                                     uint256 yield,
+                                     uint128 sqrtPriceLimitX96) public returns (uint256, uint256) {
+
+        (, uint256 npv, ) = slice.previewRollover(id, yield);
+        console.log("preview", npv);
+        return pool.previewSwap(address(npvToken), uint128(npv), sqrtPriceLimitX96);
+    }
+
+    function rolloverForYield(uint256 id,
+                              address recipient,
+                              uint256 yield,
+                              uint256 amountOutMin,
+                              uint128 sqrtPriceLimitX96) public returns (uint256) {
+
+        (, uint256 npv, ) = slice.previewRollover(id, yield);
+
+        slice.rollover(id, address(this), yield);
+
+        IERC20(npvToken).safeApprove(address(pool), 0);
+        IERC20(npvToken).safeApprove(address(pool), npv);
+        uint256 out = pool.swap(recipient,
+                                address(npvToken),
+                                uint128(npv),
+                                uint128(amountOutMin),
+                                sqrtPriceLimitX96);
+
+        emit RolloverForYield(id, recipient, yield, npv, out);
+
+        return out;
     }
 
     // ----------------------------------------------------------------- //

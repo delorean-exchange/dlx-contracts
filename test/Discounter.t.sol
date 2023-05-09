@@ -15,8 +15,8 @@ contract DiscounterTest is BaseTest {
         init();
 
         assertEq(discounter.discounted(1e18, 1e18), 3267588900000000);
-        assertEq(discounter.shiftForward(20, 1e18), 1352930196488360054);
-        assertEq(discounter.shiftBackward(20, 1e18), 739136433347101738);
+        assertEq(discounter.shiftForward(20 * 30 days, 1e18), 1352930196488360054);
+        assertEq(discounter.shiftBackward(20 * 30 days, 1e18), 739136433347101738);
 
         vm.prank(bob);
         vm.expectRevert();
@@ -29,8 +29,8 @@ contract DiscounterTest is BaseTest {
         discounter.setDaily(2e13);
 
         assertEq(discounter.discounted(1e18, 1e18), 6535177800000000);
-        assertEq(discounter.shiftForward(20, 1e18), 1352930196488360054);
-        assertEq(discounter.shiftBackward(20, 1e18), 739136433347101738);
+        assertEq(discounter.shiftForward(20 * 30 days, 1e18), 1352930196488360054);
+        assertEq(discounter.shiftBackward(20 * 30 days, 1e18), 739136433347101738);
     }
 
     function testSetMaxDays() public {

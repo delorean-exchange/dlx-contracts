@@ -867,8 +867,7 @@ contract YieldSliceTest is BaseTest {
             uint256 npvCreditAfter = creditSliceNPVCredit(id2);
 
             ( , uint256 tsCreated, uint256 ts, , , , , ) = slice.creditSlices(id2);
-            uint256 numDays = (ts - tsCreated) / slice.discounter().discountPeriod();
-            uint256 npvCreditAfterShifted = slice.discounter().shiftBackward(numDays, npvCreditAfter);
+            uint256 npvCreditAfterShifted = slice.discounter().shiftBackward(ts - tsCreated, npvCreditAfter);
 
             assertEq(creditSliceNPVTokens(id2), 50e18 - 1);
             assertEq(npvCreditAfterShifted + npvGenBefore, 50e18 - 1);
@@ -890,8 +889,7 @@ contract YieldSliceTest is BaseTest {
         {
             ( , uint256 npvGen, ) = slice.generatedCredit(id2);
             ( , uint256 tsCreated, uint256 ts, , , , , ) = slice.creditSlices(id2);
-            uint256 numDays = (ts - tsCreated) / slice.discounter().discountPeriod();
-            npvGen2 = slice.discounter().shiftBackward(numDays, npvGen);
+            npvGen2 = slice.discounter().shiftBackward(ts - tsCreated, npvGen);
         }
 
         // Withdraw 2 units of NPV tokens, verify accounting
@@ -961,10 +959,10 @@ contract YieldSliceTest is BaseTest {
     function testComputePVAndNominal() public {
         init();
 
-        uint256 pv = discounter.shiftBackward(500 / (discounter.discountPeriod() / 1 days), 1e17);
-        assertEq(pv, 78519890984404294);
+        uint256 pv = discounter.shiftBackward(360 days, 1e17);
+        assertEq(pv, 83413196834087708);
 
-        uint256 nominal = discounter.shiftForward(500 / (discounter.discountPeriod() / 1 days), pv);
+        uint256 nominal = discounter.shiftForward(360 days, pv);
         assertEq(nominal, 99999999999999999);
         assertClose(nominal, 1e17, 10);
     }
@@ -1405,7 +1403,7 @@ contract YieldSliceTest is BaseTest {
         vm.startPrank(alice);
 
         vm.expectRevert("YS: cannot rollover");
-        slice.rollover(id1, 1e18);
+        slice.rollover(id1, alice, 1e18);
 
         vm.stopPrank();
     }
@@ -1418,7 +1416,7 @@ contract YieldSliceTest is BaseTest {
         vm.startPrank(alice);
 
         vm.expectRevert("YS: cannot rollover");
-        slice.rollover(id1, 1e18);
+        slice.rollover(id1, alice, 1e18);
 
         vm.stopPrank();
     }
@@ -1438,19 +1436,17 @@ contract YieldSliceTest is BaseTest {
         assertTrue(incrementalNPV < npv);
         assertTrue(incrementalNPV < 877248880000000000);
 
+        vm.expectRevert("YS: only owner or approved");
+        slice.rollover(id1, alice, 1e18);
+
         // Roll it over!
-
-        vm.expectRevert("YS: only owner");
-        slice.rollover(id1, 1e18);
-
         vm.startPrank(alice);
 
         uint256 debtBefore = slice.remaining(id1);
         uint256 balanceBefore = npvToken.balanceOf(alice);
-        uint256 numDays = 515 days / discounter.discountPeriod();
-        debtBefore = discounter.shiftForward(numDays, debtBefore);
+        debtBefore = discounter.shiftForward(515 days, debtBefore);
 
-        slice.rollover(id1, 1e18);
+        slice.rollover(id1, alice, 1e18);
 
         uint256 debtAfter = slice.remaining(id1);
         uint256 balanceAfter = npvToken.balanceOf(alice);
