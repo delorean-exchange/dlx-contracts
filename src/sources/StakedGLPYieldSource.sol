@@ -14,6 +14,12 @@ contract StakedGLPYieldSource is IYieldSource {
     IERC20 public immutable override generatorToken;
     IERC20 public immutable override yieldToken;
     IGLPRewardTracker public immutable tracker;
+
+    /** @notice Owner role is the owner of this yield source, and
+        is allowed to make deposits, withdrawals, and harvest the
+        yield from the generator tokens. The owner can set a new
+        owner.
+    */
     address public owner;
 
     modifier validAddress(address who) {

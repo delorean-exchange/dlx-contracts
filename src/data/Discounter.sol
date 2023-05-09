@@ -5,7 +5,11 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 import { IDiscounter } from "../interfaces/IDiscounter.sol";
 
-/// @notice Computes net present value of future yield based on a fixed discount rate.
+/** @notice Computes net present value of future yield based on a fixed discount rate.
+
+    Owner role sets projected daily yield rate, and max days of that
+    projection which can be sold.
+*/
 contract Discounter is IDiscounter, Ownable {
     uint256 public immutable rate;
     uint256 public immutable decimals;

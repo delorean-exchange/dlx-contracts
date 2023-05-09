@@ -59,6 +59,7 @@ contract YieldSlice is ReentrancyGuard {
 
     // Max fees limit what can be set by governance. Actual fee may be lower.
 
+
     // -- Debt fee ratio -- //
     // Debt fee ratio is relative to the discount rate of the transaction.
     // For example, a debt fee ratio of 100% means that the the protocol fee
@@ -66,12 +67,27 @@ contract YieldSlice is ReentrancyGuard {
     // is half the discount rate.
     uint256 public constant MAX_DEBT_FEE_RATIO = 100_0;
 
+
     // -- Credit fees -- //
     // Credit fee are are simple percent of the NPV tokens being purchased.
     uint256 public constant MAX_CREDIT_FEE = 20_0;
 
+
+    // -- Roles --//
+    /** @notice Gov role enables governance functions, including setting
+        other roles, setting the dust limit, and setting fees. Gov can
+        set a new gov.
+     */
     address public gov;
+
+    /** @notice Unlocker role enables unlocking a debt slice on behalf of
+        its owner. This is for the benefit of the slice owner, to avoid
+        excess socialization of refund from long unlock delays.
+     */
     address public unlocker;
+
+    /** @notice Treasury role receives fees.
+     */
     address public treasury;
 
     // The unallocated credit slice tracks yield that has been sold using a

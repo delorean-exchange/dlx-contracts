@@ -10,11 +10,19 @@ import { Ownable } from  "@openzeppelin/contracts/access/Ownable.sol";
     interval should be set such that N does not exceed around a thousand. An
     interval of 10 days will stay below this limit for a few decades. Keep in
     mind, though, that a larger interval reduces accuracy.
+
+    Owner role can set the writer role up to one time.
 */
 contract YieldData is Ownable {
     uint256 public constant PRECISION_FACTOR = 10**18;
 
+    /** @notice Writer role is permitted to write new data points. This
+        role can only be assigned once, and it is expected to be set to
+        a YieldSlice contract, which writes data in a deterministic
+        fashion.
+     */
     address public writer;
+
     uint128 public immutable interval;
 
     struct Epoch {

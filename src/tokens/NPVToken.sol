@@ -4,7 +4,11 @@ pragma solidity ^0.8.13;
 import { ERC20 } from  "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Ownable } from  "@openzeppelin/contracts/access/Ownable.sol";
 
-/// @notice NPV tokens are used to track the net present value of future yield.
+/** @notice NPV tokens are used to track the net present value of future yield.
+
+    Owner role is allowed to mint and burn token, and set a new owner.
+    Expected to be a YieldSlice.
+ */
 contract NPVToken is ERC20, Ownable {
 
     /// @notice Create an NPVToken.

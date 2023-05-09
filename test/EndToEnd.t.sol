@@ -56,6 +56,12 @@ contract EndToEndTest is BaseTest {
         // Bob: Lock some future yield, and swap it for ETH
         vm.startPrank(bob);
 
+        vm.expectRevert("NS: zero address");
+        npvSwap.lockForNPV(address(0), bob, 200e18, 1e18, new bytes(0));
+
+        vm.expectRevert("NS: zero address");
+        npvSwap.lockForNPV(bob, address(0), 200e18, 1e18, new bytes(0));
+
         source.mintGenerator(bob, 1000000e18);
         generatorToken.approve(address(npvSwap), 200e18);
         assertEq(npvSwap.previewLockForNPV(200e18, 1e18), 653517780000000000);
@@ -82,6 +88,9 @@ contract EndToEndTest is BaseTest {
         assertClose(balance2, 1e18, 5e17);
         assertEq(out2, 994537036467183765);
         assertEq(balance2, 994537036467183765);
+
+        vm.expectRevert("NS: zero address");
+        npvSwap.swapNPVForSlice(address(0), 99e16, new bytes(0));
 
         IERC20(npvToken).approve(address(npvSwap), 99e16);
         uint256 id = npvSwap.swapNPVForSlice(chad, 99e16, new bytes(0));
@@ -136,6 +145,9 @@ contract EndToEndTest is BaseTest {
             assertEq(quote, npvSwap.previewLockForNPV(200e18, 1e18));
         }
 
+        vm.expectRevert("NS: zero address");
+        npvSwap.lockForYield(address(0), 200e18, 1e18, preview, 0, new bytes(0));
+
         (uint256 id1 , uint256 amount) = npvSwap.lockForYield(bob, 200e18, 1e18, preview, 0, new bytes(0));
         (address owner , , , , , , ) = npvSwap.slice().debtSlices(id1);
         assertEq(owner, bob);
@@ -156,6 +168,9 @@ contract EndToEndTest is BaseTest {
 
         (uint256 yieldIn, ) = npvSwap.previewSwapYieldForNPVOut(npvOut, 0);
         assertEq(yieldIn, 1e18);
+
+        vm.expectRevert("NS: zero address");
+        npvSwap.swapForSlice(address(0), 1e18, previewNpv, 0, new bytes(0));
 
         IERC20(yieldToken).approve(address(npvSwap), 1e18);
         uint256 id = npvSwap.swapForSlice(chad, 1e18, previewNpv, 0, new bytes(0));
@@ -337,6 +352,9 @@ contract EndToEndTest is BaseTest {
         (uint256 yieldOut, ) = npvSwap.previewRolloverForYield(id1, 1e18, 0);
         assertTrue(yieldOut < amount, "further in future less valuable");
         assertEq(yieldOut, 182486772273195556);
+
+        vm.expectRevert("NS: zero address");
+        npvSwap.rolloverForYield(id1, address(0), 1e18, 0, 0);
 
         // Rollover with no time passing
         uint256 before = yieldToken.balanceOf(bob);

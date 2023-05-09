@@ -45,8 +45,14 @@ contract NPVSwap {
     YieldSlice public immutable slice;
     ILiquidityPool public immutable pool;
 
+    modifier validAddress(address who) {
+        require(who != address(0), "NS: zero address");
+        require(who != address(this), "NS: this address");
+        _;
+    }
+
     modifier validRecipient(address recipient) {
-        require(recipient != address(0), "NS: transfer zero");
+        require(recipient != address(0), "NS: zero address");
         _;
     }
 
@@ -54,8 +60,8 @@ contract NPVSwap {
     /// @param slice_ Yield slice contract that will use to slice and swap yield.
     /// @param pool_ Liquidity pool to trade NPV for real tokens.
     constructor(address slice_, address pool_)
-        validRecipient(slice_)
-        validRecipient(pool_) {
+        validAddress(slice_)
+        validAddress(pool_) {
 
         address npvToken_ = address(YieldSlice(slice_).npvToken());
         require(npvToken_ == ILiquidityPool(pool_).token0() ||
@@ -251,7 +257,8 @@ contract NPVSwap {
                           uint128 sqrtPriceLimitX96,
                           bytes calldata memo)
         validRecipient(recipient)
-        public returns (uint256) {
+        public
+        returns (uint256) {
 
         slice.yieldToken().safeTransferFrom(msg.sender, address(this), yield);
         slice.yieldToken().safeApprove(address(pool), 0);
