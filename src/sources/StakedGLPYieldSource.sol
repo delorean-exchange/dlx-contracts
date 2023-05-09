@@ -14,7 +14,6 @@ contract StakedGLPYieldSource is IYieldSource {
     IERC20 public immutable override generatorToken;
     IERC20 public immutable override yieldToken;
     IGLPRewardTracker public immutable tracker;
-    uint256 public deposits;
     address public owner;
 
     /// @notice Create a StakedGLPYieldSource.
@@ -36,6 +35,7 @@ contract StakedGLPYieldSource is IYieldSource {
     /// @param owner_ The new owner.
     function setOwner(address owner_) external override {
         require(msg.sender == owner, "only owner");
+        require(owner != address(0), "zero address");
         owner = owner_;
     }
 

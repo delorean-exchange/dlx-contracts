@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "forge-std/console.sol";
+
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -47,6 +49,7 @@ contract YieldSlice is ReentrancyGuard {
     event DebtFee(uint256 debtFee);
     event CreditFee(uint256 creditFee);
     event Gov(address indexed gov);
+    event Unlocker(address indexed unlocker);
     event Treasury(address indexed treasury);
     event Harvest(uint256 total, uint256 delta);
     event RecordDebtData(uint256 totalTokens, uint256 cumulativeYield);
@@ -70,6 +73,7 @@ contract YieldSlice is ReentrancyGuard {
     uint256 public constant MAX_CREDIT_FEE = 20_0;
 
     address public gov;
+    address public unlocker;
     address public treasury;
 
     // The unallocated credit slice tracks yield that has been sold using a
@@ -140,7 +144,7 @@ contract YieldSlice is ReentrancyGuard {
     mapping(uint256 => address) public approvedRollover;
 
     modifier onlyGov() {
-        require(msg.sender == gov, "YS: gov only");
+        require(msg.sender == gov, "YS: only gov");
         _;
     }
 
@@ -164,6 +168,11 @@ contract YieldSlice is ReentrancyGuard {
         _;
     }
 
+    modifier debtSliceOwnerOrUnlocker(uint256 id) {
+        require(debtSlices[id].owner == msg.sender || unlocker == msg.sender, "YS: only owner or unlocker");
+        _;
+    }
+
     modifier creditSliceOwner(uint256 id) {
         require(creditSlices[id].owner == msg.sender, "YS: only owner");
         _;
@@ -174,7 +183,7 @@ contract YieldSlice is ReentrancyGuard {
         _;
     }
 
-    modifier validRecipient(address recipient) {
+    modifier validAddress(address recipient) {
         require(recipient != address(0), "YS: transfer zero");
         require(recipient != address(this), "YS: transfer this");
         _;
@@ -192,8 +201,15 @@ contract YieldSlice is ReentrancyGuard {
                 address debtData_,
                 address creditData_,
                 address discounter_,
-                uint256 dustLimit_) {
+                uint256 dustLimit_)
+
+        validAddress(yieldSource_)
+        validAddress(debtData_)
+        validAddress(creditData_)
+        validAddress(discounter_) {
+
         gov = msg.sender;
+        unlocker = msg.sender;
         treasury = msg.sender;
 
         npvToken = new NPVToken(symbol, symbol);
@@ -222,15 +238,23 @@ contract YieldSlice is ReentrancyGuard {
 
     /// @notice Set the governance address.
     /// @param gov_ The new governance address.
-    function setGov(address gov_) external onlyGov {
+    function setGov(address gov_) validAddress(gov_) external onlyGov {
         gov = gov_;
 
         emit Gov(gov);
     }
 
+    /// @notice Set the unlocker address.
+    /// @param unlocker_ The new unlocker address.
+    function setUnlocker(address unlocker_) validAddress(unlocker_) external onlyGov {
+        unlocker = unlocker_;
+
+        emit Unlocker(unlocker);
+    }
+
     /// @notice Set the treasury address.
     /// @param treasury_ The new treasury address.
-    function setTreasury(address treasury_) external onlyGov {
+    function setTreasury(address treasury_) validAddress(treasury_) external onlyGov {
         treasury = treasury_;
 
         emit Treasury(treasury);
@@ -274,7 +298,7 @@ contract YieldSlice is ReentrancyGuard {
         return harvestedYield + yieldSource.amountPending();
     }
 
-    /// @notice Amount of yield generated in the contract's lifetime, exclusive of refunded amounts.
+    /// @notice Amount of yield generated in the contract's lifetime, including direct payments.
     /// @return Cumulative yield on credit side.
     function cumulativeYieldCredit() public view returns (uint256) {
         return harvestedYield + cumulativePaidYield + yieldSource.amountPending();
@@ -419,7 +443,7 @@ contract YieldSlice is ReentrancyGuard {
         external
         nonReentrant
         noDust(amountGenerator)
-        validRecipient(recipient)
+        validAddress(recipient)
         returns (uint256) {
 
         uint256 id = nextId++;
@@ -490,7 +514,7 @@ contract YieldSlice is ReentrancyGuard {
     /// @param amount The amount of yield tokens to exchange for NPV tokens.
     function mintFromYield(address recipient, uint256 amount)
         external
-        validRecipient(recipient) {
+        validAddress(recipient) {
 
         IERC20(yieldToken).safeTransferFrom(msg.sender, address(this), amount);
         npvToken.mint(recipient, amount);
@@ -532,7 +556,7 @@ contract YieldSlice is ReentrancyGuard {
     function transferOwnership(uint256 id, address recipient)
         external
         nonReentrant
-        validRecipient(recipient)
+        validAddress(recipient)
         isSlice(id) {
 
         if (debtSlices[id].owner != address(0)) {
@@ -552,8 +576,9 @@ contract YieldSlice is ReentrancyGuard {
     }
 
     /// @notice Unlock the underlying tokens for a debt slice, if possible. Excess yield generated will be refunded.
+    /// @dev Unlocker role may unlock a debt slice, to prevent excess refund loss for the owner.
     /// @param id ID of the debt slice.
-    function unlockDebtSlice(uint256 id) external nonReentrant debtSliceOwner(id) {
+    function unlockDebtSlice(uint256 id) external nonReentrant debtSliceOwnerOrUnlocker(id) {
         DebtSlice storage slice = debtSlices[id];
         require(slice.unlockedBlockTimestamp == 0, "YS: already unlocked");
 
@@ -633,7 +658,7 @@ contract YieldSlice is ReentrancyGuard {
     function creditSlice(uint256 npv, address recipient, bytes calldata memo)
         external
         nonReentrant
-        validRecipient(recipient)
+        validAddress(recipient)
         returns (uint256) {
 
         uint256 fees = _creditFees(npv);
@@ -748,7 +773,7 @@ contract YieldSlice is ReentrancyGuard {
                          uint256 amount)
         external
         nonReentrant
-        validRecipient(recipient)
+        validAddress(recipient)
         creditSliceOwner(id) {
 
         uint256 available = withdrawableNPV(id);

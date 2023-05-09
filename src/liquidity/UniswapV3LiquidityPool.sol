@@ -27,9 +27,9 @@ contract UniswapV3LiquidityPool is ILiquidityPool {
                 address router_,
                 address quoter_) {
 
-        require(pool_ != address(0));
-        require(router_ != address(0));
-        require(quoter_ != address(0));
+        require(pool_ != address(0), "zero address");
+        require(router_ != address(0), "zero address");
+        require(quoter_ != address(0), "zero address");
 
         pool = IUniswapV3Pool(pool_);
         router = ISwapRouter(router_);
@@ -94,6 +94,8 @@ contract UniswapV3LiquidityPool is ILiquidityPool {
                   uint128 amountOutMinimum,
                   uint128 sqrtPriceLimitX96)
         external override returns (uint256) {
+
+        require(recipient != address(0), "zero address");
 
         IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
         IERC20(tokenIn).safeApprove(address(router), 0);

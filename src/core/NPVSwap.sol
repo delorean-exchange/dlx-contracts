@@ -45,10 +45,19 @@ contract NPVSwap {
     YieldSlice public immutable slice;
     ILiquidityPool public immutable pool;
 
+    modifier validAddress(address recipient) {
+        require(recipient != address(0), "YS: transfer zero");
+        require(recipient != address(this), "YS: transfer this");
+        _;
+    }
+
     /// @notice Create an NPVSwap.
     /// @param slice_ Yield slice contract that will use to slice and swap yield.
     /// @param pool_ Liquidity pool to trade NPV for real tokens.
-    constructor(address slice_, address pool_) {
+    constructor(address slice_, address pool_)
+        validAddress(slice_)
+        validAddress(pool_) {
+
         address npvToken_ = address(YieldSlice(slice_).npvToken());
         require(npvToken_ == ILiquidityPool(pool_).token0() ||
                 npvToken_ == ILiquidityPool(pool_).token1(), "NS: wrong token");
@@ -129,7 +138,11 @@ contract NPVSwap {
                         address recipient,
                         uint256 tokens,
                         uint256 yield,
-                        bytes calldata memo) public returns (uint256) {
+                        bytes calldata memo)
+        public
+        validAddress(owner)
+        validAddress(recipient)
+        returns (uint256) {
 
         IERC20(slice.generatorToken()).safeTransferFrom(msg.sender, address(this), tokens);
         slice.generatorToken().safeApprove(address(slice), 0);
@@ -148,7 +161,11 @@ contract NPVSwap {
     /// @param memo Optional memo data to associate with the yield slice.
     function swapNPVForSlice(address recipient,
                              uint256 npv,
-                             bytes calldata memo) public returns (uint256) {
+                             bytes calldata memo)
+        public
+        validAddress(recipient)
+        returns (uint256) {
+
         IERC20(slice.npvToken()).safeTransferFrom(msg.sender, address(this), npv);
         IERC20(slice.npvToken()).safeApprove(address(slice), 0); 
         IERC20(slice.npvToken()).safeApprove(address(slice), npv);
@@ -201,7 +218,10 @@ contract NPVSwap {
                           uint256 yield,
                           uint256 amountOutMin,
                           uint128 sqrtPriceLimitX96,
-                          bytes calldata memo) public returns (uint256, uint256) {
+                          bytes calldata memo)
+        public
+        validAddress(owner)
+        returns (uint256, uint256) {
 
         uint256 npv = previewLockForNPV(tokens, yield);
 
@@ -230,7 +250,9 @@ contract NPVSwap {
                           uint256 yield,
                           uint256 npvMin,
                           uint128 sqrtPriceLimitX96,
-                          bytes calldata memo) public returns (uint256) {
+                          bytes calldata memo)
+        validAddress(recipient)
+        public returns (uint256) {
 
         slice.yieldToken().safeTransferFrom(msg.sender, address(this), yield);
         slice.yieldToken().safeApprove(address(pool), 0);
@@ -271,7 +293,10 @@ contract NPVSwap {
                               address recipient,
                               uint256 yield,
                               uint256 amountOutMin,
-                              uint128 sqrtPriceLimitX96) public returns (uint256) {
+                              uint128 sqrtPriceLimitX96)
+        public
+        validAddress(recipient)
+        returns (uint256) {
 
         (, uint256 npv, ) = slice.previewRollover(id, yield);
 

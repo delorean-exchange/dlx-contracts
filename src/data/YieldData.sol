@@ -136,7 +136,7 @@ contract YieldData is Ownable {
     /// @param start Timestamp indicating the start of the time range.
     /// @param end Timestmap indicating the end of the time range.
     /// @param tokens Optional, the amount of tokens locked. Can be 0.
-    /// @param tokens Optional, the amount of cumulative. Can be 0.
+    /// @param yield Optional, the amount of cumulative yield. Can be 0.
     /// @return Amount of yield per `PRECISION_FACTOR` amount of tokens per second.
     function yieldPerTokenPerSecond(uint128 start, uint128 end, uint256 tokens, uint256 yield) public view returns (uint256) {
         if (start == end) return 0;
