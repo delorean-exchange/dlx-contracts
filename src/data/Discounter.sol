@@ -22,8 +22,8 @@ contract Discounter is IDiscounter, Ownable {
     uint256 public constant MAX_DAYS_LIMIT = 8 * 360; // 8 years
 
     // Limits the number of discount periods for computations. Limiting that
-    // ratio to around 100 keeps gas spending within a reasonable range.
-    uint256 public constant DISCOUNT_PERIODS_LIMIT = 100;
+    // ratio to 96 keeps gas spending within a reasonable range.
+    uint256 public constant DISCOUNT_PERIODS_LIMIT = 96;
 
     event Daily(uint256 daily);
     event MaxDays(uint256 maxDays);
@@ -62,7 +62,7 @@ contract Discounter is IDiscounter, Ownable {
     /// @param maxDays_ New max days of projected future yield to sell.
     function setMaxDays(uint256 maxDays_) public onlyOwner {
         require(maxDays_ <= MAX_DAYS_LIMIT, "DS: max days limit");
-        require(maxDays_ / (discountPeriod / 1 days) < DISCOUNT_PERIODS_LIMIT, "DS: discount periods limit");
+        require(maxDays_ / (discountPeriod / 1 days) <= DISCOUNT_PERIODS_LIMIT, "DS: discount periods limit");
 
         maxDays = maxDays_;
 

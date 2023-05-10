@@ -11,6 +11,8 @@ import { IGLPRewardTracker } from "../interfaces/IGLPRewardTracker.sol";
 contract StakedGLPYieldSource is IYieldSource {
     using SafeERC20 for IERC20;
 
+    event TransferOwnership(address indexed recipient);
+
     IERC20 public immutable override generatorToken;
     IERC20 public immutable override yieldToken;
     IGLPRewardTracker public immutable tracker;
@@ -52,6 +54,8 @@ contract StakedGLPYieldSource is IYieldSource {
     /// @param owner_ The new owner.
     function setOwner(address owner_) external onlyOwner validAddress(owner_) override {
         owner = owner_;
+
+        emit TransferOwnership(owner);
     }
 
     /// @notice Deposit sGLP.

@@ -1,7 +1,6 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-import "forge-std/console.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -101,9 +100,6 @@ contract FakeYieldSourceWETH is IYieldSource {
     function mintYield(address who, uint256 amount) public {
         if (isWeth) {
             require(minter == address(0) || minter == msg.sender, "only minter");
-
-            console.log("Mint WETH yield, balance:", IERC20(_yieldToken).balanceOf(address(this)));
-
             IERC20(_yieldToken).transfer(who, amount);
         } else {
             IFakeToken(_yieldToken).publicMint(who, amount);
@@ -114,9 +110,6 @@ contract FakeYieldSourceWETH is IYieldSource {
         assert(owner != address(this));
         uint256 amount = this.amountPending();
         mintYield(address(this), amount);
-        /* _yieldToken.publicMint(address(this), amount); */
-        console.log("Transfering to owner", owner);
-        console.log("Transfering to owner", amount);
         IERC20(_yieldToken).safeTransfer(owner, amount);
         lastHarvestBlockNumber = block.number;
         lastPendingBlockNumber = block.number;
@@ -126,12 +119,6 @@ contract FakeYieldSourceWETH is IYieldSource {
     function _pendingUnaccounted() internal view returns (uint256) {
         uint256 start = lastPendingBlockNumber == 0 ? startBlockNumber : lastPendingBlockNumber;
         uint256 deltaBlocks = block.number - start;
-
-        console.log("deltaBlocks  ", deltaBlocks);
-        console.log("yieldPerBlock", yieldPerBlock);
-        console.log("balance      ", _generatorToken.balanceOf(address(this)));
-
-        /* return _generatorToken.balanceOf(address(this)) * deltaBlocks * yieldPerBlock; */
         return deltaBlocks * yieldPerBlock;
     }
 

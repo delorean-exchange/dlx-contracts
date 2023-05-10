@@ -112,6 +112,9 @@ contract YieldSliceTest is BaseTest {
         uint256 yieldPerSecond = amountYield / (numDays * 1 days);
         discounter.setMaxDays(numDays);
 
+        uint256 ratio = numDays / (discounter.discountPeriod() / 1 days);
+        assertEq(ratio, discounter.DISCOUNT_PERIODS_LIMIT());
+
         discounter.setDaily(yieldPerSecond * 1 days * 1e18 / amountGenerator);
 
         source.setYieldPerBlock(yieldPerSecond);

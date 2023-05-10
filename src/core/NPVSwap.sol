@@ -12,6 +12,10 @@ import { ILiquidityPool } from "../interfaces/ILiquidityPool.sol";
 contract NPVSwap {
     using SafeERC20 for IERC20;
 
+    NPVToken public immutable npvToken;
+    YieldSlice public immutable slice;
+    ILiquidityPool public immutable pool;
+
     event LockForNPV(uint256 indexed id,
                      address indexed owner,
                      address indexed recipient,
@@ -40,10 +44,6 @@ contract NPVSwap {
                            uint256 amountOut);
 
     event MintAndPayWithYield(uint256 indexed id, uint256 paid);
-
-    NPVToken public immutable npvToken;
-    YieldSlice public immutable slice;
-    ILiquidityPool public immutable pool;
 
     modifier validAddress(address who) {
         require(who != address(0), "NS: zero address");
@@ -126,7 +126,7 @@ contract NPVSwap {
     /// @param yieldOut The amount of yield tokens desired as output.
     /// @param sqrtPriceLimitX96 Price limit in sqrtX96 format.
     function previewSwapNPVForYieldOut(uint256 yieldOut, uint128 sqrtPriceLimitX96)
-        public returns (uint256, uint256) {
+        external returns (uint256, uint256) {
 
         return pool.previewSwapOut(address(npvToken),
                                    uint128(yieldOut),
@@ -167,7 +167,7 @@ contract NPVSwap {
     function swapNPVForSlice(address recipient,
                              uint256 npv,
                              bytes calldata memo)
-        public
+        external
         validRecipient(recipient)
         returns (uint256) {
 
@@ -193,7 +193,7 @@ contract NPVSwap {
     /// @param yield The amount of yield to be commited into the slice.
     /// @param sqrtPriceLimitX96 Price limit in sqrtX96 format.
     function previewLockForYield(uint256 tokens, uint256 yield, uint128 sqrtPriceLimitX96)
-        public returns (uint256, uint256) {
+        external returns (uint256, uint256) {
 
         uint256 previewNPV = previewLockForNPV(tokens, yield);
         return pool.previewSwap(address(npvToken), uint128(previewNPV), sqrtPriceLimitX96);
@@ -203,7 +203,9 @@ contract NPVSwap {
     /// @dev Not a view, and should not be used on-chain, due to underlying Uniswap v3 behavior.
     /// @param yieldIn The amount of yield tokens input.
     /// @param sqrtPriceLimitX96 Price limit in sqrtX96 format.
-    function previewSwapForSlice(uint256 yieldIn, uint128 sqrtPriceLimitX96) public returns (uint256, uint256) {
+    function previewSwapForSlice(uint256 yieldIn, uint128 sqrtPriceLimitX96)
+        external returns (uint256, uint256) {
+
         (uint256 npv, uint256 priceX96) = pool.previewSwap(address(slice.yieldToken()),
                                                            uint128(yieldIn),
                                                            sqrtPriceLimitX96);
@@ -224,7 +226,7 @@ contract NPVSwap {
                           uint256 amountOutMin,
                           uint128 sqrtPriceLimitX96,
                           bytes calldata memo)
-        public
+        external
         validRecipient(owner)
         returns (uint256, uint256) {
 
@@ -257,7 +259,7 @@ contract NPVSwap {
                           uint128 sqrtPriceLimitX96,
                           bytes calldata memo)
         validRecipient(recipient)
-        public
+        external
         returns (uint256) {
 
         slice.yieldToken().safeTransferFrom(msg.sender, address(this), yield);
@@ -289,7 +291,8 @@ contract NPVSwap {
     /// @param sqrtPriceLimitX96 Price limit in sqrtX96 format.
     function previewRolloverForYield(uint256 id,
                                      uint256 yield,
-                                     uint128 sqrtPriceLimitX96) public returns (uint256, uint256) {
+                                     uint128 sqrtPriceLimitX96)
+        external returns (uint256, uint256) {
 
         (, uint256 npv, ) = slice.previewRollover(id, yield);
         return pool.previewSwap(address(npvToken), uint128(npv), sqrtPriceLimitX96);
@@ -300,7 +303,7 @@ contract NPVSwap {
                               uint256 yield,
                               uint256 amountOutMin,
                               uint128 sqrtPriceLimitX96)
-        public
+        external
         validRecipient(recipient)
         returns (uint256) {
 
@@ -328,7 +331,7 @@ contract NPVSwap {
     /// @notice Mint NPV tokens from yield at 1:1 rate, and pay off debt for a slice.
     /// @param id The debt slice ID.
     /// @param amount The amount of yield tokens to exchange for NPV tokens.
-    function mintAndPayWithYield(uint256 id, uint256 amount) public {
+    function mintAndPayWithYield(uint256 id, uint256 amount) external returns (uint256) {
 
         amount = _min(amount, slice.remaining(id));
         slice.yieldToken().safeTransferFrom(msg.sender, address(this), amount);
@@ -340,6 +343,8 @@ contract NPVSwap {
         uint256 paid = slice.payDebt(id, amount);
 
         emit MintAndPayWithYield(id, paid);
+
+        return paid;
     }
 
     function _min(uint256 x1, uint256 x2) private pure returns (uint256) {

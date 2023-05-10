@@ -14,51 +14,43 @@ import { NPVToken } from "../tokens/NPVToken.sol";
 contract YieldSlice is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    event SliceDebt(address indexed owner,
-                    uint256 indexed id,
-                    uint256 tokens,
-                    uint256 yield,
-                    uint256 npv,
-                    uint256 fees);
+    struct DebtSlice {
+        address owner;
+        uint128 blockTimestamp;
+        uint128 unlockedBlockTimestamp;
+        uint256 shares;  // Share of the vault's locked generators
+        uint256 tokens;  // Tokens locked for generation
+        uint256 npvDebt;
+        bytes memo;
+    }
 
-    event SliceCredit(address indexed owner,
-                      uint256 indexed id,
-                      uint256 npv,
-                      uint256 fees);
+    struct CreditSlice {
+        address owner;
 
-    event RolloverDebt(address indexed owner,
-                       uint256 indexed id,
-                       uint256 yield,
-                       uint256 npv,
-                       uint256 fees);
+        uint128 createdTimestamp;
 
-    event UnlockDebtSlice(address indexed owner,
-                          uint256 indexed id);
+        // The slice is entitled to `npvCredit` amount of yield, discounted
+        // relative to `blockTimestamp`.
+        uint128 blockTimestamp;
+        uint256 npvCredit;
 
-    event PayDebt(uint256 indexed id, uint256 amount);
+        // This slice's share of yield, as a fraction of total NPV tokens.
+        uint256 npvTokens;
 
-    event WithdrawNPV(address indexed recipient,
-                     uint256 indexed id,
-                     uint256 amount);
+        // `pending` is accumulated but unclaimed yield for this slice,
+        // in nominal terms.
+        uint256 pending;
 
-    event Claimed(uint256 indexed id, uint256 amount);
+        // `claimed` is the amount of yield claimed by this slice, in
+        // nominal terms
+        uint256 claimed;
 
-    event DustLimit(uint256 dustLimit);
-    event DebtFee(uint256 debtFee);
-    event CreditFee(uint256 creditFee);
-    event Gov(address indexed gov);
-    event Unlocker(address indexed unlocker);
-    event Treasury(address indexed treasury);
-    event Harvest(uint256 total, uint256 delta);
-    event RecordDebtData(uint256 totalTokens, uint256 cumulativeYield);
-    event RecordCreditData(uint256 totalTokens, uint256 cumulativeYield);
-    event MintFromYield(address indexed recipient, uint256 amount);
-    event TransferOwnership(uint256 indexed id, address indexed recipient);
+        bytes memo;
+    }
 
     uint256 public constant FEE_DENOM = 100_0;
 
     // Max fees limit what can be set by governance. Actual fee may be lower.
-
 
     // -- Debt fee ratio -- //
     // Debt fee ratio is relative to the discount rate of the transaction.
@@ -119,43 +111,51 @@ contract YieldSlice is ReentrancyGuard {
     YieldData public immutable debtData;
     YieldData public immutable creditData;
 
-    struct DebtSlice {
-        address owner;
-        uint128 blockTimestamp;
-        uint128 unlockedBlockTimestamp;
-        uint256 shares;  // Share of the vault's locked generators
-        uint256 tokens;  // Tokens locked for generation
-        uint256 npvDebt;
-        bytes memo;
-    }
     mapping(uint256 => DebtSlice) public debtSlices;
-
-    struct CreditSlice {
-        address owner;
-
-        uint128 createdTimestamp;
-
-        // The slice is entitled to `npvCredit` amount of yield, discounted
-        // relative to `blockTimestamp`.
-        uint128 blockTimestamp;
-        uint256 npvCredit;
-
-        // This slice's share of yield, as a fraction of total NPV tokens.
-        uint256 npvTokens;
-
-        // `pending` is accumulated but unclaimed yield for this slice,
-        // in nominal terms.
-        uint256 pending;
-
-        // `claimed` is the amount of yield claimed by this slice, in
-        // nominal terms
-        uint256 claimed;
-
-        bytes memo;
-    }
     mapping(uint256 => CreditSlice) public creditSlices;
     mapping(uint256 => uint256) public pendingClaimable;
     mapping(uint256 => address) public approvedRollover;
+
+    event SliceDebt(address indexed owner,
+                    uint256 indexed id,
+                    uint256 tokens,
+                    uint256 yield,
+                    uint256 npv,
+                    uint256 fees);
+
+    event SliceCredit(address indexed owner,
+                      uint256 indexed id,
+                      uint256 npv,
+                      uint256 fees);
+
+    event RolloverDebt(address indexed owner,
+                       uint256 indexed id,
+                       uint256 yield,
+                       uint256 npv,
+                       uint256 fees);
+
+    event UnlockDebtSlice(address indexed owner,
+                          uint256 indexed id);
+
+    event PayDebt(uint256 indexed id, uint256 amount);
+
+    event WithdrawNPV(address indexed recipient,
+                     uint256 indexed id,
+                     uint256 amount);
+
+    event Claimed(uint256 indexed id, uint256 amount);
+
+    event DustLimit(uint256 dustLimit);
+    event DebtFee(uint256 debtFee);
+    event CreditFee(uint256 creditFee);
+    event Gov(address indexed gov);
+    event Unlocker(address indexed unlocker);
+    event Treasury(address indexed treasury);
+    event Harvest(uint256 total, uint256 delta);
+    event RecordDebtData(uint256 totalTokens, uint256 cumulativeYield);
+    event RecordCreditData(uint256 totalTokens, uint256 cumulativeYield);
+    event MintFromYield(address indexed recipient, uint256 amount);
+    event TransferOwnership(uint256 indexed id, address indexed recipient);
 
     modifier onlyGov() {
         require(msg.sender == gov, "YS: only gov");
@@ -328,11 +328,12 @@ contract YieldSlice is ReentrancyGuard {
         if (pending == 0) return;
         yieldSource.harvest();
         harvestedYield += pending;
+
         emit Harvest(harvestedYield, pending);
     }
 
     /// @notice Recrod data for yield generation rates on both debt and credit side.
-    function recordData() public nonReentrant {
+    function recordData() external nonReentrant {
         _recordData();
     }
 
@@ -484,6 +485,9 @@ contract YieldSlice is ReentrancyGuard {
         return id;
     }
 
+    /// @notice Allow an address to rollover an owned debt slice.
+    /// @param id The debt slice to approve for rollover.
+    /// @param who The address to approve for rollover, or 0 to 
     function approveRollover(uint256 id, address who)
         external
         nonReentrant
@@ -492,9 +496,15 @@ contract YieldSlice is ReentrancyGuard {
         approvedRollover[id] = who;
     }
 
+    /// @notice Rollover a debt slice by taking out a new loan, and mint new NPV tokens.
+    /// @param id The debt slice to rollover.
+    /// @param recipient The recipient of minted NPV tokens.
+    /// @param amountYield The amount of yield to be commited into the slice.
+    /// @return The amount of new NPV tokens minted.
     function rollover(uint256 id, address recipient, uint256 amountYield)
         external
-        nonReentrant {
+        nonReentrant
+        returns (uint256) {
 
         require(debtSlices[id].owner == msg.sender || approvedRollover[id] == msg.sender,
                 "YS: only owner or approved");
@@ -521,6 +531,8 @@ contract YieldSlice is ReentrancyGuard {
                           amountYield,
                           remainingNPV + incrementalNPV,
                           incrementalFees);
+
+        return incrementalNPV;
     }
 
     /// @notice Mint NPV tokens from yield at 1:1 rate.
@@ -808,7 +820,7 @@ contract YieldSlice is ReentrancyGuard {
     /// @notice Amount of NPV debt remaining for debt slice.
     /// @param id ID of the debt slice.
     /// @return Amount of NPV debt remaining.
-    function remaining(uint256 id) public view returns (uint256) {
+    function remaining(uint256 id) external view returns (uint256) {
         ( , uint256 npvGen, ) = generatedDebt(id);
         return debtSlices[id].npvDebt - npvGen;
     }

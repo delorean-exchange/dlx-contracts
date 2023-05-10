@@ -14,6 +14,14 @@ import { Ownable } from  "@openzeppelin/contracts/access/Ownable.sol";
     Owner role can set the writer role up to one time.
 */
 contract YieldData is Ownable {
+    struct Epoch {
+        uint256 tokens;
+        uint256 yield;
+        uint256 yieldPerToken;
+        uint128 blockTimestamp;
+        uint128 epochSeconds;
+    }
+
     uint256 public constant PRECISION_FACTOR = 10**18;
 
     /** @notice Writer role is permitted to write new data points. This
@@ -25,15 +33,10 @@ contract YieldData is Ownable {
 
     uint128 public immutable interval;
 
-    struct Epoch {
-        uint256 tokens;
-        uint256 yield;
-        uint256 yieldPerToken;
-        uint128 blockTimestamp;
-        uint128 epochSeconds;
-    }
     Epoch[] public epochs;
     uint128 public epochIndex;
+
+    event SetWriter(address indexed who);
 
     /// @notice Create a YieldData.
     /// @param interval_ Minimum size in seconds of each epoch.
@@ -48,6 +51,8 @@ contract YieldData is Ownable {
         require(writer_ != address(0), "YD: zero address");
         require(writer == address(0), "YD: only set once");
         writer = writer_;
+
+        emit SetWriter(writer);
     }
 
     /// @notice Check if data is empty.
@@ -146,7 +151,7 @@ contract YieldData is Ownable {
     /// @param tokens Optional, the amount of tokens locked. Can be 0.
     /// @param yield Optional, the amount of cumulative yield. Can be 0.
     /// @return Amount of yield per `PRECISION_FACTOR` amount of tokens per second.
-    function yieldPerTokenPerSecond(uint128 start, uint128 end, uint256 tokens, uint256 yield) public view returns (uint256) {
+    function yieldPerTokenPerSecond(uint128 start, uint128 end, uint256 tokens, uint256 yield) external view returns (uint256) {
         if (start == end) return 0;
         if (start == uint128(block.timestamp)) return 0;
 
