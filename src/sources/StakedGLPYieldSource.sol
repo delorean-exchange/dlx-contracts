@@ -92,6 +92,7 @@ contract StakedGLPYieldSource is IYieldSource {
         yieldToken.safeTransfer(owner, amount);
     }
 
+    /// @notice Harvest yield, and transfer it to the owner.
     function harvest() external onlyOwner override {
         _harvest();
     }
