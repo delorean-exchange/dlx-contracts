@@ -197,6 +197,8 @@ contract YieldData is Ownable {
             if (end < epoch.blockTimestamp + epoch.epochSeconds) break;
         }
 
+        if (numSeconds == 0) return 0;
+
         return yieldPerToken / numSeconds;
     }
 }

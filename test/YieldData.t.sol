@@ -67,6 +67,18 @@ contract YieldDataTest is BaseTest {
         data.yieldPerTokenPerSecond(5, 4, 0, 0);
     }
 
+    function testZeroYield() public {
+        assertEq(data.yieldPerTokenPerSecond(1, 1, 0, 0), 0);
+        assertEq(data.yieldPerTokenPerSecond(uint128(block.timestamp), uint128(block.timestamp) + 1, 0, 0), 0);
+
+        vm.startPrank(user0);
+        data.record(10e18, 0);
+        vm.roll(block.number + 20);
+        vm.warp(block.timestamp + 20);
+        assertEq(data.yieldPerTokenPerSecond(uint32(block.timestamp) - 20, uint32(block.timestamp), 10e18, 0), 0);
+        vm.stopPrank();
+    }
+
     function testSplitEpoch() public {
         vm.startPrank(user0);
         data.record(10e18, 0);
