@@ -1433,6 +1433,39 @@ contract YieldSliceTest is BaseTest {
         return id1;
     }
 
+    function testRolloverApproval() public {
+        uint256 id1 = testRolloverSetup();
+
+        vm.warp(block.timestamp + 200 days);
+
+        vm.expectRevert("YS: only owner or approved");
+        slice.rollover(id1, alice, 1e18);
+
+        vm.expectRevert("YS: only owner");
+        slice.approveRollover(id1, bob, 1e18);
+
+        vm.startPrank(alice);
+        slice.approveRollover(id1, bob, 1e18);
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        // Verify only exact amount works
+        vm.expectRevert("YS: only owner or approved");
+        slice.rollover(id1, alice, 500);
+        vm.expectRevert("YS: only owner or approved");
+        slice.rollover(id1, alice, 1e18 - 1);
+        vm.expectRevert("YS: only owner or approved");
+        slice.rollover(id1, alice, 1e18 + 1);
+
+        slice.rollover(id1, alice, 1e18);
+
+        // Verify it only works once
+        vm.expectRevert("YS: only owner or approved");
+        slice.rollover(id1, alice, 1e18);
+
+        vm.stopPrank();
+    }
+
     function testRolloverAtEnd() public {
         uint256 id1 = testRolloverSetup();
 

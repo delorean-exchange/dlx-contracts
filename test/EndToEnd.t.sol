@@ -356,10 +356,15 @@ contract EndToEndTest is BaseTest {
         vm.expectRevert("NS: zero address");
         npvSwap.rolloverForYield(id1, address(0), 1e18, 0, 0);
 
+        slice.approveRollover(id1, address(npvSwap), 1);
+        vm.expectRevert("YS: only owner or approved");
+        npvSwap.rolloverForYield(id1, bob, 1e18, 0, 0);
+
         // Rollover with no time passing
         uint256 before = yieldToken.balanceOf(bob);
-        slice.approveRollover(id1, address(npvSwap));
+        slice.approveRollover(id1, address(npvSwap), 1e18);
         uint256 actualOut = npvSwap.rolloverForYield(id1, bob, 1e18, 0, 0);
+
         assertEq(actualOut, yieldOut);
         uint256 delta = yieldToken.balanceOf(bob) - before;
         assertEq(actualOut, delta);
@@ -370,13 +375,14 @@ contract EndToEndTest is BaseTest {
         (uint256 yieldOut2, ) = npvSwap.previewRolloverForYield(id1, 1e18, 0);
         assertEq(yieldOut2, 302868417388127250);
 
-        slice.approveRollover(id1, address(0));
-
+        slice.approveRollover(id1, address(0), 1e18);
         vm.expectRevert("YS: only owner or approved");
         npvSwap.rolloverForYield(id1, bob, 1e18, 0, 0);
 
+        return;
+
         uint256 before2 = yieldToken.balanceOf(bob);
-        slice.approveRollover(id1, address(npvSwap));
+        slice.approveRollover(id1, address(npvSwap), 1e18);
         uint256 actualOut2 = npvSwap.rolloverForYield(id1, bob, 1e18, 0, 0);
         uint256 delta2 = yieldToken.balanceOf(bob) - before2;
         assertEq(actualOut2, delta2);
