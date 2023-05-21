@@ -1445,8 +1445,15 @@ contract YieldSliceTest is BaseTest {
         slice.approveRollover(id1, bob, 1e18);
 
         vm.startPrank(alice);
+        // First one for Chad, this will get overidden
+        slice.approveRollover(id1, chad, 1e18);
+        // Bob gets the approval
         slice.approveRollover(id1, bob, 1e18);
         vm.stopPrank();
+
+        vm.prank(chad);
+        vm.expectRevert("YS: only owner or approved");
+        slice.rollover(id1, chad, 500);
 
         vm.startPrank(bob);
         // Verify only exact amount works
@@ -1550,6 +1557,29 @@ contract YieldSliceTest is BaseTest {
         assertTrue(claimable > 2 * npv);
         assertEq(claimable, 1844134318548995502);
 
+        vm.stopPrank();
+    }
+
+    function testRolloverTransferApproval() public {
+        uint256 id1 = testRolloverSetup();
+
+        vm.warp(block.timestamp + 200 days);
+
+        vm.expectRevert("YS: only owner or approved");
+        slice.rollover(id1, alice, 1e18);
+
+        vm.expectRevert("YS: only owner");
+        slice.approveRollover(id1, bob, 1e18);
+
+        vm.startPrank(alice);
+        slice.approveRollover(id1, bob, 1e18);
+        slice.transferOwnership(id1, chad);
+        vm.stopPrank();
+
+        // The approval should be revoked after a transfer
+        vm.startPrank(bob);
+        vm.expectRevert("YS: only owner or approved");
+        slice.rollover(id1, bob, 1e18);
         vm.stopPrank();
     }
 

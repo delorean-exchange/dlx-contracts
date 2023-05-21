@@ -48,6 +48,11 @@ contract YieldSlice is ReentrancyGuard {
         bytes memo;
     }
 
+    struct RolloverApproval {
+        address who;
+        uint256 amount;
+    }
+
     uint256 public constant FEE_DENOM = 100_0;
 
     // Max fees limit what can be set by governance. Actual fee may be lower.
@@ -114,7 +119,7 @@ contract YieldSlice is ReentrancyGuard {
     mapping(uint256 => DebtSlice) public debtSlices;
     mapping(uint256 => CreditSlice) public creditSlices;
     mapping(uint256 => uint256) public pendingClaimable;
-    mapping(uint256 => mapping(address => uint256)) public approvedRollover;
+    mapping(uint256 => RolloverApproval) public approvedRollover;
 
     event SliceDebt(address indexed owner,
                     uint256 indexed id,
@@ -156,6 +161,7 @@ contract YieldSlice is ReentrancyGuard {
     event RecordCreditData(uint256 totalTokens, uint256 cumulativeYield);
     event MintFromYield(address indexed recipient, uint256 amount);
     event TransferOwnership(uint256 indexed id, address indexed recipient);
+    event ApproveRollover(uint256 indexed id, address indexed who, uint256 amountYield);
 
     modifier onlyGov() {
         require(msg.sender == gov, "YS: only gov");
@@ -485,6 +491,12 @@ contract YieldSlice is ReentrancyGuard {
         return id;
     }
 
+    function _approveRollover(uint256 id, address who, uint256 amountYield) internal {
+        approvedRollover[id] = RolloverApproval(who, amountYield);
+
+        emit ApproveRollover(id, who, amountYield);
+    }
+
     /// @notice Allow an address to rollover an owned debt slice.
     /// @param id The debt slice to approve for rollover.
     /// @param who The address to approve for rollover.
@@ -494,7 +506,7 @@ contract YieldSlice is ReentrancyGuard {
         nonReentrant
         debtSliceOwner(id) {
 
-        approvedRollover[id][who] = amountYield;
+        _approveRollover(id, who, amountYield);
     }
 
     /// @notice Rollover a debt slice by taking out a new loan, and mint new NPV tokens.
@@ -508,7 +520,8 @@ contract YieldSlice is ReentrancyGuard {
         returns (uint256) {
 
         require(debtSlices[id].owner == msg.sender ||
-                approvedRollover[id][msg.sender] == amountYield,
+                (approvedRollover[id].who == msg.sender &&
+                 approvedRollover[id].amount == amountYield),
                 "YS: only owner or approved");
 
         (uint256 remainingNPV,
@@ -527,7 +540,8 @@ contract YieldSlice is ReentrancyGuard {
 
         _modifyCreditPosition(UNALLOC_ID, int256(incrementalNPV));
         _recordData();
-        approvedRollover[id][msg.sender] = 0;
+
+        _approveRollover(id, address(0), 0);
 
         emit RolloverDebt(slice.owner,
                           id,
@@ -587,6 +601,11 @@ contract YieldSlice is ReentrancyGuard {
         nonReentrant
         validAddress(recipient)
         isSlice(id) {
+
+        if (approvedRollover[id].amount != 0) {
+            approvedRollover[id].who = address(0);
+            approvedRollover[id].amount = 0;
+        }
 
         if (debtSlices[id].owner != address(0)) {
             DebtSlice storage slice = debtSlices[id];
