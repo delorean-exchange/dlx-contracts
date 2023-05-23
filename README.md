@@ -18,10 +18,3 @@ Run tests using forge:
 ```
 forge test
 ```
-
-To run tests forking Arbitrum Goerli, set the network
-
-```
-NETWORK=arbitrum_goerli forge test
-```
-
