@@ -72,8 +72,8 @@ contract DeployGLPMarket is BaseScript {
         uint256 daily = vm.parseJsonUint(historical, ".glp.avgDailyRewardPerToken");
 
         yieldToken = address(source.yieldToken());
-        dataDebt = new YieldData(20);
-        dataCredit = new YieldData(20);
+        dataDebt = new YieldData(7 days);
+        dataCredit = new YieldData(7 days);
         discounter = new Discounter(daily,
                                     250 * 10,
                                     360,
