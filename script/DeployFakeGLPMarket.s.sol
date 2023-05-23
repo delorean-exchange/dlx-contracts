@@ -68,20 +68,25 @@ contract DeployGLPMarket is BaseScript {
         fakeSource.mintBoth(deployerAddress, 10000e18);
         source = IYieldSource(fakeSource);
 
+        string memory historical = vm.readFile("json/historical.json");
+        uint256 daily = vm.parseJsonUint(historical, ".glp.avgDailyRewardPerToken");
+
         yieldToken = address(source.yieldToken());
         dataDebt = new YieldData(20);
         dataCredit = new YieldData(20);
-        discounter = new Discounter(1e9,
-                                    500 * 30,
+        discounter = new Discounter(daily,
+                                    250 * 10,
                                     360,
                                     18,
-                                    30 days);
+                                    10 days);
+
         slice = new YieldSlice("yFGLP",
                                address(source),
                                address(dataDebt),
                                address(dataCredit),
                                address(discounter),
                                1e9);
+
         npvToken = address(slice.npvToken());
 
         source.setOwner(address(slice));
@@ -94,6 +99,8 @@ contract DeployGLPMarket is BaseScript {
         pool = ILiquidityPool(poolAddress);
 
         npvSwap = new NPVSwap(address(slice), address(pool));
+
+        slice.setTreasury(treasuryAddress);
 
         vm.stopBroadcast();
 

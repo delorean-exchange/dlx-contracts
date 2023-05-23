@@ -40,12 +40,12 @@ contract DeployGLPMarket is BaseScript {
         string memory historical = vm.readFile("json/historical.json");
         uint256 daily = vm.parseJsonUint(historical, ".glp.avgDailyRewardPerToken");
         discounter = new Discounter(daily,
-                                    250,
-                                    10,
+                                    250 * 10,
+                                    360,
                                     18,
-                                    1 days);
+                                    10 days);
 
-        slice = new YieldSlice("npvETH-GLP",
+        slice = new YieldSlice("yGLP",
                                address(source),
                                address(dataDebt),
                                address(dataCredit),
@@ -81,6 +81,8 @@ contract DeployGLPMarket is BaseScript {
         }
         
         npvSwap = new NPVSwap(address(slice), address(pool));
+
+        slice.setTreasury(treasuryAddress);
 
         vm.stopBroadcast();
 
