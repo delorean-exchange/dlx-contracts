@@ -106,7 +106,7 @@ contract BaseTest is Test {
                                     18,
                                     30 days);
 
-        slice = new YieldSlice("npvETH-FAKE",
+        slice = new YieldSlice("yFAKE",
                                address(source),
                                address(dataDebt),
                                address(dataCredit),
