@@ -18,20 +18,39 @@ contract PirexGMXYieldSourceTest is BaseTest {
     IPirexRewards rewards = IPirexRewards(0x612293B0b3aD2dCa6770E74478A30E0FCe266fDE);
 
     function setUp() public {
-        // init();
+        init();
         arbitrumForkFrom97559408 = vm.createFork(vm.envString("ARBITRUM_MAINNET_RPC_URL"), 97559408);
     }
 
     function testFirst() public {
         vm.selectFork(arbitrumForkFrom97559408);
-        gmxYieldSource = new PirexGMXYieldSource();
         console.log("balance of our address: ", pxGMXToken.balanceOf(0x69059Fd0f306a6A752695A4d71aC43e82DEa8C2D));
     }
     
-    function testRewards() public {
-        vm.startPrank(0x69059Fd0f306a6A752695A4d71aC43e82DEa8C2D);
-        uint256 amount = rewards.getUserRewardsAccrued(0x69059Fd0f306a6A752695A4d71aC43e82DEa8C2D, 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1);
-        console.log("amount: ", amount);
+    function testPirex() public {
+        vm.selectFork(arbitrumForkFrom97559408);
+        gmxYieldSource = new PirexGMXYieldSource();
+
+        address whale = 0x9cDD0603437A7Da4e4Cf8F0c71755F6EF280Bbfe;
+        uint256 amount = pxGMXToken.balanceOf(whale);
+
+        gmxYieldSource.setOwner(whale);
+
+        vm.startPrank(whale);
+        
+        pxGMXToken.approve(address(gmxYieldSource), amount);
+
+        gmxYieldSource.deposit(amount, false);
+        assertEq(pxGMXToken.balanceOf(whale), 0);
+
+        vm.warp(block.timestamp + 1 days);
+        gmxYieldSource.harvest();
+
+        assertEq(IERC20(gmxYieldSource.yieldToken()).balanceOf(whale), 843455200656465);
+        
+        gmxYieldSource.withdraw(amount, false, whale);
+        assertEq(pxGMXToken.balanceOf(whale), amount);
+
         vm.stopPrank();
     }
 }

@@ -42,6 +42,7 @@ contract PirexGMXYieldSource is IYieldSource {
     constructor() {
         generatorToken = pxGMXToken;
         yieldToken = weth;
+        owner = msg.sender;
     }
 
     /// @notice Set a new owner.
@@ -57,7 +58,7 @@ contract PirexGMXYieldSource is IYieldSource {
     /// @param amount Amount of pxGMX to deposit.
     /// @param claim If true, harvest yield.
     function deposit(uint256 amount, bool claim) external override onlyOwner {
-        // pxGMXToken.safeTranferFrom(msg.sender, address(this), amount);
+        pxGMXToken.safeTransferFrom(msg.sender, address(this), amount);
         if (claim) _harvest();
     }
 
@@ -75,14 +76,12 @@ contract PirexGMXYieldSource is IYieldSource {
     }
 
     function _amountPending() internal view returns (uint256) {
-        return 0; // TODO
+        return 1000; // TODO
     }
 
     function _harvest() internal {
         uint256 before = yieldToken.balanceOf(address(this));
-
-        // tracker.claim(address(this));
-
+        rewards.accrueAndClaim(address(this));
         uint256 amount = yieldToken.balanceOf(address(this)) - before;
         yieldToken.safeTransfer(owner, amount);
     }
