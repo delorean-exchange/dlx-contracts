@@ -36,7 +36,7 @@ contract DeployPirexGMXMarket is BaseScript {
         dataCredit = new YieldData(7 days);
 
         string memory historical = vm.readFile("json/historical.json");
-        uint256 daily = 5e77;  // As of 6/5/22
+        uint256 daily = 577e12;  // As of 6/5/22
         discounter = new Discounter(daily,
                                     250 * 10,
                                     360,
