@@ -1836,8 +1836,6 @@ contract YieldSliceTest is BaseTest {
 
         vm.startPrank(alice);
 
-        uint256 id1 = slice.nextId();
-
         uint256 before = generatorToken.balanceOf(alice);
         generatorToken.approve(address(npvSwap), 200e18);
         npvSwap.lockForNPV(alice, alice, 10e18, 1e18, new bytes(0));

@@ -17,7 +17,7 @@ contract PirexGMXYieldSource is IYieldSource {
     IERC20 public immutable override yieldToken;
 
     IERC20 public constant pxGMXToken = IERC20(0x9A592B4539E22EeB8B2A3Df679d572C7712Ef999);
-    IPirexRewards public constant rewards = IPirexRewards(0x612293B0b3aD2dCa6770E74478A30E0FCe266fDE);
+    IPirexRewards public constant pxRewards = IPirexRewards(0x612293B0b3aD2dCa6770E74478A30E0FCe266fDE);
     IERC20 public constant weth = IERC20(0x82aF49447D8a07e3bd95BD0d56f35241523fBab1);
 
     /** @notice Owner role is the owner of this yield source, and
@@ -66,22 +66,18 @@ contract PirexGMXYieldSource is IYieldSource {
     /// @param amount Amount of pxGMX to withdraw.
     /// @param claim If true, harvest yield.
     /// @param to Recipient of the withdrawal.
-    function withdraw(
-        uint256 amount,
-        bool claim,
-        address to
-    ) external override onlyOwner {
+    function withdraw(uint256 amount, bool claim, address to) external override onlyOwner {
         pxGMXToken.safeTransfer(to, amount);
         if (claim) _harvest();
     }
 
     function _amountPending() internal view returns (uint256) {
-        return 1000; // TODO
+        return pxRewards.getUserRewardsAccrued(address(this), address(yieldToken));
     }
 
     function _harvest() internal {
         uint256 before = yieldToken.balanceOf(address(this));
-        rewards.accrueAndClaim(address(this));
+        pxRewards.accrueAndClaim(address(this));
         uint256 amount = yieldToken.balanceOf(address(this)) - before;
         yieldToken.safeTransfer(owner, amount);
     }

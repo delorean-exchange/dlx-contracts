@@ -379,8 +379,6 @@ contract EndToEndTest is BaseTest {
         vm.expectRevert("YS: only owner or approved");
         npvSwap.rolloverForYield(id1, bob, 1e18, 0, 0);
 
-        return;
-
         uint256 before2 = yieldToken.balanceOf(bob);
         slice.approveRollover(id1, address(npvSwap), 1e18);
         uint256 actualOut2 = npvSwap.rolloverForYield(id1, bob, 1e18, 0, 0);
