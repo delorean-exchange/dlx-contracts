@@ -66,17 +66,13 @@ contract PirexGMXYieldSource is IYieldSource {
     /// @param amount Amount of pxGMX to withdraw.
     /// @param claim If true, harvest yield.
     /// @param to Recipient of the withdrawal.
-    function withdraw(
-        uint256 amount,
-        bool claim,
-        address to
-    ) external override onlyOwner {
+    function withdraw(uint256 amount, bool claim, address to) external override onlyOwner {
         pxGMXToken.safeTransfer(to, amount);
         if (claim) _harvest();
     }
 
     function _amountPending() internal view returns (uint256) {
-        return 1000; // TODO
+        return rewards.getUserRewardsAccrued(address(this), address(yieldToken));
     }
 
     function _harvest() internal {

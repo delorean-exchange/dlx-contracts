@@ -14,8 +14,7 @@ contract PirexGMXYieldSourceTest is BaseTest {
     uint256 arbitrumForkFrom97559408;
     
     PirexGMXYieldSource gmxYieldSource;
-    IERC20 pxGMXToken = IERC20(0x9A592B4539E22EeB8B2A3Df679d572C7712Ef999);
-    IPirexRewards rewards = IPirexRewards(0x612293B0b3aD2dCa6770E74478A30E0FCe266fDE);
+    address whale = 0x69059Fd0f306a6A752695A4d71aC43e82DEa8C2D;
 
     function setUp() public {
         init();
@@ -24,20 +23,43 @@ contract PirexGMXYieldSourceTest is BaseTest {
 
     function testFirst() public {
         vm.selectFork(arbitrumForkFrom97559408);
-        console.log("balance of our address: ", pxGMXToken.balanceOf(0x69059Fd0f306a6A752695A4d71aC43e82DEa8C2D));
+
+        gmxYieldSource = new PirexGMXYieldSource();
+        console.log("balance of our address: ", gmxYieldSource.pxGMXToken().balanceOf(whale));
+    }
+    
+    function testAccrueRewards() public {
+        vm.selectFork(arbitrumForkFrom97559408);
+
+        gmxYieldSource = new PirexGMXYieldSource();
+        gmxYieldSource.setOwner(whale);
+
+        IERC20 pxGMXToken = gmxYieldSource.pxGMXToken();
+        IPirexRewards rewards = gmxYieldSource.rewards();
+        
+        uint256 accrued = rewards.getUserRewardsAccrued(whale, address(gmxYieldSource.yieldToken()));
+        assertEq(accrued, 0);
+
+        // accrue rewards
+        rewards.accrueUser(address(gmxYieldSource.pxGMXToken()), whale);
+        
+        // check that accrued amount updated
+        accrued = rewards.getUserRewardsAccrued(whale, address(gmxYieldSource.yieldToken()));
+        assertEq(accrued, 5305394474454629);
     }
     
     function testPirex() public {
         vm.selectFork(arbitrumForkFrom97559408);
+
         gmxYieldSource = new PirexGMXYieldSource();
-
-        address whale = 0x9cDD0603437A7Da4e4Cf8F0c71755F6EF280Bbfe;
-        uint256 amount = pxGMXToken.balanceOf(whale);
-
         gmxYieldSource.setOwner(whale);
 
+        IERC20 pxGMXToken = gmxYieldSource.pxGMXToken();
+
+        uint256 amount = pxGMXToken.balanceOf(whale);
+
         vm.startPrank(whale);
-        
+
         pxGMXToken.approve(address(gmxYieldSource), amount);
 
         gmxYieldSource.deposit(amount, false);
@@ -45,8 +67,7 @@ contract PirexGMXYieldSourceTest is BaseTest {
 
         vm.warp(block.timestamp + 1 days);
         gmxYieldSource.harvest();
-
-        assertEq(IERC20(gmxYieldSource.yieldToken()).balanceOf(whale), 843455200656465);
+        assertEq(gmxYieldSource.yieldToken().balanceOf(whale), 843455200656465);
         
         gmxYieldSource.withdraw(amount, false, whale);
         assertEq(pxGMXToken.balanceOf(whale), amount);
