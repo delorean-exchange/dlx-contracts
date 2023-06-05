@@ -18,3 +18,13 @@ Run tests using forge:
 ```
 forge test
 ```
+
+## Generate coverage report
+
+You can generate coverage report like this:
+
+```
+forge coverage --report lcov
+genhtml lcov.info
+```
+
