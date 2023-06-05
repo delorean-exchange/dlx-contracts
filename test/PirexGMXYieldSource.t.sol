@@ -17,7 +17,7 @@ contract PirexGMXYieldSourceTest is BaseTest {
     IPirexRewards pxRewards;
     IERC20 pxGMXToken;
 
-    address whale = 0x69059Fd0f306a6A752695A4d71aC43e82DEa8C2D;
+    address whale = 0x9cDD0603437A7Da4e4Cf8F0c71755F6EF280Bbfe;
 
     function setUp() public {
         init();
@@ -55,11 +55,7 @@ contract PirexGMXYieldSourceTest is BaseTest {
     }
 
     function testPirex() public {
-        vm.selectFork(arbitrumForkFrom97559408);
-
-        yieldSource = new PirexGMXYieldSource();
-        pxGMXToken = yieldSource.pxGMXToken();
-        pxRewards = yieldSource.pxRewards();
+        setUpManual();
 
         uint256 amount = pxGMXToken.balanceOf(whale);
 
