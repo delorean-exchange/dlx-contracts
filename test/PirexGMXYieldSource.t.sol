@@ -8,8 +8,6 @@ import {PirexGMXYieldSource} from "../src/sources/PirexGMXYieldSource.sol";
 import {IPirexRewards} from "../src/interfaces/pxgmx/IPirexRewards.sol";
 import {YieldData} from "../src/data/YieldData.sol";
 
-import "forge-std/console.sol";
-
 contract PirexGMXYieldSourceTest is BaseTest {
     uint256 arbitrumForkFrom97559408;
 
@@ -34,8 +32,7 @@ contract PirexGMXYieldSourceTest is BaseTest {
 
     function testFirst() public {
         setUpManual();
-
-        console.log("balance of our address: ", pxGMXToken.balanceOf(whale));
+        assertEq(pxGMXToken.balanceOf(whale), 340252725009943497968);
     }
 
     function testAccrueRewards() public {
@@ -67,10 +64,10 @@ contract PirexGMXYieldSourceTest is BaseTest {
         pxGMXToken.approve(address(yieldSource), amount);
 
         // deposit gmx tokens from whale into yieldsource
-        uint256 oldAmount = pxGMXToken.balanceOf(address(yieldSource));
+        uint256 ourBalance = yieldSource.amountGenerator();
         yieldSource.deposit(amount, false);
         assertEq(pxGMXToken.balanceOf(whale), 0); // whale now has nothing
-        assertEq(pxGMXToken.balanceOf(address(yieldSource)) - oldAmount, amount); // we gained by `amount`
+        assertEq(yieldSource.amountGenerator() - ourBalance, amount); // we gained by `amount`
 
         // allow the yields to accrue
         vm.warp(block.timestamp + 1 days);
