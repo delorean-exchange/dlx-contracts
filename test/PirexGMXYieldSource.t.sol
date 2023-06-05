@@ -54,13 +54,11 @@ contract PirexGMXYieldSourceTest is BaseTest {
     function testPirex() public {
         setUpManual();
 
-        uint256 amount = pxGMXToken.balanceOf(whale);
-
         yieldSource.setOwner(whale);
-
         vm.startPrank(whale);
 
         // as whale, approve our yieldsource to take our gmx tokens
+        uint256 amount = pxGMXToken.balanceOf(whale);
         pxGMXToken.approve(address(yieldSource), amount);
 
         // deposit gmx tokens from whale into yieldsource
