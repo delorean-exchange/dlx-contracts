@@ -38,11 +38,11 @@ contract GMDYieldSource is IYieldSource {
     }
 
     function eth2gmd(uint256 ethAmount) internal view returns (uint256) {
-        return (ethAmount * generatorToken.totalSupply()) / totalStaked();
+        return ethAmount * generatorToken.totalSupply() / totalStaked();
     }
 
     function gmd2eth(uint256 gmdAmount) internal view returns (uint256) {
-        return (gmdAmount * totalStaked()) / generatorToken.totalSupply();
+        return gmdAmount * totalStaked() / generatorToken.totalSupply();
     }
 
     modifier validAddress(address who) {
