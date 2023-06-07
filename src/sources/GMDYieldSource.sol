@@ -17,12 +17,9 @@ contract GMDYieldSource is IYieldSource {
     IERC20 public immutable override generatorToken;
     IERC20 public immutable override yieldToken;
 
-    IERC20 public constant gmdToken =
-        IERC20(0x1E95A37Be8A17328fbf4b25b9ce3cE81e271BeB3);
-    IGMDVault public constant gmdVault =
-        IGMDVault(0x8080B5cE6dfb49a6B86370d6982B3e2A86FBBb08);
-    IERC20 public constant weth =
-        IERC20(0x82aF49447D8a07e3bd95BD0d56f35241523fBab1);
+    IERC20 public constant gmdToken = IERC20(0x1E95A37Be8A17328fbf4b25b9ce3cE81e271BeB3);
+    IGMDVault public constant gmdVault = IGMDVault(0x8080B5cE6dfb49a6B86370d6982B3e2A86FBBb08);
+    IERC20 public constant weth = IERC20(0x82aF49447D8a07e3bd95BD0d56f35241523fBab1);
     uint256 public totalDepositedETH = 0;
 
     /** @notice Owner role is the owner of this yield source, and
@@ -66,9 +63,7 @@ contract GMDYieldSource is IYieldSource {
 
     /// @notice Set a new owner.
     /// @param owner_ The new owner.
-    function setOwner(
-        address owner_
-    ) external override onlyOwner validAddress(owner_) {
+    function setOwner(address owner_) external override onlyOwner validAddress(owner_) {
         owner = owner_;
         emit TransferOwnership(owner);
     }
@@ -86,11 +81,7 @@ contract GMDYieldSource is IYieldSource {
     /// @param amount Amount of GMD to withdraw.
     /// @param claim If true, harvest yield.
     /// @param to Recipient of the withdrawal.
-    function withdraw(
-        uint256 amount,
-        bool claim,
-        address to
-    ) external override onlyOwner {
+    function withdraw(uint256 amount, bool claim, address to) external override onlyOwner {
         totalDepositedETH -= gmd2eth(amount);
         generatorToken.safeTransfer(to, amount);
         if (claim) _harvest();
