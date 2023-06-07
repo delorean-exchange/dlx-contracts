@@ -1,0 +1,63 @@
+{
+  "transactions": [
+    {
+      "hash": "0xfa98dfdb260a26a203fed6eae73a70b17a90b9c9e9807da4b1f5cbc30ca6e595",
+      "transactionType": "CALL",
+      "contractName": null,
+      "contractAddress": "0x31e4910F521BaF47e0ee117e5Fa1363c323fc2e1",
+      "function": null,
+      "arguments": null,
+      "rpc": "https://arb-mainnet.g.alchemy.com/v2/0R0ziU-Vo3g37WxX7ItzFOnL3doOIPh1",
+      "transaction": {
+        "type": "0x00",
+        "from": "0x1c4adfd815fb9cf9bcff3bfa6a79d0446561e865",
+        "to": "0x31e4910f521baf47e0ee117e5fa1363c323fc2e1",
+        "gas": "0x83df6",
+        "value": "0x0",
+        "data": "0x7d5be0e40000000000000000000000000000000000000000000000000000003ac8d87d66",
+        "nonce": "0x26"
+      },
+      "additionalContracts": []
+    }
+  ],
+  "receipts": [
+    {
+      "transactionHash": "0xfa98dfdb260a26a203fed6eae73a70b17a90b9c9e9807da4b1f5cbc30ca6e595",
+      "transactionIndex": "0x2",
+      "blockHash": "0x04b55ec05f284a9a5e0bb4bf61f0735a3f35ba900568af05763f49e12a43003a",
+      "blockNumber": "0x5d61e70",
+      "from": "0x1C4Adfd815fB9cf9BCfF3bFA6a79d0446561E865",
+      "to": "0x31e4910F521BaF47e0ee117e5Fa1363c323fc2e1",
+      "cumulativeGasUsed": "0x4031c5",
+      "gasUsed": "0x4cb66",
+      "contractAddress": null,
+      "logs": [
+        {
+          "address": "0x31e4910F521BaF47e0ee117e5Fa1363c323fc2e1",
+          "topics": [
+            "0xb56963c0ec16d1d88fd4ae68a5d817c219a6785bb68bd165efd31faf94ba5202"
+          ],
+          "data": "0x0000000000000000000000000000000000000000000000000000003ac8d87d66",
+          "blockHash": "0x04b55ec05f284a9a5e0bb4bf61f0735a3f35ba900568af05763f49e12a43003a",
+          "blockNumber": "0x5d61e70",
+          "transactionHash": "0xfa98dfdb260a26a203fed6eae73a70b17a90b9c9e9807da4b1f5cbc30ca6e595",
+          "transactionIndex": "0x2",
+          "logIndex": "0x4",
+          "removed": false
+        }
+      ],
+      "status": "0x1",
+      "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000002000000000000000000000000000008000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000",
+      "type": "0x0",
+      "effectiveGasPrice": "0x5f5e100"
+    }
+  ],
+  "libraries": [],
+  "pending": [],
+  "path": "/Users/marcell/projects/dlx/dlx-contracts/broadcast/GLPRewards.s.sol/42161/run-latest.json",
+  "returns": {},
+  "timestamp": 1685938592,
+  "chain": 42161,
+  "multi": false,
+  "commit": "a6ed3e1"
+}
