@@ -60,34 +60,44 @@ contract GMDYieldSourceTest is BaseTest {
 
         // deposit eth & check that we got back gmd
         assert(whale.balance >= ethAmount);
-        uint256 old = gmdToken.balanceOf(whale);
-        gmdVault.enterETH{value: ethAmount}(1);
-        uint256 gmd = gmdToken.balanceOf(whale) - old;
-        assertEq(gmd, 122425808812368556);
+        uint256 gmdAmount = 0;
+        {
+            uint256 old = gmdToken.balanceOf(whale);
+            gmdVault.enterETH{value: ethAmount}(1);
+            uint256 delta = gmdToken.balanceOf(whale) - old;
+            assertEq(delta, 122425808812368556);
+            gmdAmount = delta;
+        }
 
         // approve yieldsource to take whale's gmd tokens
-        gmdToken.approve(address(yieldSource), gmd);
+        gmdToken.approve(address(yieldSource), gmdAmount);
 
         // deposit tokens from whale into yieldsource
-        old = yieldSource.amountGenerator();
-        yieldSource.deposit(gmd, false);
-        assertEq(yieldSource.amountGenerator() - old, gmd); // we gained by `gmd`
+        {
+            uint256 old = yieldSource.amountGenerator();
+            yieldSource.deposit(gmdAmount, false);
+            assertEq(yieldSource.amountGenerator() - old, gmdAmount); // we gained by `gmdAmount`
+        }
 
         // allow the yields to accrue
         vm.warp(block.timestamp + 30 minutes);
         vm.roll(block.number + 10);
 
         // harvest the yield & ensure whale got the eth
-        old = yieldSource.yieldToken().balanceOf(whale);
-        yieldSource.harvest();
-        uint256 delta = yieldSource.yieldToken().balanceOf(whale) - old;
-        assertEq(delta, 601285511537);
+        {
+            uint256 old = yieldSource.yieldToken().balanceOf(whale);
+            yieldSource.harvest();
+            uint256 delta = yieldSource.yieldToken().balanceOf(whale) - old;
+            assertEq(delta, 601285511537);
+        }
 
         // withdraw some gmx tokens as whale
-        old = gmdToken.balanceOf(whale);
-        uint256 avail = yieldSource.amountGenerator();
-        yieldSource.withdraw(avail / 2, false, whale);
-        assertEq(gmdToken.balanceOf(whale) - old, avail / 2);
+        {
+            uint256 old = gmdToken.balanceOf(whale);
+            uint256 avail = yieldSource.amountGenerator();
+            yieldSource.withdraw(avail / 2, false, whale);
+            assertEq(gmdToken.balanceOf(whale) - old, avail / 2);
+        }
 
         vm.stopPrank();
     }
