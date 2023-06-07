@@ -55,7 +55,7 @@ contract GMDYieldSourceTest is BaseTest {
         yieldSource.setOwner(whale);
         vm.startPrank(whale);
         
-        uint256 ethAmount = 132343243243242212;
+        uint256 ethAmount = 1 ether;
         vm.deal(whale, ethAmount);
 
         // deposit eth & check that we got back gmd
@@ -65,7 +65,7 @@ contract GMDYieldSourceTest is BaseTest {
             uint256 old = gmdToken.balanceOf(whale);
             gmdVault.enterETH{value: ethAmount}(1);
             uint256 delta = gmdToken.balanceOf(whale) - old;
-            assertEq(delta, 122425808812368556);
+            assertEq(delta, 925062782293722697);
             gmdAmount = delta;
         }
 
@@ -88,15 +88,16 @@ contract GMDYieldSourceTest is BaseTest {
             uint256 old = yieldSource.yieldToken().balanceOf(whale);
             yieldSource.harvest();
             uint256 delta = yieldSource.yieldToken().balanceOf(whale) - old;
-            assertEq(delta, 601285511537);
+            assertEq(delta, 4543378995433);
         }
 
         // withdraw some gmx tokens as whale
         {
             uint256 old = gmdToken.balanceOf(whale);
             uint256 avail = yieldSource.amountGenerator();
-            yieldSource.withdraw(avail / 2, false, whale);
-            assertEq(gmdToken.balanceOf(whale) - old, avail / 2);
+            yieldSource.withdraw(avail, false, whale); // withdraw everything
+            assertEq(gmdToken.balanceOf(whale) - old, avail); // whale received `avail`
+            assertEq(yieldSource.amountGenerator(), 0); // yield source is now empty
         }
 
         vm.stopPrank();
