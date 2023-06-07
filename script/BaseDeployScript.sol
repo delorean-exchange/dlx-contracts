@@ -5,6 +5,7 @@ import "forge-std/console.sol";
 import "forge-std/Script.sol";
 import "forge-std/StdJson.sol";
 
+import { BaseScript } from "./BaseScript.sol";
 import { UniswapV3LiquidityPool } from "../src/liquidity/UniswapV3LiquidityPool.sol";
 import { IUniswapV3Pool } from "../src/interfaces/uniswap/IUniswapV3Pool.sol";
 import { INonfungiblePositionManager } from "../src/interfaces/uniswap/INonfungiblePositionManager.sol";
@@ -30,8 +31,8 @@ struct DeployOptions {
     uint256 yieldSliceDustLimit;
 }
 
-contract BaseDeployScript is Script {
-    function runDeploy(DeployOptions options) {
+contract BaseDeployScript is BaseScript {
+    function runDeploy(DeployOptions memory options) public {
         address yieldToken = address(options.yieldSource.yieldToken());
 
         dataDebt = new YieldData(7 days);
@@ -87,7 +88,7 @@ contract BaseDeployScript is Script {
         vm.stopBroadcast();
 
         {
-            string memory objName = "deploy_" + options.slug;
+            string memory objName = string.concat("deploy_", options.slug);
             string memory json;
             json = vm.serializeAddress(objName, "address_dataCredit", address(dataCredit));
             json = vm.serializeAddress(objName, "address_dataDebt", address(dataDebt));
@@ -108,9 +109,9 @@ contract BaseDeployScript is Script {
             json = vm.serializeString(objName, "contractName_yieldSource", "IYieldSource");
 
             if (eq(vm.envString("NETWORK"), "arbitrum")) {
-                vm.writeJson(json, "./json/deploy_" + options.slug + ".arbitrum.json");
+                vm.writeJson(json, string.concat("./json/deploy_", options.slug, ".arbitrum.json"));
             } else {
-                vm.writeJson(json, "./json/deploy_" + options.slug + ".localhost.json");
+                vm.writeJson(json, string.concat("./json/deploy_", options.slug, ".localhost.json"));
             }
         }
     }

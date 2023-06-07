@@ -97,7 +97,7 @@ contract BaseScript is Script {
 
         {
             uint256 npvTokenAmount = IERC20(npvToken).balanceOf(who) - before;
-        
+
             assert(IERC20(npvToken).balanceOf(who) >= npvTokenAmount);
             assert(IERC20(yieldToken).balanceOf(who) >= yieldTokenAmount);
 

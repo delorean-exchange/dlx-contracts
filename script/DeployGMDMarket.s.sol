@@ -4,11 +4,10 @@ pragma solidity ^0.8.13;
 import "forge-std/Script.sol";
 import "forge-std/StdJson.sol";
 
-import { BaseScript } from "./BaseScript.sol";
-import { BaseDeployScript } from "./BaseDeployScript.sol";
+import { BaseDeployScript, DeployOptions } from "./BaseDeployScript.sol";
 import { GMDYieldSource } from "../src/sources/GMDYieldSource.sol";
 
-contract DeployGMDMarket is BaseScript, BaseDeployScript {
+contract DeployGMDMarket is BaseDeployScript {
     using stdJson for string;
 
     function setUp() public {

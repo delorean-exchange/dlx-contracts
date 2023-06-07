@@ -4,11 +4,10 @@ pragma solidity ^0.8.13;
 import "forge-std/Script.sol";
 import "forge-std/StdJson.sol";
 
-import { BaseScript } from "./BaseScript.sol";
-import { BaseDeployScript } from "./BaseDeployScript.sol";
+import { BaseDeployScript, DeployOptions } from "./BaseDeployScript.sol";
 import { StakedGLPYieldSource } from "../src/sources/StakedGLPYieldSource.sol";
 
-contract DeployGLPMarket is BaseScript, BaseDeployScript {
+contract DeployGLPMarket is BaseDeployScript {
     using stdJson for string;
 
     function setUp() public {
@@ -21,8 +20,11 @@ contract DeployGLPMarket is BaseScript, BaseDeployScript {
         string memory historical = vm.readFile("json/historical.json");
         uint256 daily = vm.parseJsonUint(historical, ".glp.avgDailyRewardPerToken");
 
+        StakedGLPYieldSource yieldSource = new StakedGLPYieldSource(
+            address(stakedGLP), arbitrumWeth, address(tracker));
+
         runDeploy(DeployOptions({
-            yieldSource: new GMDYieldSource(),
+            yieldSource: yieldSource,
             slug: "glp",
             discountDaily: daily, // As of 6/5/22
             discountRate: 250 * 10,
