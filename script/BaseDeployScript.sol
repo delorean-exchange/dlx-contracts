@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "forge-std/console.sol";
 import "forge-std/Script.sol";
 import "forge-std/StdJson.sol";
 
@@ -33,6 +32,8 @@ struct DeployOptions {
 
 contract BaseDeployScript is BaseScript {
     function runDeploy(DeployOptions memory options) public {
+        vm.startBroadcast(pk);
+
         address yieldToken = address(options.yieldSource.yieldToken());
 
         dataDebt = new YieldData(7 days);
