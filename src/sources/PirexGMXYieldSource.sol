@@ -28,13 +28,13 @@ contract PirexGMXYieldSource is IYieldSource {
     address public owner;
 
     modifier validAddress(address who) {
-        require(who != address(0), "SGYS: zero address");
-        require(who != address(this), "SGYS: this address");
+        require(who != address(0), "PXYS: zero address");
+        require(who != address(this), "PXYS: this address");
         _;
     }
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "SGYS: only owner");
+        require(msg.sender == owner, "PXYS: only owner");
         _;
     }
 
