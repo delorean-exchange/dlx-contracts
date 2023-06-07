@@ -92,11 +92,8 @@ contract GMDYieldSource is IYieldSource {
     }
 
     function _harvest() internal {
-        uint256 ethToHarvest = _amountPending();
-        uint256 gmdToHarvest = eth2gmd(ethToHarvest);
-
         uint256 before = address(this).balance;
-        gmdVault.leaveETH(gmdToHarvest, 1);
+        gmdVault.leaveETH(eth2gmd(_amountPending()), 1);
         uint256 amount = address(this).balance - before;
 
         IWrappedETH(address(weth)).deposit{value: amount}();
