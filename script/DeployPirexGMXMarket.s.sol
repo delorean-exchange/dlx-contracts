@@ -17,6 +17,16 @@ contract DeployPirexGMXMarket is BaseScript, BaseDeployScript {
 
     function run() public {
         vm.startBroadcast(pk);
-        runDeploy(new PirexGMXYieldSource(), "pxgmx", "yPXGMX", 158e10); // As of 6/5/22
+        runDeploy(DeployOptions({
+            yieldSource: new PirexGMXYieldSource(),
+            slug: "pxgmx",
+            discountDaily: 158e10, // As of 6/5/22
+            discountRate: 250 * 10,
+            discountMaxDays: 360,
+            discountDecimals: 18,
+            discountDiscountPeriod: 10 days,
+            yieldSliceName: "yPXGMX",
+            yieldSliceDustLimit: 1e9
+        }));
     }
 }

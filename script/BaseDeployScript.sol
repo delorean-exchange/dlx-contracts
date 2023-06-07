@@ -16,27 +16,43 @@ import { NPVSwap } from "../src/core/NPVSwap.sol";
 import { Discounter } from "../src/data/Discounter.sol";
 import { YieldData } from "../src/data/YieldData.sol";
 
+struct DeployOptions {
+    IYieldSource yieldSource;
+    string slug;
+
+    uint256 discountDaily;
+    uint256 discountRate;
+    uint256 discountMaxDays;
+    uint256 discountDecimals;
+    uint256 discountDiscountPeriod;
+
+    string yieldSliceName;
+    uint256 yieldSliceDustLimit;
+}
+
 contract BaseDeployScript is Script {
-    function runDeploy(IYieldSource yieldSource, string slug, string yieldSliceName, uint256 daily) public {
-        address yieldToken = address(yieldSource.yieldToken());
+    function runDeploy(DeployOPtions options) {
+        address yieldToken = address(options.yieldSource.yieldToken());
 
         dataDebt = new YieldData(7 days);
         dataCredit = new YieldData(7 days);
 
-        discounter = new Discounter(daily,
-                                    250 * 10,
-                                    360,
-                                    18,
-                                    10 days);
+        discounter = new Discounter(
+            options.discountDaily,
+            options.discountRate,
+            options.discountMaxDays,
+            options.discountDecimals,
+            options.discountDiscountPeriod
+        );
 
-        slice = new YieldSlice(yieldSliceName,
-                               address(yieldSource),
+        slice = new YieldSlice(options.yieldSliceName,
+                               address(options.yieldSource),
                                address(dataDebt),
                                address(dataCredit),
                                address(discounter),
-                               1e9);
+                               options.yieldSliceDustLimit);
 
-        yieldSource.setOwner(address(slice));
+        options.yieldSource.setOwner(address(slice));
         dataDebt.setWriter(address(slice));
         dataCredit.setWriter(address(slice));
         address npvToken = address(slice.npvToken());
@@ -63,7 +79,7 @@ contract BaseDeployScript is Script {
             }
             pool = new UniswapV3LiquidityPool(address(uniswapV3Pool), arbitrumSwapRouter, arbitrumQuoterV2);
         }
-        
+
         npvSwap = new NPVSwap(address(slice), address(pool));
 
         slice.setTreasury(treasuryAddress);
@@ -71,7 +87,7 @@ contract BaseDeployScript is Script {
         vm.stopBroadcast();
 
         {
-            string memory objName = "deploy_" + slug;
+            string memory objName = "deploy_" + options.slug;
             string memory json;
             json = vm.serializeAddress(objName, "address_dataCredit", address(dataCredit));
             json = vm.serializeAddress(objName, "address_dataDebt", address(dataDebt));
@@ -80,7 +96,7 @@ contract BaseDeployScript is Script {
             json = vm.serializeAddress(objName, "address_npvToken", address(npvToken));
             json = vm.serializeAddress(objName, "address_pool", address(pool));
             json = vm.serializeAddress(objName, "address_slice", address(slice));
-            json = vm.serializeAddress(objName, "address_yieldSource", address(yieldSource));
+            json = vm.serializeAddress(objName, "address_yieldSource", address(options.yieldSource));
 
             json = vm.serializeString(objName, "contractName_dataCredit", "YieldData");
             json = vm.serializeString(objName, "contractName_dataDebt", "YieldData");
@@ -92,9 +108,9 @@ contract BaseDeployScript is Script {
             json = vm.serializeString(objName, "contractName_yieldSource", "IYieldSource");
 
             if (eq(vm.envString("NETWORK"), "arbitrum")) {
-                vm.writeJson(json, "./json/deploy_" + slug + ".arbitrum.json");
+                vm.writeJson(json, "./json/deploy_" + options.slug + ".arbitrum.json");
             } else {
-                vm.writeJson(json, "./json/deploy_" + slug + ".localhost.json");
+                vm.writeJson(json, "./json/deploy_" + options.slug + ".localhost.json");
             }
         }
     }

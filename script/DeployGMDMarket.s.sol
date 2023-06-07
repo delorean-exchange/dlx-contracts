@@ -17,6 +17,16 @@ contract DeployGMDMarket is BaseScript, BaseDeployScript {
 
     function run() public {
         vm.startBroadcast(pk);
-        runDeploy(new GMDYieldSource(), "gmd", "yGMD", 158e10); // As of 6/5/22
+        runDeploy(DeployOptions({
+            yieldSource: new GMDYieldSource(),
+            slug: "gmd",
+            discountDaily: 158e10, // As of 6/5/22
+            discountRate: 250 * 10,
+            discountMaxDays: 360,
+            discountDecimals: 18,
+            discountDiscountPeriod: 10 days,
+            yieldSliceName: "yGMD",
+            yieldSliceDustLimit: 1e9
+        }));
     }
 }

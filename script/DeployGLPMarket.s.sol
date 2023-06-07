@@ -20,8 +20,17 @@ contract DeployGLPMarket is BaseScript, BaseDeployScript {
 
         string memory historical = vm.readFile("json/historical.json");
         uint256 daily = vm.parseJsonUint(historical, ".glp.avgDailyRewardPerToken");
-        
-        runDeploy(new StakedGLPYieldSource(address(stakedGLP), arbitrumWeth, address(tracker)),
-                  yieldSource, "glp", "yGLP", daily);
+
+        runDeploy(DeployOptions({
+            yieldSource: new GMDYieldSource(),
+            slug: "glp",
+            discountDaily: daily, // As of 6/5/22
+            discountRate: 250 * 10,
+            discountMaxDays: 360,
+            discountDecimals: 18,
+            discountDiscountPeriod: 10 days,
+            yieldSliceName: "yGLP",
+            yieldSliceDustLimit: 1e9
+        }));
     }
 }
