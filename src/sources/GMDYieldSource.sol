@@ -46,13 +46,13 @@ contract GMDYieldSource is IYieldSource {
     }
 
     modifier validAddress(address who) {
-        require(who != address(0), "SGYS: zero address");
-        require(who != address(this), "SGYS: this address");
+        require(who != address(0), "GMDYS: zero address");
+        require(who != address(this), "GMDYS: this address");
         _;
     }
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "SGYS: only owner");
+        require(msg.sender == owner, "GMDYS: only owner");
         _;
     }
 
