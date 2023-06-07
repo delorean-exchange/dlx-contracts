@@ -38,14 +38,14 @@ contract DeployGNSMarket is BaseScript {
         dataCredit = new YieldData(7 days);
 
         string memory historical = vm.readFile("json/historical.json");
-        /* uint256 daily = vm.parseJsonUint(historical, ".glp.avgDailyRewardPerToken"); */
-        discounter = new Discounter(1e14,
+        uint256 daily = vm.parseJsonUint(historical, ".gns.avgDailyRewardPerToken");
+        discounter = new Discounter(daily,
                                     250,
                                     10,
                                     18,
                                     1 days);
 
-        slice = new YieldSlice("npvDAI-GNS",
+        slice = new YieldSlice("npvGNS",
                                address(source),
                                address(dataDebt),
                                address(dataCredit),
@@ -62,7 +62,7 @@ contract DeployGNSMarket is BaseScript {
             address token0;
             address token1;
 
-            // Initial price is 0.99 DAI/npvDAI
+            // Initial price is 0.99 DAI/npvGNS
             if (npvToken < yieldToken) {
                 initialPrice = 78831026366734653132768280576;
                 (token0, token1) = (npvToken, yieldToken);
