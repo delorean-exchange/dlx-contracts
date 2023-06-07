@@ -19,11 +19,7 @@ contract GMDYieldSourceTest is BaseTest {
 
     function setUp() public {
         init();
-        arbitrumForkFrom97559408 = vm.createFork(vm.envString("ARBITRUM_MAINNET_RPC_URL"), 97559408);
-    }
-
-    function setUpManual() private {
-        vm.selectFork(arbitrumForkFrom97559408);
+        vm.selectFork(vm.createFork(vm.envString("ARBITRUM_MAINNET_RPC_URL"), 97559408));
 
         yieldSource = new GMDYieldSource();
         gmdToken = yieldSource.gmdToken();
@@ -31,8 +27,6 @@ contract GMDYieldSourceTest is BaseTest {
     }
     
     function testEnterAndLeave() public {
-        setUpManual();
-
         yieldSource.setOwner(whale);
         vm.startPrank(whale);
         vm.deal(whale, 134324235);
@@ -58,8 +52,6 @@ contract GMDYieldSourceTest is BaseTest {
     }
 
     function testGMD() public {
-        setUpManual();
-
         yieldSource.setOwner(whale);
         vm.startPrank(whale);
         
