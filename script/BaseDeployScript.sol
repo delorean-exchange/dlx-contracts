@@ -31,7 +31,7 @@ struct DeployOptions {
 }
 
 contract BaseDeployScript is Script {
-    function runDeploy(DeployOPtions options) {
+    function runDeploy(DeployOptions options) {
         address yieldToken = address(options.yieldSource.yieldToken());
 
         dataDebt = new YieldData(7 days);
