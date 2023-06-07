@@ -19,11 +19,7 @@ contract PirexGMXYieldSourceTest is BaseTest {
 
     function setUp() public {
         init();
-        arbitrumForkFrom97559408 = vm.createFork(vm.envString("ARBITRUM_MAINNET_RPC_URL"), 97559408);
-    }
-
-    function setUpManual() private {
-        vm.selectFork(arbitrumForkFrom97559408);
+        vm.selectFork(vm.createFork(vm.envString("ARBITRUM_MAINNET_RPC_URL"), 97559408));
 
         yieldSource = new PirexGMXYieldSource();
         pxGMXToken = yieldSource.pxGMXToken();
@@ -31,29 +27,24 @@ contract PirexGMXYieldSourceTest is BaseTest {
     }
 
     function testFirst() public {
-        setUpManual();
         assertEq(pxGMXToken.balanceOf(whale), 340252725009943497968);
     }
 
     function testAccrueRewards() public {
-        setUpManual();
-
         yieldSource.setOwner(whale);
 
-        uint256 accrued = yieldSource.amountPending();
+        uint256 accrued = pxRewards.getUserRewardsAccrued(whale, address(yieldSource.yieldToken()));
         assertEq(accrued, 0);
 
         // call pirex's weird function that manually updates accrued amounts
-        pxRewards.accrueUser(address(yieldSource.pxGMXToken()), whale);
+        pxRewards.accrueUser(address(pxGMXToken), whale);
 
         // check that accrued amount updated
-        accrued = yieldSource.amountPending();
+        accrued = pxRewards.getUserRewardsAccrued(whale, address(yieldSource.yieldToken()));
         assertEq(accrued, 5305394474454629);
     }
 
     function testPirex() public {
-        setUpManual();
-
         yieldSource.setOwner(whale);
         vm.startPrank(whale);
 
