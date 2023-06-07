@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BSL
 pragma solidity ^0.8.13;
 
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {IYieldSource} from "../interfaces/IYieldSource.sol";
-import {IGMDVault, PoolInfo} from "../interfaces/gmd/IGMDVault.sol";
-import {IWrappedETH} from "../interfaces/IWrappedETH.sol";
+import { IYieldSource } from "../interfaces/IYieldSource.sol";
+import { IGMDVault, PoolInfo } from "../interfaces/gmd/IGMDVault.sol";
+import { IWrappedETH } from "../interfaces/IWrappedETH.sol";
 
 /// @notice Wrapper interface for managing yield from GMD.
 contract GMDYieldSource is IYieldSource {
