@@ -10,6 +10,8 @@ import { IWrappedETH } from "../interfaces/IWrappedETH.sol";
 
 /// @notice Wrapper interface for managing yield from GMD.
 contract GMDYieldSource is IYieldSource {
+    uint256 private constant POOL_WETH = 1;
+
     using SafeERC20 for IERC20;
 
     event TransferOwnership(address indexed recipient);
@@ -30,9 +32,9 @@ contract GMDYieldSource is IYieldSource {
     address public owner;
 
     function totalStaked() internal view returns (uint256) {
-        uint256 timepass = block.timestamp - gmdVault.poolInfo(1).lastUpdate;
-        uint256 reward = gmdVault.poolInfo(1).EarnRateSec * timepass;
-        return gmdVault.poolInfo(1).totalStaked + reward;
+        uint256 timepass = block.timestamp - gmdVault.poolInfo(POOL_WETH).lastUpdate;
+        uint256 reward = gmdVault.poolInfo(POOL_WETH).EarnRateSec * timepass;
+        return gmdVault.poolInfo(POOL_WETH).totalStaked + reward;
     }
 
     function eth2gmd(uint256 ethAmount) internal view returns (uint256) {
@@ -93,7 +95,7 @@ contract GMDYieldSource is IYieldSource {
 
     function _harvest() internal {
         uint256 before = address(this).balance;
-        gmdVault.leaveETH(eth2gmd(_amountPending()), 1);
+        gmdVault.leaveETH(eth2gmd(_amountPending()), POOL_WETH);
         uint256 amount = address(this).balance - before;
 
         IWrappedETH(address(weth)).deposit{value: amount}();
