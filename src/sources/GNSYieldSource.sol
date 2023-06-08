@@ -21,9 +21,9 @@ contract GNSYieldSource is IYieldSource {
 
     /// @notice Create a GNSYieldSource.
     constructor(address gns_, address dai_, address staking_) {
-        require(gns_ != address(0), "SGYS: zero address gns");
-        require(dai_ != address(0), "SGYS: zero address dai");
-        require(staking_ != address(0), "SGYS: zero address staking");
+        require(gns_ != address(0), "GYS: zero address gns");
+        require(dai_ != address(0), "GYS: zero address dai");
+        require(staking_ != address(0), "GYS: zero address staking");
 
         owner = msg.sender;
         generatorToken = IERC20(gns_);
