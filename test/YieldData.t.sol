@@ -40,7 +40,6 @@ contract YieldDataTest is BaseTest {
     function testSetWriterChecks() public {
         vm.expectRevert("YD: only set once");
         data.setWriter(createUser(1));
-        vm.stopPrank();
 
         vm.expectRevert("YD: only writer");
         data.record(1, 2);
