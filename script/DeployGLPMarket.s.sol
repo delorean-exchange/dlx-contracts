@@ -10,6 +10,8 @@ contract DeployGLPMarket is BaseDeployScript {
     }
 
     function run() public {
+        vm.startBroadcast(pk);
+
         string memory historical = vm.readFile("json/historical.json");
         uint256 daily = vm.parseJsonUint(historical, ".glp.avgDailyRewardPerToken");
 
@@ -19,13 +21,15 @@ contract DeployGLPMarket is BaseDeployScript {
         runDeploy(DeployOptions({
             yieldSource: yieldSource,
             slug: "glp",
-            discountDaily: daily, // As of 6/5/22
+            discountDaily: daily,
             discountRate: 250 * 10,
             discountMaxDays: 360,
             discountDecimals: 18,
             discountDiscountPeriod: 10 days,
-            yieldSliceName: "yGLP",
+            yieldSliceName: "npvGLP",
             yieldSliceDustLimit: 1e9
         }));
+
+        vm.stopBroadcast();
     }
 }

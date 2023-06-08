@@ -28,88 +28,25 @@ contract DeployGNSMarket is BaseScript {
     function run() public {
         vm.startBroadcast(pk);
 
+        string memory historical = vm.readFile("json/historical.json");
+        uint256 daily = vm.parseJsonUint(historical, ".gns.avgDailyRewardPerToken");
+
         GNSYieldSource source = new GNSYieldSource(0x18c11FD286C5EC11c3b683Caa813B77f5163A122,
                                                    0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1,
                                                    0x6B8D3C08072a020aC065c467ce922e3A36D3F9d6);
 
-        address yieldToken = address(source.yieldToken());
-
-        dataDebt = new YieldData(7 days);
-        dataCredit = new YieldData(7 days);
-
-        string memory historical = vm.readFile("json/historical.json");
-        uint256 daily = vm.parseJsonUint(historical, ".gns.avgDailyRewardPerToken");
-        discounter = new Discounter(daily,
-                                    250,
-                                    10,
-                                    18,
-                                    1 days);
-
-        slice = new YieldSlice("npvGNS",
-                               address(source),
-                               address(dataDebt),
-                               address(dataCredit),
-                               address(discounter),
-                               1e9);
-
-        source.setOwner(address(slice));
-        dataDebt.setWriter(address(slice));
-        dataCredit.setWriter(address(slice));
-        address npvToken = address(slice.npvToken());
-
-        {
-            uint160 initialPrice;
-            address token0;
-            address token1;
-
-            // Initial price is 0.99 DAI/npvGNS
-            if (npvToken < yieldToken) {
-                initialPrice = 78831026366734653132768280576;
-                (token0, token1) = (npvToken, yieldToken);
-            } else {
-                initialPrice = 79627299360338034355936952320;
-                (token0, token1) = (yieldToken, npvToken);
-            }
-
-            manager = INonfungiblePositionManager(arbitrumNonfungiblePositionManager);
-            uniswapV3Pool = IUniswapV3Pool(IUniswapV3Factory(arbitrumUniswapV3Factory).getPool(token0, token1, 3000));
-            if (address(uniswapV3Pool) == address(0)) {
-                uniswapV3Pool = IUniswapV3Pool(IUniswapV3Factory(arbitrumUniswapV3Factory).createPool(token0, token1, 3000));
-                IUniswapV3Pool(uniswapV3Pool).initialize(initialPrice);
-            }
-            pool = new UniswapV3LiquidityPool(address(uniswapV3Pool), arbitrumSwapRouter, arbitrumQuoterV2);
-        }
-        
-        npvSwap = new NPVSwap(address(slice), address(pool));
+        runDeploy(DeployOptions({
+            yieldSource: yieldSource,
+            slug: "gns",
+            discountDaily: daily,
+            discountRate: 250 * 10,
+            discountMaxDays: 720,
+            discountDecimals: 18,
+            discountDiscountPeriod: 10 days,
+            yieldSliceName: "npvGNS",
+            yieldSliceDustLimit: 1e9
+        }));
 
         vm.stopBroadcast();
-
-        {
-            string memory objName = "deploy_gns";
-            string memory json;
-            json = vm.serializeAddress(objName, "address_dataCredit", address(dataCredit));
-            json = vm.serializeAddress(objName, "address_dataDebt", address(dataDebt));
-            json = vm.serializeAddress(objName, "address_discounter", address(discounter));
-            json = vm.serializeAddress(objName, "address_npvSwap", address(npvSwap));
-            json = vm.serializeAddress(objName, "address_npvToken", address(npvToken));
-            json = vm.serializeAddress(objName, "address_pool", address(pool));
-            json = vm.serializeAddress(objName, "address_slice", address(slice));
-            json = vm.serializeAddress(objName, "address_yieldSource", address(source));
-
-            json = vm.serializeString(objName, "contractName_dataCredit", "YieldData");
-            json = vm.serializeString(objName, "contractName_dataDebt", "YieldData");
-            json = vm.serializeString(objName, "contractName_discounter", "Discounter");
-            json = vm.serializeString(objName, "contractName_npvSwap", "NPVSwap");
-            json = vm.serializeString(objName, "contractName_npvToken", "NPVToken");
-            json = vm.serializeString(objName, "contractName_pool", "UniswapV3LiquidityPool");
-            json = vm.serializeString(objName, "contractName_slice", "YieldSlice");
-            json = vm.serializeString(objName, "contractName_yieldSource", "IYieldSource");
-
-            if (eq(vm.envString("NETWORK"), "arbitrum")) {
-                vm.writeJson(json, "./json/deploy_gns.arbitrum.json");
-            } else {
-                vm.writeJson(json, "./json/deploy_gns.localhost.json");
-            }
-        }
     }
 }
