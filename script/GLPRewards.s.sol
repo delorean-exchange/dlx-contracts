@@ -28,10 +28,10 @@ contract GLPRewardsScript is BaseScript {
         vm.startBroadcast(pk);
 
         string memory historical = vm.readFile("json/historical.json");
-        
+
         uint256 daily = vm.parseJsonUint(historical, ".glp.avgDailyRewardPerToken");
         address discounter = vm.parseJsonAddress(config, ".glp_discounter.address");
-        
+
         console.log("daily", daily);
         console.log("discounter", discounter);
 
