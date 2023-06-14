@@ -10,6 +10,8 @@ contract DeployGLPMarket is BaseDeployScript {
     }
 
     function run() public {
+        vm.startBroadcast(pk);
+
         string memory historical = vm.readFile("json/historical.json");
         uint256 daily = vm.parseJsonUint(historical, ".glp.avgDailyRewardPerToken");
 
@@ -27,5 +29,7 @@ contract DeployGLPMarket is BaseDeployScript {
             yieldSliceName: "yGLP",
             yieldSliceDustLimit: 1e9
         }));
+
+        vm.stopBroadcast();
     }
 }

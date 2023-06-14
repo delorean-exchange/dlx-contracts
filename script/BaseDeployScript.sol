@@ -32,7 +32,6 @@ struct DeployOptions {
 
 contract BaseDeployScript is BaseScript {
     function runDeploy(DeployOptions memory options) public {
-        vm.startBroadcast(pk);
 
         address yieldToken = address(options.yieldSource.yieldToken());
 
@@ -85,8 +84,6 @@ contract BaseDeployScript is BaseScript {
         npvSwap = new NPVSwap(address(slice), address(pool));
 
         slice.setTreasury(treasuryAddress);
-
-        vm.stopBroadcast();
 
         {
             string memory objName = string.concat("deploy_", options.slug);

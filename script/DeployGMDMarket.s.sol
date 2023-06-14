@@ -10,6 +10,8 @@ contract DeployGMDMarket is BaseDeployScript {
     }
 
     function run() public {
+        vm.startBroadcast(pk);
+
         runDeploy(DeployOptions({
             yieldSource: new GMDYieldSource(),
             slug: "gmd",
@@ -21,5 +23,7 @@ contract DeployGMDMarket is BaseDeployScript {
             yieldSliceName: "npvGMD",
             yieldSliceDustLimit: 1e9
         }));
+
+        vm.stopBroadcast();
     }
 }

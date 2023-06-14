@@ -10,6 +10,7 @@ contract DeployPirexGMXMarket is BaseDeployScript {
     }
 
     function run() public {
+        vm.startBroadcast(pk);
         runDeploy(DeployOptions({
             yieldSource: new PirexGMXYieldSource(),
             slug: "pxgmx",
@@ -21,5 +22,6 @@ contract DeployPirexGMXMarket is BaseDeployScript {
             yieldSliceName: "yPXGMX",
             yieldSliceDustLimit: 1e9
         }));
+        vm.stopBroadcast();
     }
 }
