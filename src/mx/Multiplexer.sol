@@ -71,7 +71,11 @@ contract Multiplexer {
     /// @param token The token for which we are checking the mint capacity.
     /// @return The remaining mint capacity.
     function remaining(address token) public view returns (uint256) {
-        if (whitelist[token].limit == 0) {
+        if (!whitelist[token].mintable) {
+            return 0;
+        } else if (whitelist[token].limit < whitelist[token].supply) {
+            return 0;
+        } else if (whitelist[token].limit == 0) {
             return type(uint256).max;
         } else {
             return whitelist[token].limit - whitelist[token].supply;
@@ -83,8 +87,11 @@ contract Multiplexer {
     /// @param amount The amount of that token we are using to mint.
     /// @return The amount of MX token minted.
     function previewMint(address tokenIn, uint256 amount) external view returns (uint256) {
-        require(remaining(tokenIn) >= amount, "MX: token limit");
-        return amount;
+        if (remaining(tokenIn) < amount) {
+            return 0;
+        } else {
+            return amount;
+        }
     }
 
     /// @notice Mint MX tokens from input NPV tokens.

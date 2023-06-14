@@ -26,7 +26,6 @@ contract Router {
         public
         returns (Route memory) {
 
-
         Route memory best;
         for (uint256 i = 0; i < pools.length; i++) {
             Route memory candidate = evaluateLockForYield(slice,

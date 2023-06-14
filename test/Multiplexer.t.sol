@@ -42,7 +42,18 @@ contract MultiplexerTest is BaseTest {
     IERC20 public generatorToken2;
     IERC20 public yieldToken2;
 
+    FakeYieldSource public source3;
+    NPVToken public npvToken3;
+    NPVSwap public npvSwap3;
+    YieldSlice public slice3;
+    YieldData public dataDebt3;
+    YieldData public dataCredit3;
+    Discounter public discounter3;
+    IERC20 public generatorToken3;
+    IERC20 public yieldToken3;
+
     Multiplexer public mx;
+    Multiplexer public mx2;
     Router public router;
 
     function init1() public {
@@ -120,16 +131,131 @@ contract MultiplexerTest is BaseTest {
         npvSwap2 = new NPVSwap(address(slice2), address(unusedPool));
     }
 
+    function init3() public {
+        uint256 yieldPerSecond = 20000000000000;
+
+        source3 = new FakeYieldSource(yieldPerSecond);
+
+        generatorToken3 = source3.generatorToken();
+        yieldToken3 = source3.yieldToken();
+        dataDebt3 = new YieldData(20);
+        dataCredit3 = new YieldData(20);
+
+        discounter3 = new Discounter(1e13,
+                                     500 * 30,
+                                     360,
+                                     18,
+                                     30 days);
+
+        slice3 = new YieldSlice("yFAKE3",
+                               address(source3),
+                               address(dataDebt3),
+                               address(dataCredit3),
+                               address(discounter3),
+                               1e9);
+
+        npvToken3 = slice3.npvToken();
+
+        source3.setOwner(address(slice3));
+        dataDebt3.setWriter(address(slice3));
+        dataCredit3.setWriter(address(slice3));
+    }
+
     function testSetUpMultiplexer() public {
         init();
         init1();
         init2();
+        init3();
 
         // Set up multiplexer for slices 1 and 2
         mx = new Multiplexer("ymxAAA", address(slice1.yieldToken()));
 
         mx.addToWhitelist(slice1, 0);
         mx.addToWhitelist(slice2, 0);
+
+        mx2 = new Multiplexer("ymxBBB", address(slice3.yieldToken()));
+
+        (bool mintable,
+         bool redeemable,
+         uint256 limit,
+         uint256 supply) = mx.whitelist(address(slice1.npvToken()));
+        assertTrue(mintable);
+        assertTrue(redeemable);
+        assertEq(limit, 0);
+        assertEq(supply, 0);
+    }
+
+    function testRemoveFromWhitelist() public {
+        testSetUpMultiplexer();
+        mx.removeFromWhitelist(address(slice1.npvToken()));
+        (bool mintable,
+         bool redeemable,
+         uint256 limit,
+         uint256 supply) = mx.whitelist(address(slice1.npvToken()));
+        assertFalse(mintable);
+        assertTrue(redeemable);
+        assertEq(limit, 0);
+        assertEq(supply, 0);
+
+        vm.expectRevert("MX: not whitelisted");
+        mx.removeFromWhitelist(address(npvToken1));
+
+        vm.expectRevert("MX: not mintable");
+        mx.mint(address(this), address(npvToken1), 1000);
+
+        assertEq(mx.remaining(address(npvToken1)), 0);
+        assertEq(mx.previewMint(address(npvToken1), 100), 0);
+    }
+
+    function testInvalidYieldToken() public {
+        testSetUpMultiplexer();
+
+        vm.expectRevert("MX: incompatible yield token");
+        mx.addToWhitelist(slice3, 0);
+
+        vm.expectRevert("MX: not mintable");
+        mx.mint(address(this), address(npvToken3), 1000);
+    }
+
+    function testInvalidRedeem() public {
+        testSetUpMultiplexer();
+
+        vm.expectRevert("MX: not redeemable");
+        mx.redeem(address(this), address(npvToken3), 1000);
+    }
+
+    function testDoubleAdd() public {
+        testSetUpMultiplexer();
+
+        vm.expectRevert("MX: already whitelisted");
+        mx.addToWhitelist(slice1, 0);
+    }
+
+    function testLimit() public {
+        testSetUpMultiplexer();
+
+        ( , , uint256 limit1, ) = mx.whitelist(address(slice1.npvToken()));
+        assertEq(limit1, 0);
+        assertEq(mx.remaining(address(slice1.npvToken())), type(uint256).max);
+
+        mx.modifyLimit(address(slice1.npvToken()), 1e9);
+        ( , , uint256 limit2, ) = mx.whitelist(address(slice1.npvToken()));
+        assertEq(limit2, 1e9);
+        assertEq(mx.remaining(address(slice1.npvToken())), 1e9);
+
+        source1.mintBoth(address(this), 100e18);
+        generatorToken1.approve(address(slice1), 1e18);
+        slice1.debtSlice(address(this), address(this), 1e18, 1e18, "");
+
+        slice1.npvToken().approve(address(mx), 4e8);
+        mx.mint(address(this), address(slice1.npvToken()), 4e8);
+        ( , , uint256 limit3, ) = mx.whitelist(address(slice1.npvToken()));
+        assertEq(limit3, 1e9);
+        assertEq(mx.remaining(address(slice1.npvToken())), 6e8);
+
+        slice1.npvToken().approve(address(mx), 1e9);
+        vm.expectRevert("MX: token limit");
+        mx.mint(address(this), address(npvToken1), 1e9);
     }
 
     function testMultiplexer() public {
@@ -143,13 +269,13 @@ contract MultiplexerTest is BaseTest {
         // Lock yield to mint fFAKE2
         source1.mintBoth(alice, 100e18);
         generatorToken1.approve(address(slice1), amountGenerator);
-        uint256 id1 = slice1.debtSlice(alice, alice, amountGenerator, amountYield, "");
+        slice1.debtSlice(alice, alice, amountGenerator, amountYield, "");
         assertEq(npvToken1.balanceOf(alice), 326758890000000000);
 
         // Lock yield to mint fFAKE2
         source2.mintBoth(alice, 100e18);
         generatorToken2.approve(address(slice2), amountGenerator);
-        uint256 id2 = slice2.debtSlice(alice, alice, amountGenerator, amountYield, "");
+        slice2.debtSlice(alice, alice, amountGenerator, amountYield, "");
         assertEq(npvToken2.balanceOf(alice), 326758890000000000);
 
         // Swap it for ymxAAA
@@ -166,6 +292,10 @@ contract MultiplexerTest is BaseTest {
         assertEq(npvToken1.balanceOf(alice), 276758890000000000);
         assertEq(npvToken2.balanceOf(alice), 326758890000000000);
         assertEq(mx.mxToken().balanceOf(alice), 5e16);
+
+        // Test invalid redemption
+        vm.expectRevert("MX: insufficient supply");
+        mx.redeem(alice, address(npvToken1), 1e17);
 
         // Same thing buy npv token 2
         npvToken2.approve(address(mx), 1e17);
@@ -239,7 +369,7 @@ contract MultiplexerTest is BaseTest {
         source1.mintBoth(alice, 100e18);
 
         generatorToken1.approve(address(slice1), amountGenerator);
-        uint256 id1 = slice1.debtSlice(alice, alice, amountGenerator, amountYield, "");
+        slice1.debtSlice(alice, alice, amountGenerator, amountYield, "");
         assertEq(npvToken1.balanceOf(alice), 326758890000000000);
         npvToken1.approve(address(mx), 1e17);
         mx.mint(alice, address(npvToken1), 1e17);
@@ -280,13 +410,35 @@ contract MultiplexerTest is BaseTest {
                                                           arbitrumSwapRouter,
                                                           arbitrumQuoterV2);
 
-        Multiplexer[] memory mxs = new Multiplexer[](1);
+        Multiplexer[] memory mxs = new Multiplexer[](2);
         mxs[0] = mx;
+        mxs[1] = mx2;
         ILiquidityPool[] memory pools = new ILiquidityPool[](2);
         pools[0] = pool1;
         pools[1] = pool2;
 
+        // Try it with invalid tokens
+        vm.expectRevert("RMX: mismatched yield token");
+        router.routeLockForYield(slice3,
+                                 mxs,
+                                 pools,
+                                 2e18,
+                                 1e18,
+                                 0);
+
         Router.Route memory route;
+        // Set limit go small number, and verify route does not use MX
+        mx.modifyLimit(address(slice1.npvToken()), 100);
+        route = router.routeLockForYield(slice1,
+                                         mxs,
+                                         pools,
+                                         2e18,
+                                         1e18,
+                                         0);
+        assertEq(route.mxs.length, 0);
+        mx.modifyLimit(address(slice1.npvToken()), 1e30);
+
+        // Get the route for valid query, with usable limit
         route = router.routeLockForYield(slice1,
                                          mxs,
                                          pools,
@@ -342,5 +494,11 @@ contract MultiplexerTest is BaseTest {
             assertEq(delta, 3945108387056561);
             vm.stopPrank();
         }
+    }
+
+    function testRouterInvalidToken() public {
+        testSetUpMultiplexer();
+
+        router = new Router();
     }
 }
