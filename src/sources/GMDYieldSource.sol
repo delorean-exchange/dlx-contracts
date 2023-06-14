@@ -31,6 +31,13 @@ contract GMDYieldSource is IYieldSource {
     */
     address public owner;
 
+    /// @notice Create a GMDYieldSource.
+    constructor() {
+        generatorToken = gmdToken;
+        yieldToken = weth;
+        owner = msg.sender;
+    }
+
     function totalStaked() internal view returns (uint256) {
         uint256 timepass = block.timestamp - gmdVault.poolInfo(POOL_WETH).lastUpdate;
         uint256 reward = gmdVault.poolInfo(POOL_WETH).EarnRateSec * timepass;
@@ -54,13 +61,6 @@ contract GMDYieldSource is IYieldSource {
     modifier onlyOwner() {
         require(msg.sender == owner, "GMDYS: only owner");
         _;
-    }
-
-    /// @notice Create a GMDYieldSource.
-    constructor() {
-        generatorToken = gmdToken;
-        yieldToken = weth;
-        owner = msg.sender;
     }
 
     /// @notice Set a new owner.
