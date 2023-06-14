@@ -48,6 +48,11 @@ contract FakeYieldSource is IYieldSource {
         return IERC20(_yieldToken);
     }
 
+    function setYieldToken(address yieldToken_) external {
+        require(yieldToken_ != address(0), "zero address");
+        _yieldToken = IFakeToken(yieldToken_);
+    }
+
     function generatorToken() external override view returns (IERC20) {
         return IERC20(_generatorToken);
     }

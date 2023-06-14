@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: BSL
 pragma solidity ^0.8.13;
 
+import "forge-std/console.sol";
+
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { YieldSlice } from  "./YieldSlice.sol";
+import { Multiplexer } from  "../mx/Multiplexer.sol";
+import { Router } from  "../mx/Router.sol";
 import { NPVToken } from "../tokens/NPVToken.sol";
 import { ILiquidityPool } from "../interfaces/ILiquidityPool.sol";
 
@@ -31,6 +35,12 @@ contract NPVSwap {
                        uint256 tokens,
                        uint256 yield,
                        uint256 amountOut);
+
+    event RouteLockForYield(uint256 indexed id,
+                            address indexed owner,
+                            uint256 tokens,
+                            uint256 yield,
+                            uint256 amountOut);
 
     event SwapForSlice(uint256 indexed id,
                        address indexed recipient,
@@ -80,6 +90,7 @@ contract NPVSwap {
     /// @notice Compute the amount of NPV that will be generated.
     /// @param tokens The number of yield generating tokens to be locked.
     /// @param yield The amount of yield to be commited into the slice.
+    /// @return NPV tokens minted, minus fees
     function previewLockForNPV(uint256 tokens, uint256 yield) public view returns (uint256) {
         (uint256 npv, uint256 fees) = slice.previewDebtSlice(tokens, yield);
         return npv - fees;
@@ -89,6 +100,8 @@ contract NPVSwap {
     /// @dev Not a view, and should not be used on-chain, due to underlying Uniswap v3 behavior.
     /// @param yieldIn The amount of yield tokens input.
     /// @param sqrtPriceLimitX96 Price limit in sqrtX96 format.
+    /// @return NPV tokens output
+    /// @return New price after the swap.
     function previewSwapYieldForNPV(uint256 yieldIn, uint128 sqrtPriceLimitX96)
         external returns (uint256, uint256) {
 
@@ -101,6 +114,8 @@ contract NPVSwap {
     /// @dev Not a view, and should not be used, on-chain, due to underlying Uniswap v3 behavior.
     /// @param npvOut The amount of NPV tokens desired as output.
     /// @param sqrtPriceLimitX96 Price limit in sqrtX96 format.
+    /// @return Amount of yield token input.
+    /// @return New price after the swap.
     function previewSwapYieldForNPVOut(uint256 npvOut, uint128 sqrtPriceLimitX96)
         external returns (uint256, uint256) {
 
@@ -113,6 +128,8 @@ contract NPVSwap {
     /// @dev Not a view, and should not be used on-chain, due to underlying Uniswap v3 behavior.
     /// @param npvIn The amount of NPV tokens input.
     /// @param sqrtPriceLimitX96 Price limit in sqrtX96 format.
+    /// @return Amount of yield token output.
+    /// @return New price after the swap.
     function previewSwapNPVForYield(uint256 npvIn, uint128 sqrtPriceLimitX96)
         external returns (uint256, uint256) {
 
@@ -125,6 +142,8 @@ contract NPVSwap {
     /// @dev Not a view, and should not be used on-chain, due to underlying Uniswap v3 behavior.
     /// @param yieldOut The amount of yield tokens desired as output.
     /// @param sqrtPriceLimitX96 Price limit in sqrtX96 format.
+    /// @return Amount of NPV token input.
+    /// @return New price after the swap.
     function previewSwapNPVForYieldOut(uint256 yieldOut, uint128 sqrtPriceLimitX96)
         external returns (uint256, uint256) {
 
@@ -139,6 +158,7 @@ contract NPVSwap {
     /// @param tokens The number of yield generating tokens to be locked.
     /// @param yield The amount of yield to be commited into the slice.
     /// @param memo Optional memo data to associate with the yield slice.
+    /// @return Debt slice ID.
     function lockForNPV(address owner,
                         address recipient,
                         uint256 tokens,
@@ -164,6 +184,7 @@ contract NPVSwap {
     /// @param recipient Recipient of the yield slice.
     /// @param npv Amount of NPV tokens to swap into the yield slice.
     /// @param memo Optional memo data to associate with the yield slice.
+    /// @return Credit slice ID.
     function swapNPVForSlice(address recipient,
                              uint256 npv,
                              bytes calldata memo)
@@ -192,6 +213,8 @@ contract NPVSwap {
     /// @param tokens The number of yield generating tokens to be locked.
     /// @param yield The amount of yield to be commited into the slice.
     /// @param sqrtPriceLimitX96 Price limit in sqrtX96 format.
+    /// @return Amount of yield token output.
+    /// @return New price after the swap.
     function previewLockForYield(uint256 tokens, uint256 yield, uint128 sqrtPriceLimitX96)
         external returns (uint256, uint256) {
 
@@ -203,6 +226,8 @@ contract NPVSwap {
     /// @dev Not a view, and should not be used on-chain, due to underlying Uniswap v3 behavior.
     /// @param yieldIn The amount of yield tokens input.
     /// @param sqrtPriceLimitX96 Price limit in sqrtX96 format.
+    /// @return Amount of NPV token output.
+    /// @return New price after the swap.
     function previewSwapForSlice(uint256 yieldIn, uint128 sqrtPriceLimitX96)
         external returns (uint256, uint256) {
 
@@ -220,6 +245,8 @@ contract NPVSwap {
     /// @param amountOutMin Minimum amount of yield to output.
     /// @param sqrtPriceLimitX96 Price limit in sqrtX96 format.
     /// @param memo Optional memo data to associate with the yield slice.
+    /// @return Debt slice ID.
+    /// @return Amount of yield token output.
     function lockForYield(address owner,
                           uint256 tokens,
                           uint256 yield,
@@ -253,6 +280,7 @@ contract NPVSwap {
     /// @param npvMin Minumum amount of NPV of yield to receive.
     /// @param sqrtPriceLimitX96 Price limit in sqrtX96 format.
     /// @param memo Optional memo data to associate with the yield slice.
+    /// @return Credit slice ID.
     function swapForSlice(address recipient,
                           uint256 yield,
                           uint256 npvMin,
@@ -289,6 +317,8 @@ contract NPVSwap {
     /// @param id The debt slice to rollover.
     /// @param yield The amount of yield to be commited into the slice.
     /// @param sqrtPriceLimitX96 Price limit in sqrtX96 format.
+    /// @return Amount of yield token output.
+    /// @return New price after the swap.
     function previewRolloverForYield(uint256 id,
                                      uint256 yield,
                                      uint128 sqrtPriceLimitX96)
@@ -298,6 +328,13 @@ contract NPVSwap {
         return pool.previewSwap(address(npvToken), uint128(npv), sqrtPriceLimitX96);
     }
 
+    /// @notice Execute a rollover locking more future yield into upfront yield.
+    /// @param id The debt slice to rollover.
+    /// @param recipient Recipient of the NPV tokens.
+    /// @param yield The amount of yield to be commited into the slice.
+    /// @param amountOutMin Minimum amount of yield to output.
+    /// @param sqrtPriceLimitX96 Price limit in sqrtX96 format.
+    /// @return Amount of yield token output.
     function rolloverForYield(uint256 id,
                               address recipient,
                               uint256 yield,
@@ -322,6 +359,78 @@ contract NPVSwap {
         emit RolloverForYield(id, recipient, yield, npv, out);
 
         return out;
+    }
+
+    function previewRouteLockForYield(Router.Route calldata route) external
+        returns
+        (uint256) {
+
+        uint256 npv = previewLockForNPV(route.amountGenerator,
+                                        route.amountYield);
+        address tokenIn;
+        uint256 amountIn;
+        if (route.mxs.length == 0) {
+            tokenIn = address(npvToken);
+            amountIn = npv;
+        } else {
+            Multiplexer mx = route.mxs[0];
+            tokenIn = address(mx.mxToken());
+            amountIn = mx.previewMint(address(npvToken), npv);
+        }
+
+        (uint256 out, ) = route.pool.previewSwap(tokenIn,
+                                                 uint128(amountIn),
+                                                 route.sqrtPriceLimitX96);
+        return out;
+    }
+
+    function executeRouteLockForYield(address owner,
+                                      Router.Route calldata route,
+                                      bytes calldata memo) external
+        returns
+        (uint256, uint256) {
+
+        require(route.mxs.length <= 1, "NS: unhandled");
+
+        // Mint NPV tokens
+        uint256 npv = previewLockForNPV(route.amountGenerator,
+                                        route.amountYield);
+
+        uint256 id = lockForNPV(owner,
+                                address(this),
+                                route.amountGenerator,
+                                route.amountYield,
+                                memo);
+
+        IERC20 tokenIn;
+        if (route.mxs.length == 0) {
+            // No conversion
+            tokenIn = IERC20(npvToken);
+        } else {
+            // Convert into MX tokens
+            Multiplexer mx = route.mxs[0];
+            tokenIn = IERC20(mx.mxToken());
+            IERC20(npvToken).safeApprove(address(mx), 0);
+            IERC20(npvToken).safeApprove(address(mx), npv);
+            mx.mint(address(this), address(npvToken), npv);
+        }
+
+        // Swap MX tokens for yield tokens
+        tokenIn.safeApprove(address(route.pool), 0);
+        tokenIn.safeApprove(address(route.pool), npv);
+        uint256 out = route.pool.swap(owner,
+                                      address(tokenIn),
+                                      uint128(npv),
+                                      uint128(route.amountOutMin),
+                                      route.sqrtPriceLimitX96);
+
+        emit RouteLockForYield(id,
+                               owner,
+                               route.amountGenerator,
+                               route.amountYield,
+                               out);
+
+        return (id, out);
     }
 
     // ----------------------------------------------------------------- //
