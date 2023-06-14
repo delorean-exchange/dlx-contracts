@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BSL
 pragma solidity ^0.8.13;
 
-import "forge-std/console.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -434,7 +432,6 @@ contract YieldSlice is ReentrancyGuard {
             deltaShares = newTotalShares - totalShares;
         }
 
-        console.log("Transferring:", msg.sender, address(generatorToken), address(this));
         generatorToken.safeTransferFrom(msg.sender, address(this), deltaGenerator);
         generatorToken.safeApprove(address(yieldSource), 0);
         generatorToken.safeApprove(address(yieldSource), deltaGenerator);

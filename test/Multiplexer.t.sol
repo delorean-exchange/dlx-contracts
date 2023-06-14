@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "forge-std/console.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { ILiquidityPool } from "../src/interfaces/ILiquidityPool.sol";
@@ -221,15 +219,6 @@ contract MultiplexerTest is BaseTest {
             recipient: address(this),
             deadline: block.timestamp + 1 });
 
-        console.log("approve and balance 0",
-                    address(params.token0),
-                    IERC20(params.token0).balanceOf(address(this)),
-                    token0Amount);
-        console.log("approve and balance 1",
-                    address(params.token1),
-                    IERC20(params.token1).balanceOf(address(this)),
-                    token1Amount);
-
         IERC20(params.token0).approve(address(manager), token0Amount);
         IERC20(params.token1).approve(address(manager), token1Amount);
 
@@ -239,7 +228,6 @@ contract MultiplexerTest is BaseTest {
     function testRouter() public {
         testSetUpMultiplexer();
 
-        console.log("testRouter");
         router = new Router();
 
         // Set up two liquidity pools: one for npvToken1, and
@@ -249,8 +237,6 @@ contract MultiplexerTest is BaseTest {
 
         vm.startPrank(alice);
         source1.mintBoth(alice, 100e18);
-
-        console.log("alice GT ->", generatorToken1.balanceOf(alice));
 
         generatorToken1.approve(address(slice1), amountGenerator);
         uint256 id1 = slice1.debtSlice(alice, alice, amountGenerator, amountYield, "");
@@ -294,22 +280,11 @@ contract MultiplexerTest is BaseTest {
                                                           arbitrumSwapRouter,
                                                           arbitrumQuoterV2);
 
-        console.log("wrapper 1", address(pool1));
-        console.log("slice1 yield token: ", address(slice1.yieldToken()));
-        console.log("source1 yield token:", address(source1.yieldToken()));
-        console.log("pool1 token0:       ", address(pool1.token0()));
-        console.log("pool1 token1:       ", address(pool1.token1()));
-        console.log("");
-        console.log("--");
-        console.log("wrapper 2", address(pool2));
-
         Multiplexer[] memory mxs = new Multiplexer[](1);
         mxs[0] = mx;
         ILiquidityPool[] memory pools = new ILiquidityPool[](2);
         pools[0] = pool1;
         pools[1] = pool2;
-
-        console.log("run router");
 
         Router.Route memory route;
         route = router.routeLockForYield(slice1,
@@ -318,8 +293,6 @@ contract MultiplexerTest is BaseTest {
                                          2e18,
                                          1e18,
                                          0);
-
-        console.log("Got route with:", route.amountOutMin, address(route.pool));
 
         assertEq(address(route.slice), address(slice1));
         assertEq(route.amountGenerator, 2e18);

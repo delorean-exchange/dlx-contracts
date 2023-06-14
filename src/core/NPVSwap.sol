@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BSL
 pragma solidity ^0.8.13;
 
-import "forge-std/console.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -361,6 +359,10 @@ contract NPVSwap {
         return out;
     }
 
+    /// @notice Preview route outcomes for lock and swap for yield.
+    /// @dev Not a view, and should not be used on-chain, due to underlying Uniswap v3 behavior.
+    /// @param route Route to take for the lock and swap.
+    /// @return Amount of yield token output.
     function previewRouteLockForYield(Router.Route calldata route) external
         returns
         (uint256) {
@@ -384,6 +386,12 @@ contract NPVSwap {
         return out;
     }
 
+    /// @notice Use route to lock generating tokens into a slice, and swap for yield tokens.
+    /// @param owner Owner of the resulting debt yield slice.
+    /// @param route Route to take for the lock and swap.
+    /// @param memo Optional memo data to associate with the yield slice.
+    /// @return Debt slice ID.
+    /// @return Amount of yield token output.
     function executeRouteLockForYield(address owner,
                                       Router.Route calldata route,
                                       bytes calldata memo) external
@@ -395,7 +403,6 @@ contract NPVSwap {
         // Mint NPV tokens
         uint256 npv = previewLockForNPV(route.amountGenerator,
                                         route.amountYield);
-
         uint256 id = lockForNPV(owner,
                                 address(this),
                                 route.amountGenerator,
