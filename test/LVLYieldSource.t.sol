@@ -22,11 +22,11 @@ contract LVLYieldSourceTest is BaseTest {
         init();
         vm.selectFork(vm.createFork(vm.envString("BNB_MAINNET_RPC_URL"), 28106807));
 
-        yieldSource = new LVLYieldSource(LVLConstants.NETWORK_BNB);
+        yieldSource = new LVLYieldSource(LVLConstants.NETWORK_BNB, LVLConstants.TOKEN_LVL);
         lvlStaking = yieldSource.lvlStaking();
         lvlRouter = yieldSource.lvlRouter();
         lvlPool = yieldSource.lvlPool();
-        lvlToken = yieldSource.lvlToken();
+        lvlToken = yieldSource.generatorToken();
     }
 
     function testLvlToken() public {

@@ -12,6 +12,9 @@ import { ILvlPool } from "../interfaces/lvl/ILvlPool.sol";
 library LVLConstants {
     uint256 public constant NETWORK_BNB = 0;
     uint256 public constant NETWORK_ARBITRUM = 1;
+    
+    uint256 public constant TOKEN_LVL = 0;
+    uint256 public constant TOKEN_LGO = 1;
 }
 
 /// @notice Wrapper interface for managing yield from LVL.
@@ -20,16 +23,18 @@ contract LVLYieldSource is IYieldSource {
 
     event TransferOwnership(address indexed recipient);
 
-    IERC20 public immutable override generatorToken;
+    IERC20 public override generatorToken;
     IERC20 public immutable override yieldToken;
     
     uint256 public immutable network;
+    uint256 public immutable tokenType;
 
     ILvlStaking public constant lvlStaking = ILvlStaking(0x08A12FFedf49fa5f149C73B07E31f99249e40869);
+    ILvlStaking public constant lgoStaking = ILvlStaking(0xe5f3b669fd58AF914111759da054f3029734678C);
+
     ILvlRouter public constant lvlRouter = ILvlRouter(0xBD8638C1fF477275E49aaAe3E4691b74AE76BeCd);
     ILvlPool public constant lvlPool = ILvlPool(0xA5aBFB56a78D2BD4689b25B8A77fd49Bb0675874);
 
-    IERC20 public constant lvlToken = IERC20(0xB64E280e9D1B5DbEc4AcceDb2257A87b400DB149);
     IERC20 public constant seniorLlpToken = IERC20(0xB5C42F84Ab3f786bCA9761240546AA9cEC1f8821);
     IERC20 public weth;
     uint256 public amountDeposited = 0;
@@ -42,27 +47,37 @@ contract LVLYieldSource is IYieldSource {
     address public owner;
 
     /// @notice Create a LvlYieldSource.
-    constructor(uint256 _network) {
+    constructor(uint256 _network, uint256 _tokenType) {
         network = _network;
         if (network == LVLConstants.NETWORK_BNB) {
             weth = IERC20(0x2170Ed0880ac9A755fd29B2688956BD959F933F8);
         } else if (network == LVLConstants.NETWORK_ARBITRUM) {
             weth = IERC20(0x82aF49447D8a07e3bd95BD0d56f35241523fBab1);
+        } else {
+            revert("invalid network");
+        }
+        
+        tokenType = _tokenType;
+        if (tokenType == LVLConstants.TOKEN_LVL) {
+            generatorToken = IERC20(0xB64E280e9D1B5DbEc4AcceDb2257A87b400DB149);
+        } else if (tokenType == LVLConstants.TOKEN_LGO) {
+            generatorToken = IERC20(0xBe2B6C5E31F292009f495DDBda88e28391C9815E);
+        } else {
+            revert("invalid token");
         }
 
-        generatorToken = lvlToken;
         yieldToken = weth;
         owner = msg.sender;
     }
 
     modifier validAddress(address who) {
-        require(who != address(0), "PXYS: zero address");
-        require(who != address(this), "PXYS: this address");
+        require(who != address(0), "LVLYS: zero address");
+        require(who != address(this), "LVLYS: this address");
         _;
     }
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "PXYS: only owner");
+        require(msg.sender == owner, "LVLYS: only owner");
         _;
     }
 
