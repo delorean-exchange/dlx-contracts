@@ -56,13 +56,13 @@ contract LVLYieldSource is IYieldSource {
     }
 
     modifier validAddress(address who) {
-        require(who != address(0), "PXYS: zero address");
-        require(who != address(this), "PXYS: this address");
+        require(who != address(0), "LVLYS: zero address");
+        require(who != address(this), "LVLYS: this address");
         _;
     }
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "PXYS: only owner");
+        require(msg.sender == owner, "LVLYS: only owner");
         _;
     }
 
