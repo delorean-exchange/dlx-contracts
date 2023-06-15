@@ -6,11 +6,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { BaseTest } from "./BaseTest.sol";
 import { GMDYieldSource } from "../src/sources/GMDYieldSource.sol";
 import { IGMDVault } from "../src/interfaces/gmd/IGMDVault.sol";
-import { YieldData } from "../src/data/YieldData.sol";
 
 contract GMDYieldSourceTest is BaseTest {
-    uint256 arbitrumForkFrom97559408;
-
     GMDYieldSource yieldSource;
     IERC20 gmdToken;
     IGMDVault gmdVault;

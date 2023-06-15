@@ -6,11 +6,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { BaseTest } from "./BaseTest.sol";
 import { PirexGMXYieldSource } from "../src/sources/PirexGMXYieldSource.sol";
 import { IPirexRewards } from "../src/interfaces/pxgmx/IPirexRewards.sol";
-import { YieldData } from "../src/data/YieldData.sol";
 
 contract PirexGMXYieldSourceTest is BaseTest {
-    uint256 arbitrumForkFrom97559408;
-
     PirexGMXYieldSource yieldSource;
     IPirexRewards pxRewards;
     IERC20 pxGMXToken;
