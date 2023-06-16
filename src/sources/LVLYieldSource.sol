@@ -26,18 +26,16 @@ contract LVLYieldSource is IYieldSource {
     IERC20 public override generatorToken;
     IERC20 public immutable override yieldToken;
     
+    // for the user to pass in
     uint256 public immutable network;
     uint256 public immutable tokenType;
 
-    ILvlStaking public constant lvlStaking = ILvlStaking(0x08A12FFedf49fa5f149C73B07E31f99249e40869);
-    ILvlStaking public constant lgoStaking = ILvlStaking(0xe5f3b669fd58AF914111759da054f3029734678C);
-
-    ILvlRouter public constant lvlRouter = ILvlRouter(0xBD8638C1fF477275E49aaAe3E4691b74AE76BeCd);
-    ILvlPool public constant lvlPool = ILvlPool(0xA5aBFB56a78D2BD4689b25B8A77fd49Bb0675874);
-
-    IERC20 public constant seniorLlpToken = IERC20(0xB5C42F84Ab3f786bCA9761240546AA9cEC1f8821);
+    // set based on network/tokentype
     IERC20 public weth;
-    uint256 public amountDeposited = 0;
+    ILvlRouter public lvlRouter;
+    ILvlPool public lvlPool;
+    ILvlStaking public lvlStaking;
+    IERC20 public seniorLlpToken;
 
     /** @notice Owner role is the owner of this yield source, and
         is allowed to make deposits, withdrawals, and harvest the
@@ -49,23 +47,29 @@ contract LVLYieldSource is IYieldSource {
     /// @notice Create a LvlYieldSource.
     constructor(uint256 _network, uint256 _tokenType) {
         network = _network;
+        tokenType = _tokenType;
+        
+        assert(network == LVLConstants.NETWORK_BNB || network == LVLConstants.NETWORK_ARBITRUM);
+        assert(tokenType == LVLConstants.TOKEN_LGO || tokenType == LVLConstants.TOKEN_LVL);
+
         if (network == LVLConstants.NETWORK_BNB) {
             weth = IERC20(0x2170Ed0880ac9A755fd29B2688956BD959F933F8);
+            lvlRouter = ILvlRouter(0xBD8638C1fF477275E49aaAe3E4691b74AE76BeCd);
+            lvlPool = ILvlPool(0xA5aBFB56a78D2BD4689b25B8A77fd49Bb0675874);
+            seniorLlpToken = IERC20(0xB5C42F84Ab3f786bCA9761240546AA9cEC1f8821);
+
+            if (tokenType == LVLConstants.TOKEN_LVL) {
+                generatorToken = IERC20(0xB64E280e9D1B5DbEc4AcceDb2257A87b400DB149);
+                lvlStaking = ILvlStaking(0x08A12FFedf49fa5f149C73B07E31f99249e40869);
+            } else if (tokenType == LVLConstants.TOKEN_LGO) {
+                generatorToken = IERC20(0xBe2B6C5E31F292009f495DDBda88e28391C9815E);
+                lvlStaking = ILvlStaking(0xe5f3b669fd58AF914111759da054f3029734678C);
+            }
         } else if (network == LVLConstants.NETWORK_ARBITRUM) {
             weth = IERC20(0x82aF49447D8a07e3bd95BD0d56f35241523fBab1);
-        } else {
-            revert("invalid network");
+            // TODO (after they launch)
         }
         
-        tokenType = _tokenType;
-        if (tokenType == LVLConstants.TOKEN_LVL) {
-            generatorToken = IERC20(0xB64E280e9D1B5DbEc4AcceDb2257A87b400DB149);
-        } else if (tokenType == LVLConstants.TOKEN_LGO) {
-            generatorToken = IERC20(0xBe2B6C5E31F292009f495DDBda88e28391C9815E);
-        } else {
-            revert("invalid token");
-        }
-
         yieldToken = weth;
         owner = msg.sender;
     }

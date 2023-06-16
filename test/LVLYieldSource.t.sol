@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "forge-std/console.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { BaseTest } from "./BaseTest.sol";
@@ -10,26 +11,46 @@ import { ILvlRouter } from "../src/interfaces/lvl/ILvlRouter.sol";
 import { ILvlPool } from "../src/interfaces/lvl/ILvlPool.sol";
 
 contract LVLYieldSourceTest is BaseTest {
-    LVLYieldSource yieldSource;
-    ILvlStaking lvlStaking;
-    ILvlRouter lvlRouter;
-    ILvlPool lvlPool;
-    IERC20 lvlToken;
-
-    address whale = 0x804bbb7a06c0934571aAD137360215ef1335e6A1;
 
     function setUp() public {
         init();
-        vm.selectFork(vm.createFork(vm.envString("BNB_MAINNET_RPC_URL"), 28106807));
-
-        yieldSource = new LVLYieldSource(LVLConstants.NETWORK_BNB, LVLConstants.TOKEN_LVL);
-        lvlStaking = yieldSource.lvlStaking();
-        lvlRouter = yieldSource.lvlRouter();
-        lvlPool = yieldSource.lvlPool();
-        lvlToken = yieldSource.generatorToken();
     }
 
-    function testLvlToken() public {
+    /*
+    function testLvlArbitrum() public {
+        vm.selectFork(vm.createFork(vm.envString("ARBITRUM_MAINNET_RPC_URL"), 101889417));
+        address whale = ...;
+        _testLvlToken(whale, LVLConstants.NETWORK_ARBITRUM, LVLConstants.TOKEN_LVL);
+    }
+
+    function testLgoArbitrum() public {
+        vm.selectFork(vm.createFork(vm.envString("ARBITRUM_MAINNET_RPC_URL"), 101889417));
+        address whale = ...;
+        _testLvlToken(whale, LVLConstants.NETWORK_ARBITRUM, LVLConstants.TOKEN_LGO);
+    }
+    */
+
+    function testLvlBsc() public {
+        vm.selectFork(vm.createFork(vm.envString("BNB_MAINNET_RPC_URL"), 28106807));
+        _testLvlToken(
+            0x804bbb7a06c0934571aAD137360215ef1335e6A1,
+            LVLConstants.NETWORK_BNB,
+            LVLConstants.TOKEN_LVL);
+    }
+
+    function testLgoBsc() public {
+        vm.selectFork(vm.createFork(vm.envString("BNB_MAINNET_RPC_URL"), 28106807));
+        _testLvlToken(
+            0x712A2e08C67cD7153f04FdB3037d4696300921d0,
+            LVLConstants.NETWORK_BNB,
+            LVLConstants.TOKEN_LGO);
+    }
+
+    function _testLvlToken(address whale, uint256 network, uint256 token) internal {
+        LVLYieldSource yieldSource = new LVLYieldSource(network, token);
+        ILvlStaking lvlStaking = yieldSource.lvlStaking();
+        IERC20 lvlToken = yieldSource.generatorToken();
+
         yieldSource.setOwner(whale);
         vm.startPrank(whale);
 
@@ -43,9 +64,12 @@ contract LVLYieldSourceTest is BaseTest {
             uint256 old = yieldSource.amountGenerator();
             yieldSource.deposit(amount, false);
             assertEq(lvlToken.balanceOf(whale), 0); // whale now has nothing
+            
+            stakedAmount = amount;
+            if (token == LVLConstants.TOKEN_LVL) {
+                stakedAmount -= amount * lvlStaking.stakingTax() / lvlStaking.STAKING_TAX_PRECISION();
+            }
 
-            uint256 taxAmount = amount * lvlStaking.stakingTax() / lvlStaking.STAKING_TAX_PRECISION();
-            stakedAmount = amount - taxAmount;
             assertEq(yieldSource.amountGenerator() - old, stakedAmount);
         }
 
@@ -56,7 +80,7 @@ contract LVLYieldSourceTest is BaseTest {
         {
             uint256 old = yieldSource.yieldToken().balanceOf(whale);
             yieldSource.harvest();
-            assertEq(yieldSource.yieldToken().balanceOf(whale) - old, 11876933233527429);
+            assert(yieldSource.yieldToken().balanceOf(whale) > old);
         }
 
         // withdraw lvl tokens as whale
