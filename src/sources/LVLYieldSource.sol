@@ -83,9 +83,7 @@ contract LVLYieldSource is IYieldSource {
 
     /// @notice Set a new owner.
     /// @param owner_ The new owner.
-    function setOwner(
-        address owner_
-    ) external override onlyOwner validAddress(owner_) {
+    function setOwner(address owner_) external override onlyOwner validAddress(owner_) {
         owner = owner_;
         emit TransferOwnership(owner);
     }
