@@ -16,19 +16,7 @@ contract LVLYieldSourceTest is BaseTest {
         init();
     }
 
-    /*
-    function testLvlArbitrum() public {
-        vm.selectFork(vm.createFork(vm.envString("ARBITRUM_MAINNET_RPC_URL"), 101889417));
-        address whale = ...;
-        _testLvlToken(whale, LVLConstants.NETWORK_ARBITRUM, LVLConstants.TOKEN_LVL);
-    }
-
-    function testLgoArbitrum() public {
-        vm.selectFork(vm.createFork(vm.envString("ARBITRUM_MAINNET_RPC_URL"), 101889417));
-        address whale = ...;
-        _testLvlToken(whale, LVLConstants.NETWORK_ARBITRUM, LVLConstants.TOKEN_LGO);
-    }
-    */
+    // TODO: test lvl/arbitrum and lgo/arbitrum
 
     function testLvlBsc() public {
         vm.selectFork(vm.createFork(vm.envString("BNB_MAINNET_RPC_URL"), 28106807));

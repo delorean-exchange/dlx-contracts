@@ -10,11 +10,11 @@ import { ILvlRouter } from "../interfaces/lvl/ILvlRouter.sol";
 import { ILvlPool } from "../interfaces/lvl/ILvlPool.sol";
 
 library LVLConstants {
-    uint256 public constant NETWORK_BNB = 0;
-    uint256 public constant NETWORK_ARBITRUM = 1;
+    uint256 public constant NETWORK_BNB = 1;
+    uint256 public constant NETWORK_ARBITRUM = 2;
     
-    uint256 public constant TOKEN_LVL = 0;
-    uint256 public constant TOKEN_LGO = 1;
+    uint256 public constant TOKEN_LVL = 100;
+    uint256 public constant TOKEN_LGO = 200;
 }
 
 /// @notice Wrapper interface for managing yield from LVL.
